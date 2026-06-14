@@ -89,6 +89,9 @@ npm run preview    # serve dist/ locally
 
 ## Firebase config
 
+Copy [`.env.local.example`](./.env.local.example) to `.env.local` and fill in
+your project's values (`cp .env.local.example .env.local`).
+
 The app reads config from either:
 
 1. `window.__FIREBASE_CONFIG__` (set in `index.html` or a script), **or**

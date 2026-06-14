@@ -231,10 +231,17 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
   also means refactor steps can be **build-verified** from here on, not just
   `node --check`'d. README has a troubleshooting section.
 
-### Phase 3 — Polish — PLANNED
+### Phase 3 — Polish — PARTIALLY DONE
+- ✅ **Lint** (`20579e7`): ESLint flat config (`eslint.config.js`), `npm run
+  lint` / `lint:fix`. `no-undef=error` + `no-unused-vars=warn`. Pulled forward
+  from Phase 3 because it verifies the closure seam-split (catches out-of-scope
+  refs a build misses). Tree is clean (0 errors). **Run `npm run lint` after
+  every refactor step from here on.**
 - Swirl perf (4.5).
 - Single CSS strategy / bundling.
-- Add lint + format (and minimal tests around session/paths/buzz logic).
+- Format (Prettier) — deferred; would reformat the whole 4-space tree, do it as
+  its own isolated commit.
+- Minimal tests around session/paths/buzz logic.
 - `vite.config.js` hardening + `.env.local.example`.
 
 ---
@@ -249,6 +256,7 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-06-14 | 2.5 | Fix cross-platform native dev (Dropbox/node_modules) | `11c161d` |
 | 2026-06-14 | 2.4 | Group `boot.js` deps into `{ services, els }` | `8731620` |
 | 2026-06-14 | 2.2/2.3 (step 1) | Extract participants.js / turn.js / ui/format.js | `592da9b` |
+| 2026-06-14 | 3 (lint) | ESLint flat config + gate; remove dead `buzzCount` | `20579e7` |
 
 > Append a row per commit. Keep the newest at the bottom.
 

@@ -15,6 +15,7 @@ import { mountTemplate, collectRefs } from '../ui/templates.js';
 import { modal } from '../ui/modal.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
 import { ensureParticipant, attachPresence, setTeam } from './participants.js';
+import { createInstructionController } from './lobbyInstructions.js';
 import { TEAM } from '../config.js';
 
 
@@ -115,9 +116,6 @@ export async function renderLobby(gameId) {
     let selectedPid = null;
     let selectedName = '';
     let participantsCache = {}; // pid -> {team, displayName,...}
-    let lastAssignedTeam = null; // Track last team assignment for success message
-    let playerJoinTimeout = null; // Track timeout for player join success message
-    let lastPlayerTeam = null; // Track last team player was on
 
     function updateInstruction(message, isSuccess = false) {
         const instructionEl = root.querySelector('.lobby-instruction');
@@ -126,6 +124,15 @@ export async function renderLobby(gameId) {
             instructionEl.classList.toggle('success', isSuccess);
         }
     }
+
+    // All instruction-line text decisions + their transient timers live here.
+    const instr = createInstructionController({
+        isGM,
+        teamNames,
+        setText: updateInstruction,
+        getParts: () => participantsCache,
+    });
+    track(() => instr.dispose());
 
     function showPlayerActions(pid, name) {
         if (!isGM) return;
@@ -141,7 +148,7 @@ export async function renderLobby(gameId) {
         if (refs.selectedLabel) refs.selectedLabel.textContent = `Editing: ${selectedName}`;
         if (refs.lobbyStatus) refs.lobbyStatus.textContent = `Editing: ${selectedName}`;
         // Update instruction
-        updateInstruction('Move player to a team using the buttons.');
+        instr.editing();
         // Switch tray
         setTrayMode('player');
         // highlight already handled in pill click handler
@@ -156,26 +163,6 @@ export async function renderLobby(gameId) {
         setTrayMode(isGM ? 'gm' : 'user');
         // Clear visual selection
         root.querySelectorAll('.pill.is-selected').forEach(b => b.classList.remove('is-selected'));
-
-        // Manually trigger instruction update if we just assigned someone
-        if (isGM && lastAssignedTeam) {
-            const teamName = lastAssignedTeam === TEAM.A ? teamNames.A : teamNames.B;
-            updateInstruction(`✅ Assigned player to ${teamName} team.`, true);
-            setTimeout(() => {
-                lastAssignedTeam = null;
-                // Check if all players are assigned
-                const parts = participantsCache;
-                const counts = { none: 0 };
-                for (const p of Object.values(parts)) {
-                    if (p.team === TEAM.NONE) counts.none++;
-                }
-                if (counts.none === 0 && Object.keys(parts).length > 0) {
-                    updateInstruction('Yay! All players assigned to teams.', true);
-                } else {
-                    updateInstruction('Tap player to assign to a team.');
-                }
-            }, 3000);
-        }
     }
 
     // Pill rendering
@@ -244,53 +231,7 @@ export async function renderLobby(gameId) {
         if (refs.teamBCount) refs.teamBCount.textContent = `${counts.B}`;
 
         // Update instruction message based on role and state
-        if (!selectedPid) { // Not editing a player
-            if (isGM) {
-                // GM messaging - only update if not in the middle of an assignment
-                if (!lastAssignedTeam) {
-                    if (counts.none === 0 && Object.keys(parts).length > 0) {
-                        updateInstruction('Yay! All players assigned to teams.', true);
-                    } else {
-                        updateInstruction('Tap player to assign to a team.');
-                    }
-                }
-                // If lastAssignedTeam is set, clearPlayerActions() handles the success message
-            } else {
-                // Player messaging
-                if (myTeam === TEAM.NONE) {
-                    updateInstruction('Pick a team to join');
-                    // Clear any existing timeout
-                    if (playerJoinTimeout) {
-                        clearTimeout(playerJoinTimeout);
-                        playerJoinTimeout = null;
-                    }
-                    lastPlayerTeam = null;
-                } else {
-                    // Check if player just joined a team (team changed)
-                    const justJoined = lastPlayerTeam !== myTeam;
-                    lastPlayerTeam = myTeam;
-
-                    if (justJoined) {
-                        // Clear any existing timeout
-                        if (playerJoinTimeout) {
-                            clearTimeout(playerJoinTimeout);
-                        }
-
-                        // Show success message
-                        const teamName = myTeam === TEAM.A ? teamNames.A : teamNames.B;
-                        updateInstruction(`✅ Joined ${teamName} team`, true);
-
-                        // Clear success message after 3 seconds
-                        playerJoinTimeout = setTimeout(() => {
-                            const currentTeam = myTeam === TEAM.A ? teamNames.A : teamNames.B;
-                            updateInstruction(`You're on ${currentTeam} team`);
-                            playerJoinTimeout = null;
-                        }, 3000);
-                    }
-                }
-            }
-        }
-        // else: instruction is already set by showPlayerActions
+        instr.sync({ counts, parts, myTeam, editing: !!selectedPid });
 
         // Start readiness (no longer disable the button, just track status)
         const totalPlaying = counts.A + counts.B;
@@ -468,14 +409,14 @@ export async function renderLobby(gameId) {
         if (refs.assignA) track(listen(refs.assignA, 'click', async () => {
             if (!selectedPid) return;
             await setTeam(gameId, selectedPid, TEAM.A);
-            lastAssignedTeam = TEAM.A;
             clearPlayerActions();
+            instr.assigned(TEAM.A);
         }));
         if (refs.assignB) track(listen(refs.assignB, 'click', async () => {
             if (!selectedPid) return;
             await setTeam(gameId, selectedPid, TEAM.B);
-            lastAssignedTeam = TEAM.B;
             clearPlayerActions();
+            instr.assigned(TEAM.B);
         }));
         if (refs.kickPlayer) track(listen(refs.kickPlayer, 'click', async () => {
             if (!selectedPid) return;

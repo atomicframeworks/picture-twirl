@@ -55,7 +55,6 @@ export async function renderGameUI(gameId) {
     let swirlStartTime = null;
     let swirlCtrl = null;
     let lastImageUrl = null;
-    let buzzCount = 0;
 
     // ─── Copy code ─────────────────────────────────────────────────────────────
     track(attachCopyButton(refs.copyCodeBtn, () => gameId.toUpperCase()));
@@ -156,7 +155,6 @@ export async function renderGameUI(gameId) {
         const ordered = Object.values(obj)
             .filter(e => e && typeof e.createdAt === 'number')
             .sort((a, b) => a.createdAt - b.createdAt);
-        buzzCount = ordered.length;
 
         if (refs.buzzQueueEl) {
             refs.buzzQueueEl.innerHTML = ordered.length

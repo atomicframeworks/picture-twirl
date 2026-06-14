@@ -194,9 +194,20 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
   Net: removes ~5 copies of the cleanup sequence and 2 copies each of the
   leave/end dialogs. Also drops now-unused imports (`setSession`, `remove`,
   `modal`) from the controllers that no longer reference them directly.
-- **2.2 — Split `lobby.js`** into listener / render / handler seams; untangle
-  the instruction state machine (4.3). *Deferred until 2.1 is tested in-app.*
-- **2.3 — Split `renderGame.js`** the same way. *Deferred until 2.1 tested.*
+- **2.2 / 2.3 (step 1) — Extract self-contained units. ✅ DONE (`592da9b`).**
+  Pulled already-standalone logic out of both controllers into focused modules:
+  `participants.js` (ensureParticipant / attachPresence / setTeam),
+  `turn.js` (initializeStartingTurn), `ui/format.js` (escapeHtml). Each
+  controller dropped ~35 lines; build-verified. Low risk — no closure-shared
+  control flow was touched.
+- **2.2 / 2.3 (step 2) — Seam split + instruction state machine.** PENDING and
+  **needs an in-app smoke test first.** The remaining bulk of `lobby.js` /
+  `renderGame.js` is one big closure where many handlers read/write shared
+  locals (`refs`, `selectedTile`, `currentQuestion`, `swirlCtrl`, the lobby
+  instruction flags). Splitting that across files means threading a shared
+  context object — a real control-flow change a passing build will NOT validate.
+  The fragile lobby instruction state machine (4.3) gets untangled here.
+  Do it one controller at a time, a commit each, after smoke-testing.
 - **2.4 — Collapse `boot.js`'s 26-/12-arg dependency bags** into grouped
   objects. ✅ DONE (`8731620`) — now `{ services, els }`; build-verified +
   key-set diff confirms no missing deps.
@@ -237,6 +248,7 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-06-13 | 2.1 | Extract `controllerKit.js` (disposer + leave/end flows) | `9a88183` |
 | 2026-06-14 | 2.5 | Fix cross-platform native dev (Dropbox/node_modules) | `11c161d` |
 | 2026-06-14 | 2.4 | Group `boot.js` deps into `{ services, els }` | `8731620` |
+| 2026-06-14 | 2.2/2.3 (step 1) | Extract participants.js / turn.js / ui/format.js | `592da9b` |
 
 > Append a row per commit. Keep the newest at the bottom.
 

@@ -1,0 +1,55 @@
+/* src/styles/tokens.css
+   Picture Twirl — Design tokens (Playful Party theme)
+   Single source of truth for color, type, spacing, radius, shadow.
+   ------------------------------------------------------------------ */
+:root {
+  /* ── Brand ───────────────────────────────────────────────── */
+  --brand-1: #7C3AED;        /* violet */
+  --brand-2: #EC4899;        /* pink   */
+  --brand-1-ink: #6D28D9;    /* readable violet for text/borders */
+  --grad-brand: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+  --grad-buzz:  linear-gradient(135deg, #F59E0B 0%, #EC4899 100%);
+
+  /* ── Accents ─────────────────────────────────────────────── */
+  --accent-cyan: #06B6D4;
+  --accent-lime: #84CC16;
+  --accent-amber: #F59E0B;
+
+  /* ── Surfaces / neutrals ─────────────────────────────────── */
+  --bg: #F6F4FF;
+  --bg-grad: linear-gradient(160deg, #F5F3FF 0%, #FDF2F8 100%);
+  --surface: #FFFFFF;
+  --ink: #1E1B2E;            /* deep purple-black */
+  --muted: #6B7280;
+  --line: #ECE9F5;
+  --ring: rgba(124, 58, 237, .28);
+
+  /* ── Status ──────────────────────────────────────────────── */
+  --danger: #EF4444;
+  --success: #16A34A;
+
+  /* ── Lobby pills ─────────────────────────────────────────── */
+  --pill: #F1ECFE;
+  --pill-ink: #5B21B6;
+  --pill-me: var(--grad-brand);
+  --pill-me-ink: #fff;
+
+  /* ── Typography ──────────────────────────────────────────── */
+  --font-body: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fredoka', 'Poppins', system-ui, sans-serif;
+
+  /* ── Spacing (4px base) ──────────────────────────────────── */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+
+  /* ── Radius ──────────────────────────────────────────────── */
+  --radius-sm: 10px; --radius-md: 14px; --radius-lg: 20px;
+  --radius-xl: 28px; --radius-pill: 999px;
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  --shadow-sm: 0 2px 8px rgba(30, 27, 46, .08);
+  --shadow-md: 0 6px 18px rgba(30, 27, 46, .10);
+  --shadow-card: 0 12px 32px rgba(124, 58, 237, .12);
+  --shadow-brand: 0 10px 24px rgba(124, 58, 237, .40);
+  --shadow-modal: 0 24px 60px rgba(30, 27, 46, .30);
+}

@@ -1,12 +1,34 @@
 /* src/home.css
    Picture Twirl — Home Screen
-   Uses shared components from main.css
+   Uses shared components + tokens; adds a little hero polish.
 */
+
+#home .card {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Playful accent: soft brand glow behind the hero card */
+#home .card::before {
+    content: "";
+    position: absolute;
+    inset: -40% -20% auto -20%;
+    height: 180px;
+    background: var(--grad-brand);
+    opacity: .08;
+    filter: blur(40px);
+    pointer-events: none;
+}
+
+#siteTitle {
+    font-size: clamp(36px, 9vw, 56px);
+}
 
 .home-actions {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    margin-top: var(--space-2);
 }
 
 .home-actions .btn {

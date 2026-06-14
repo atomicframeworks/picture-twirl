@@ -68,8 +68,8 @@ export async function createBoard(gameId, options = {}) {
     // 3) Create the grid root
     const board = document.createElement('div');
     board.id = 'board';
-    board.style.display = 'grid';
-    board.style.gridTemplateColumns = `repeat(${numCols}, 1fr)`;
+    // Column count is data-driven; gameBoard.css reads --cols (keeps styling in CSS).
+    board.style.setProperty('--cols', String(numCols));
     board.setAttribute('role', 'grid');
 
     // 4) Category headers (top row)

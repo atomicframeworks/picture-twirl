@@ -12,6 +12,7 @@ export const phase = (id) => `games/${id}/state/phase`;
 export const board = (id) => `games/${id}/board`;
 export const boardTile = (id, tileId) => `games/${id}/board/${tileId}`;
 export const currentQuestion = (id) => `games/${id}/currentQuestion`;
+export const swirlPaused = (id) => `games/${id}/swirlPaused`;
 export const buzzQueue = (id) => `games/${id}/buzzQueue`;
 export const settings = (id) => `games/${id}/settings`;
 export const setId = (id) => `games/${id}/settings/setId`;

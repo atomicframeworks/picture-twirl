@@ -329,6 +329,12 @@
             <canvas class="twirl-canvas" data-ref="twirlCanvas"></canvas>
           </div>
 
+          <!-- Swirl reveal progress (fills as the image unswirls) -->
+          <div class="swirl-timer" data-ref="swirlTimer" role="progressbar" aria-label="Reveal progress">
+            <div class="swirl-timer-fill" data-ref="swirlFill"></div>
+            <span class="swirl-timer-label" data-ref="swirlLabel">Revealing…</span>
+          </div>
+
           <div class="answer-text" data-ref="answerEl" hidden></div>
 
           <!-- Buzz queue (visible to all) -->
@@ -346,6 +352,7 @@
 
         <!-- Question mode (GM): adjudicate -->
         <div class="gm-controls" data-ref="gmControls" hidden>
+          <button class="btn secondary" data-ref="pauseSwirlBtn">⏸ Pause Swirl</button>
           <button class="btn" data-ref="showAnswerBtn">Show Answer</button>
           <div class="gm-award-row">
             <button class="btn" data-ref="awardABtn">Award Team A</button>

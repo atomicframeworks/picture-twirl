@@ -6,9 +6,10 @@
  * @param {number} duration - Total swirl duration in ms
  * @param {number} maxSwirl - Swirl strength, 1 (gentle) to 10 (extreme)
  * @param {number} [elapsedStart=0] - Optional elapsed time in ms to sync animation progress
+ * @param {(progress: number) => void} [onProgress] - Called each frame with progress 0..1
  * @returns {{pause: Function, resume: Function, cancel: Function, isPaused: Function}} Control object for the animation
  */
-export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl = 3.0, elapsedStart = 0) {
+export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl = 3.0, elapsedStart = 0, onProgress) {
     const ctx = canvasEl.getContext('2d');
     const width = imgEl.naturalWidth;
     const height = imgEl.naturalHeight;
@@ -49,6 +50,8 @@ export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl =
 
         const elapsed = timestamp - startTime;
         const progress = Math.min(1, elapsed / duration);
+
+        if (typeof onProgress === 'function') onProgress(progress);
 
         const output = ctx.createImageData(width, height);
 

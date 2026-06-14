@@ -281,6 +281,38 @@
     display: block;
 }
 
+/* Swirl reveal-progress bar */
+.swirl-timer {
+    position: relative;
+    width: min(92vw, 640px);
+    height: 12px;
+    background: #ECE9F5;
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+}
+
+.swirl-timer-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--grad-brand);
+    border-radius: var(--radius-pill);
+    transition: width .2s linear;
+}
+
+.swirl-timer-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--brand-1-ink);
+    mix-blend-mode: luminosity;
+}
+
 .answer-text {
     background: var(--grad-brand);
     color: #fff;

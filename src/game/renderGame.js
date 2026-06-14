@@ -55,6 +55,8 @@ export async function renderGameUI(gameId) {
     let swirlStartTime = null;
     let swirlCtrl = null;
     let lastImageUrl = null;
+    let hasBuzz = false;          // someone is in the buzz queue
+    let swirlPausedByGM = false;  // GM hit pause (synced via RTDB)
 
     // ─── Copy code ─────────────────────────────────────────────────────────────
     track(attachCopyButton(refs.copyCodeBtn, () => gameId.toUpperCase()));
@@ -165,10 +167,9 @@ export async function renderGameUI(gameId) {
                 : '';
         }
 
-        // Pause swirl on first buzz
-        if (ordered.length > 0 && swirlCtrl?.pause) {
-            swirlCtrl.pause();
-        }
+        // A buzz pauses the swirl (for everyone, via the shared queue).
+        hasBuzz = ordered.length > 0;
+        applySwirlPause();
 
         // Players: disable buzz button after they've buzzed
         if (refs.buzzBtn && !isGM) {
@@ -177,6 +178,32 @@ export async function renderGameUI(gameId) {
             refs.buzzBtn.textContent = meBuzzed ? 'BUZZED' : 'BUZZ IN';
         }
     }));
+
+    // ─── Swirl pause (GM-controlled, synced to all clients) ────────────────────
+    track(onValue(ref(rtdb, P.swirlPaused(gameId)), (s) => {
+        swirlPausedByGM = s.val() === true;
+        applySwirlPause();
+        updatePauseButton();
+    }));
+
+    // Pause the local swirl if a buzz is in OR the GM paused; resume otherwise.
+    function applySwirlPause() {
+        if (!swirlCtrl) return;
+        const shouldPause = hasBuzz || swirlPausedByGM;
+        if (shouldPause) swirlCtrl.pause?.();
+        else swirlCtrl.resume?.();
+    }
+
+    function updatePauseButton() {
+        if (!refs.pauseSwirlBtn) return;
+        refs.pauseSwirlBtn.textContent = swirlPausedByGM ? '▶ Resume Swirl' : '⏸ Pause Swirl';
+    }
+
+    // Reveal-progress bar driven by the swirl's onProgress callback.
+    function setSwirlProgress(progress) {
+        if (refs.swirlFill) refs.swirlFill.style.width = `${Math.round(progress * 100)}%`;
+        if (refs.swirlLabel) refs.swirlLabel.textContent = progress >= 1 ? 'Revealed!' : 'Revealing…';
+    }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
     function updateActivePlayerDisplay() {
@@ -277,8 +304,12 @@ export async function renderGameUI(gameId) {
         if (refs.qCategory) refs.qCategory.textContent = currentQuestion.category || '';
         if (refs.qValue) refs.qValue.textContent = `$${currentQuestion.value ?? ''}`;
 
+        // Swirl timer visible only while actively revealing (hidden once answered)
+        if (refs.swirlTimer) refs.swirlTimer.hidden = !!currentQuestion.showAnswer;
+
         // Load image and (re)start swirl when URL changes
         if (refs.twirlImage && currentQuestion.imageUrl && currentQuestion.imageUrl !== lastImageUrl) {
+            setSwirlProgress(0);
             refs.twirlImage.onload = () => {
                 if (swirlCtrl?.cancel) swirlCtrl.cancel();
                 const now = Date.now();
@@ -288,8 +319,11 @@ export async function renderGameUI(gameId) {
                     refs.twirlCanvas,
                     SWIRL.DURATION_MS,
                     SWIRL.STRENGTH,
-                    elapsed
+                    elapsed,
+                    setSwirlProgress
                 );
+                // Respect any pause state that's already active for this question.
+                applySwirlPause();
             };
             refs.twirlImage.src = currentQuestion.imageUrl;
             lastImageUrl = currentQuestion.imageUrl;
@@ -301,6 +335,7 @@ export async function renderGameUI(gameId) {
                 refs.answerEl.textContent = currentQuestion.answer || '';
                 refs.answerEl.hidden = false;
                 if (swirlCtrl?.cancel) swirlCtrl.cancel();
+                setSwirlProgress(1);
                 // Make sure the reveal is in view (it sits below a tall image).
                 refs.answerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
@@ -359,6 +394,7 @@ export async function renderGameUI(gameId) {
                     showAnswer: false
                 },
                 swirlStartTime: serverTimestamp(),
+                swirlPaused: false,
                 selectedTile: null
             });
 
@@ -374,7 +410,15 @@ export async function renderGameUI(gameId) {
         }
     }));
 
-    // ─── GM controls: Show Answer / Award / Back to Board ──────────────────────
+    // ─── GM controls: Pause / Show Answer / Award / Back to Board ──────────────
+    if (refs.pauseSwirlBtn) {
+        track(listen(refs.pauseSwirlBtn, 'click', async () => {
+            if (!isGM || !currentQuestion) return;
+            // Toggle the shared pause flag; all clients react via the listener.
+            await update(ref(rtdb, P.game(gameId)), { swirlPaused: !swirlPausedByGM });
+        }));
+    }
+
     if (refs.showAnswerBtn) {
         track(listen(refs.showAnswerBtn, 'click', async () => {
             if (!isGM || !currentQuestion) return;
@@ -398,7 +442,8 @@ export async function renderGameUI(gameId) {
             [`${tilePath}/awardedPoints`]: points,
             [`${tilePath}/lastActionAt`]: serverTimestamp(),
             [P.currentQuestion(gameId)]: null,
-            [`${P.game(gameId)}/swirlStartTime`]: null
+            [`${P.game(gameId)}/swirlStartTime`]: null,
+            [`${P.game(gameId)}/swirlPaused`]: false
         });
 
         await clearBuzzQueue(gameId);
@@ -412,7 +457,8 @@ export async function renderGameUI(gameId) {
             if (!isGM) return;
             await update(ref(rtdb, P.game(gameId)), {
                 currentQuestion: null,
-                swirlStartTime: null
+                swirlStartTime: null,
+                swirlPaused: false
             });
             await clearBuzzQueue(gameId);
         }));

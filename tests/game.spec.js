@@ -38,6 +38,14 @@ test('live game: board, question/swirl, and buzz', async ({ gm, browser }) => {
         await gm.page.screenshot({ path: 'screenshots/09-question-gm.png' });
         await player.screenshot({ path: 'screenshots/10-question-player.png' });
 
+        // 3b) Swirl timer is visible, and GM pause toggles for everyone.
+        await expect(gm.page.locator('.swirl-timer')).toBeVisible();
+        const pauseBtn = gm.page.locator('[data-ref="pauseSwirlBtn"]');
+        await pauseBtn.click();
+        await expect(pauseBtn).toHaveText('▶ Resume Swirl');
+        await pauseBtn.click();
+        await expect(pauseBtn).toHaveText('⏸ Pause Swirl');
+
         // 4) Player buzzes → appears in the queue, GM can adjudicate.
         await player.locator('[data-ref="buzzBtn"]').click();
         await expect(gm.page.locator('.buzz-entry')).toContainText('Sam', { timeout: 10_000 });

@@ -200,14 +200,19 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
   `turn.js` (initializeStartingTurn), `ui/format.js` (escapeHtml). Each
   controller dropped ~35 lines; build-verified. Low risk — no closure-shared
   control flow was touched.
-- **2.2 / 2.3 (step 2) — Seam split + instruction state machine.** PENDING and
-  **needs an in-app smoke test first.** The remaining bulk of `lobby.js` /
-  `renderGame.js` is one big closure where many handlers read/write shared
-  locals (`refs`, `selectedTile`, `currentQuestion`, `swirlCtrl`, the lobby
-  instruction flags). Splitting that across files means threading a shared
-  context object — a real control-flow change a passing build will NOT validate.
-  The fragile lobby instruction state machine (4.3) gets untangled here.
-  Do it one controller at a time, a commit each, after smoke-testing.
+- **2.2 (step 2) — Lobby instruction state machine. ✅ DONE (`005f65d`).**
+  Extracted to `lobbyInstructions.js` (DOM-free; `setText`/`getParts` injected).
+  The participants observer's ~45-line instruction branch is now one
+  `instr.sync(...)` call; the three coordinating flags are gone. Verified by a
+  13-case behavioral test (messages + timer behavior match the original) plus
+  lint + build. Resolves finding 4.3. Still worth a quick in-app glance at the
+  lobby messages, but the message logic itself is test-verified.
+- **2.3 (step 2) — Seam-split `renderGame.js` into render/handler files.**
+  PENDING. The remaining ~440-line controller is one closure where handlers
+  read/write shared locals (`refs`, `selectedTile`, `currentQuestion`,
+  `swirlCtrl`). Splitting means threading a context object — modest payoff,
+  real logic risk, best done with an in-app smoke test. May not be worth the
+  indirection; a cohesive 440-line controller is acceptable.
 - **2.4 — Collapse `boot.js`'s 26-/12-arg dependency bags** into grouped
   objects. ✅ DONE (`8731620`) — now `{ services, els }`; build-verified +
   key-set diff confirms no missing deps.
@@ -257,6 +262,8 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-06-14 | 2.4 | Group `boot.js` deps into `{ services, els }` | `8731620` |
 | 2026-06-14 | 2.2/2.3 (step 1) | Extract participants.js / turn.js / ui/format.js | `592da9b` |
 | 2026-06-14 | 3 (lint) | ESLint flat config + gate; remove dead `buzzCount` | `20579e7` |
+| 2026-06-14 | 3 (dx) | Add `.env.local.example` | `d2f01c8` |
+| 2026-06-14 | 2.2 (step 2) | Untangle lobby instruction state machine → `lobbyInstructions.js` | `005f65d` |
 
 > Append a row per commit. Keep the newest at the bottom.
 

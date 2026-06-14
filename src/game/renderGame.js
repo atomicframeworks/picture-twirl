@@ -209,11 +209,22 @@ export async function renderGameUI(gameId) {
     }));
 
     // Pause the local swirl if a buzz is in OR the GM paused; resume otherwise.
+    // Never act once the answer is revealed (the swirl is gone by then).
     function applySwirlPause() {
-        if (!swirlCtrl) return;
+        if (!swirlCtrl || currentQuestion?.showAnswer) return;
         const shouldPause = hasBuzz || swirlPausedByGM;
         if (shouldPause) swirlCtrl.pause?.();
         else swirlCtrl.resume?.();
+    }
+
+    // Draw the fully-clear image onto the swirl canvas (used on answer reveal).
+    function unswirlImage() {
+        const img = refs.twirlImage;
+        const cv = refs.twirlCanvas;
+        if (!img || !cv || !img.naturalWidth) return;
+        cv.width = img.naturalWidth;
+        cv.height = img.naturalHeight;
+        cv.getContext('2d')?.drawImage(img, 0, 0, cv.width, cv.height);
     }
 
     function updatePauseButton() {
@@ -331,8 +342,9 @@ export async function renderGameUI(gameId) {
         if (refs.qCategory) refs.qCategory.textContent = currentQuestion.category || '';
         if (refs.qValue) refs.qValue.textContent = `$${currentQuestion.value ?? ''}`;
 
-        // Swirl timer visible only while actively revealing (hidden once answered)
+        // Swirl timer + pause control only matter while actively revealing.
         if (refs.swirlTimer) refs.swirlTimer.hidden = !!currentQuestion.showAnswer;
+        if (refs.pauseSwirlBtn) refs.pauseSwirlBtn.hidden = !!currentQuestion.showAnswer;
 
         // Load image and (re)start swirl when URL changes
         if (refs.twirlImage && currentQuestion.imageUrl && currentQuestion.imageUrl !== lastImageUrl) {
@@ -361,7 +373,11 @@ export async function renderGameUI(gameId) {
             if (currentQuestion.showAnswer) {
                 refs.answerEl.textContent = currentQuestion.answer || '';
                 refs.answerEl.hidden = false;
+                // Reveal the clean picture: stop the swirl, drop the controller so
+                // nothing can resume it, then draw the image at full clarity.
                 if (swirlCtrl?.cancel) swirlCtrl.cancel();
+                swirlCtrl = null;
+                unswirlImage();
                 setSwirlProgress(1);
                 // Make sure the reveal is in view (it sits below a tall image).
                 refs.answerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -18,12 +18,14 @@ import { on, enable, disable } from '../ui/dom.js';
 import { LIMITS } from '../config.js';
 
 /**
- * @typedef JoinDeps
+ * @typedef JoinServices
  * @property {Function} requireAuth
  * @property {(gameId: string) => Promise<boolean>} gameExists
  * @property {Function} renderLobby
  * @property {Function} setSession
  * @property {Function} showView
+ *
+ * @typedef JoinEls
  * @property {HTMLFormElement|null} joinForm
  * @property {HTMLButtonElement|null} confirmJoin
  * @property {HTMLButtonElement|null} cancelJoinBtn
@@ -35,15 +37,18 @@ import { LIMITS } from '../config.js';
 
 /**
  * Initialize the Join Game flow.
- * @param {JoinDeps} deps
+ * @param {{ services: JoinServices, els: JoinEls }} deps
  */
-export function initJoinFlow(deps) {
+export function initJoinFlow({ services, els }) {
     const {
         requireAuth,
         gameExists,
         renderLobby,
         setSession,
         showView,
+    } = services;
+
+    const {
         joinForm,
         confirmJoin,
         cancelJoinBtn,
@@ -51,7 +56,7 @@ export function initJoinFlow(deps) {
         playerNameInput,
         joinErrorRow,
         joinErrorText,
-    } = deps;
+    } = els;
 
     // Local aliases to avoid bundler/scope quirks
     const elJoinForm = joinForm;

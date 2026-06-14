@@ -30,7 +30,7 @@ import { ref, remove } from 'firebase/database';
 import * as P from '../data/paths.js';
 import { modal } from '../ui/modal.js';
 
-export function initCreateFlow(deps) {
+export function initCreateFlow({ services, els }) {
     const {
         requireAuth,
         predefinedGames,
@@ -39,7 +39,9 @@ export function initCreateFlow(deps) {
         setSession,
         showView,
         generateGameId,
+    } = services;
 
+    const {
         // Step 1 elements
         createGameForm,
         gmNameInput,
@@ -51,7 +53,8 @@ export function initCreateFlow(deps) {
         step1Root,
         step2Root,
         step1NextBtn,
-        step1ExitBtn,        step2BackBtn,
+        step1ExitBtn,
+        step2BackBtn,
         step2NextBtn,
         setListEl,
         headerTitleEl,
@@ -62,7 +65,7 @@ export function initCreateFlow(deps) {
         shareCodeBtn,
         goToLobbyBtn,
         endGameFromReadyBtn,
-    } = deps;
+    } = els;
 
     // Internal state
     let currentGameId = null;

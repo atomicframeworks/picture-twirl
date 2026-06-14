@@ -151,55 +151,62 @@ export async function boot() {
         // Initialize Create flow (2-step: details → set selection → game ready)
         // -------------------------------------------------------------------------
         const { startCreateFlow } = initCreateFlow({
-            requireAuth,
-            predefinedGames,
-            createGameShell,
-            renderLobby,
-            setSession,
-            showView,
-            generateGameId,
+            services: {
+                requireAuth,
+                predefinedGames,
+                createGameShell,
+                renderLobby,
+                setSession,
+                showView,
+                generateGameId,
+            },
+            els: {
+                // Step 1 (details)
+                createGameForm,
+                gmNameInput,
+                gameNameInput,
+                teamANameInput,
+                teamBNameInput,
 
-            // Step 1 (details)
-            createGameForm,
-            gmNameInput,
-            gameNameInput,
-            teamANameInput,
-            teamBNameInput,
+                // Step 2 (set selection)
+                step1Root,
+                step2Root,
+                step1NextBtn,
+                step1ExitBtn,
+                step2BackBtn,
+                step2NextBtn,
+                setListEl,
+                headerTitleEl,
 
-            // Step 2 (set selection)
-            step1Root,
-            step2Root,
-            step1NextBtn,
-            step1ExitBtn,
-            step2BackBtn,
-            step2NextBtn,
-            setListEl,
-            headerTitleEl,
-
-            // Game Ready screen
-            readyGameTitle,
-            readyGameCode,
-            shareCodeBtn,
-            goToLobbyBtn,
-            endGameFromReadyBtn,
+                // Game Ready screen
+                readyGameTitle,
+                readyGameCode,
+                shareCodeBtn,
+                goToLobbyBtn,
+                endGameFromReadyBtn,
+            },
         });
 
         // -------------------------------------------------------------------------
         // Initialize Join flow (validation + confirm/cancel)
         // -------------------------------------------------------------------------
         const { startJoinFlow } = initJoinFlow({
-            requireAuth,
-            gameExists,
-            renderLobby,
-            setSession,
-            showView,
-            joinForm,
-            confirmJoin,
-            cancelJoinBtn,
-            joinGameIdInput,
-            playerNameInput,
-            joinErrorRow,
-            joinErrorText,
+            services: {
+                requireAuth,
+                gameExists,
+                renderLobby,
+                setSession,
+                showView,
+            },
+            els: {
+                joinForm,
+                confirmJoin,
+                cancelJoinBtn,
+                joinGameIdInput,
+                playerNameInput,
+                joinErrorRow,
+                joinErrorText,
+            },
         });
 
         // -------------------------------------------------------------------------

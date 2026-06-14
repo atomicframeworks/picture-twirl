@@ -55,6 +55,13 @@ test('live game: board, question/swirl, and buzz', async ({ gm, browser }) => {
         await gm.page.locator('[data-ref="showAnswerBtn"]').click();
         await expect(gm.page.locator('.answer-text')).toBeVisible();
         await gm.page.screenshot({ path: 'screenshots/12-answer-gm.png' });
+
+        // 6) GM awards Team A → score updates and confetti fires (celebration).
+        await gm.page.locator('[data-ref="awardABtn"]').click();
+        await expect(gm.page.locator('[data-ref="teamAScore"]')).toHaveText('100');
+        await expect(gm.page.locator('#pt-confetti')).toHaveCount(1);
+        await gm.page.waitForTimeout(400);
+        await gm.page.screenshot({ path: 'screenshots/13-award-confetti.png' });
     } finally {
         // Best-effort cleanup: end the game from the live tray.
         const end = gm.page.locator('[data-ref="gmEndBtn"]');

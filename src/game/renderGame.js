@@ -25,6 +25,8 @@ import { enqueueBuzz, clearBuzzQueue } from './buzz.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
 import { initializeStartingTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
+import { burstConfetti } from '../ui/confetti.js';
+import { playBuzz, playCorrect, playReveal, unlockAudio } from '../ui/sound.js';
 import { TEAM, SWIRL, teamToAnswer } from '../config.js';
 
 export async function renderGameUI(gameId) {
@@ -57,6 +59,14 @@ export async function renderGameUI(gameId) {
     let lastImageUrl = null;
     let hasBuzz = false;          // someone is in the buzz queue
     let swirlPausedByGM = false;  // GM hit pause (synced via RTDB)
+    let prevScores = null;        // detect score increases → celebrate
+    let prevBuzzCount = 0;        // detect new buzzes → buzz sound
+    let prevShowAnswer = false;   // detect reveal → chime
+
+    // Unlock audio on the first user gesture (browsers gate autoplay).
+    const unlockOnce = () => unlockAudio();
+    window.addEventListener('pointerdown', unlockOnce, { once: true });
+    track(() => window.removeEventListener('pointerdown', unlockOnce));
 
     // ─── Copy code ─────────────────────────────────────────────────────────────
     track(attachCopyButton(refs.copyCodeBtn, () => gameId.toUpperCase()));
@@ -120,6 +130,14 @@ export async function renderGameUI(gameId) {
         scores = { A: Number(v.A || 0), B: Number(v.B || 0) };
         refs.teamAScore.textContent = scores.A;
         refs.teamBScore.textContent = scores.B;
+
+        // A score went up → a team got it right. Celebrate (all clients).
+        if (prevScores && (scores.A > prevScores.A || scores.B > prevScores.B)) {
+            const team = scores.A > prevScores.A ? TEAM.A : TEAM.B;
+            burstConfetti({ originX: team === TEAM.A ? 0.3 : 0.7, originY: 0.35 });
+            playCorrect();
+        }
+        prevScores = scores;
     }));
 
     track(onValue(ref(rtdb, P.participants(gameId)), (s) => {
@@ -166,6 +184,10 @@ export async function renderGameUI(gameId) {
                 }).join('')
                 : '';
         }
+
+        // New buzz arrived → buzzer sound (all clients hear it).
+        if (ordered.length > prevBuzzCount) playBuzz();
+        prevBuzzCount = ordered.length;
 
         // A buzz pauses the swirl (for everyone, via the shared queue).
         hasBuzz = ordered.length > 0;
@@ -293,12 +315,17 @@ export async function renderGameUI(gameId) {
             if (swirlCtrl?.cancel) swirlCtrl.cancel();
             swirlCtrl = null;
             lastImageUrl = null;
+            prevShowAnswer = false;
             if (refs.answerEl) {
                 refs.answerEl.hidden = true;
                 refs.answerEl.textContent = '';
             }
             return;
         }
+
+        // Reveal chime on the false → true transition.
+        if (currentQuestion.showAnswer && !prevShowAnswer) playReveal();
+        prevShowAnswer = !!currentQuestion.showAnswer;
 
         // Render question metadata
         if (refs.qCategory) refs.qCategory.textContent = currentQuestion.category || '';

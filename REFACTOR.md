@@ -204,6 +204,20 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 > (create game → lobby → start → play a tile → buzz → award → end; plus leave
 > as a non-GM). See the smoke-test checklist at the bottom of this file.
 
+### Phase 2.5 — Cross-platform dev fix ✅ DONE
+- **Root cause:** the repo lives in Dropbox, which was syncing `node_modules`
+  between the Windows host and the Linux/Alpine container. Native binaries
+  (Rollup) are per-OS, so the host ended up with Linux/musl binaries and no
+  `@rollup/rollup-win32-x64-msvc` → `vite build` failed natively on Windows.
+- **Fix:** marked `node_modules` Dropbox-ignored on this device
+  (`com.dropbox.ignored` NTFS stream) and reran `npm install`, which restored
+  the correct `win32` binary. `package-lock.json` was already cross-platform
+  (lists all OS rollup optionals) and is unchanged. Docker is unaffected — it
+  isolates `node_modules` in an anonymous volume.
+- **Result:** `npm run build` now works natively on Windows **and** Linux. This
+  also means refactor steps can be **build-verified** from here on, not just
+  `node --check`'d. README has a troubleshooting section.
+
 ### Phase 3 — Polish — PLANNED
 - Swirl perf (4.5).
 - Single CSS strategy / bundling.

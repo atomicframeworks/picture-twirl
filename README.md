@@ -46,6 +46,40 @@ npm install
 npm run dev
 ```
 
+> **Each machine installs its own `node_modules`.** Run `npm install` once per
+> environment (Windows host, Linux host, container). They are not interchangeable.
+
+### ⚠️ This repo lives in Dropbox — do not sync `node_modules`
+
+Native dependencies (e.g. Rollup, which powers Vite) ship **per-OS binaries**.
+If Dropbox syncs `node_modules` between a Windows host and the Linux/Alpine
+container, you'll hit errors like:
+
+```
+Cannot find module '@rollup/rollup-win32-x64-msvc'
+```
+
+…because the folder holds the *other* platform's binary. Fix / prevention:
+
+1. **Tell Dropbox to ignore `node_modules`** on each device (keeps a separate
+   local copy per machine, syncs nothing):
+
+   ```powershell
+   # Windows (PowerShell), from the project root:
+   Set-Content -Path "$PWD\node_modules:com.dropbox.ignored" -Value 1
+   ```
+   ```bash
+   # macOS/Linux:
+   attr -s com.dropbox.ignored -V 1 node_modules
+   ```
+
+2. **Reinstall for the current OS:** `npm install` (regenerates the correct
+   native binary; the committed `package-lock.json` already lists every
+   platform, so this is safe on all OSes).
+
+The Docker path is unaffected — it keeps `node_modules` in an anonymous volume
+inside the container, never touching the host folder.
+
 ## Other scripts
 
 ```powershell

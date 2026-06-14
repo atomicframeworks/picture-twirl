@@ -1,0 +1,70 @@
+/* gallery.css — styling for the component showcase page only */
+
+.gallery {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.gallery-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin: 8px 0 4px;
+}
+
+.gallery-intro {
+    color: #666;
+    margin-bottom: 16px;
+}
+
+.gallery-section {
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+    background: #fff;
+}
+
+.gallery-section > h2 {
+    font-size: 18px;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Each demo row: a label + the rendered component(s) */
+.gallery-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.gallery-label {
+    flex: 0 0 100%;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #999;
+}
+
+/* Components are styled by the app CSS; neutralize sticky/fixed so they sit
+   inline within their demo frames instead of pinning to the viewport. */
+.gallery .actions-tray,
+.gallery .game-header,
+.gallery .section-header {
+    position: static;
+}
+
+/* Give framed demos a contained, neutral backdrop */
+.gallery-frame {
+    flex: 0 0 100%;
+    border: 1px dashed #ddd;
+    border-radius: 10px;
+    padding: 12px;
+    background: #fafafa;
+}

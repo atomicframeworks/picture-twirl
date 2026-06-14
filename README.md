@@ -117,6 +117,23 @@ Useful commands inside Claude Code:
 - `/model` — switch model (e.g. Opus for harder refactors)
 - `/loop 5m <task>` — re-run a task on an interval
 
+## Components & gallery
+
+Reusable UI components live in [`src/components/`](./src/components/) — plain
+factory functions that return DOM elements, styled by the app's existing CSS
+(`Button`, `IconButton`, `Field`, `Pill`, `Card`, `Heading`, `SectionHeader`,
+`GameHeader`, `ActionsTray`, `ScoreboardCard`, `SetCard`, `BoardTile`, …).
+
+```js
+import { Button, Field } from './components/index.js';
+app.append(Button({ label: 'Start', onClick: go }));
+```
+
+A live showcase of every component is at **`/gallery.html`** (run `npm run dev`,
+then open http://localhost:3000/gallery.html). It loads no Firebase, so it's a
+fast place to build and visually verify components. The Playwright suite
+screenshots it (`tests/gallery.spec.js`).
+
 ## Project structure
 
 See `CLAUDE.md` for the full file map and architecture notes. Top-level:

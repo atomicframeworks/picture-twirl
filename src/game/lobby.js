@@ -5,9 +5,7 @@
 // -----------------------------------------------------------------------------
 
 import { rtdb, getCurrentUser } from '../firebase.js';
-import {
-    ref, onValue, onDisconnect, update, set, serverTimestamp, get, remove
-} from 'firebase/database';
+import { ref, onValue, update, get, remove } from 'firebase/database';
 import * as P from '../data/paths.js';
 import { getSession } from '../session.js';
 import { renderGameUI } from './renderGame.js';
@@ -16,36 +14,9 @@ import { attachCopyButton } from '../ui/copyButton.js';
 import { mountTemplate, collectRefs } from '../ui/templates.js';
 import { modal } from '../ui/modal.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
-import { LIMITS, TEAM } from '../config.js';
+import { ensureParticipant, attachPresence, setTeam } from './participants.js';
+import { TEAM } from '../config.js';
 
-
-async function ensureParticipant(gameId) {
-    const user = getCurrentUser(); if (!user) return;
-    const { displayName, isGM } = getSession();
-    const safeName = (displayName || `Player-${user.uid.slice(-4)}`).slice(0, LIMITS.DISPLAY_NAME);
-    const meRef = ref(rtdb, P.participant(gameId, user.uid));
-    const snap = await get(meRef);
-    if (!snap.exists()) {
-        await set(meRef, { displayName: safeName, team: TEAM.NONE, joinedAt: serverTimestamp(), isGM: !!isGM });
-    } else {
-        const cur = snap.val() || {};
-        await update(meRef, { displayName: safeName, team: cur.team || TEAM.NONE, isGM: !!isGM });
-    }
-}
-
-// Presence: remove participant node on disconnect so lobby updates immediately
-function attachPresence(gameId, uid) {
-    const connectedRef = ref(rtdb, '.info/connected');
-    const meRef = ref(rtdb, P.participant(gameId, uid));
-    const off = onValue(connectedRef, (c) => {
-        if (c.val() !== true) return;
-        update(meRef, { online: true, lastSeen: serverTimestamp() }).catch(() => { });
-        onDisconnect(meRef).remove().catch(() => { });
-    });
-    return typeof off === 'function' ? off : () => { };
-}
-
-const setTeam = (gameId, uid, team) => update(ref(rtdb, P.participant(gameId, uid)), { team });
 
 export async function renderLobby(gameId) {
     await ensureParticipant(gameId);

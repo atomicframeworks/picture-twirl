@@ -23,6 +23,8 @@ import { createBoard } from './createBoard.js';
 import { startSwirlAnimation } from './swirl.js';
 import { enqueueBuzz, clearBuzzQueue } from './buzz.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
+import { initializeStartingTurn } from './turn.js';
+import { escapeHtml } from '../ui/format.js';
 import { TEAM, SWIRL, teamToAnswer } from '../config.js';
 
 export async function renderGameUI(gameId) {
@@ -303,40 +305,8 @@ export async function renderGameUI(gameId) {
         }
     }
 
-    function escapeHtml(s) {
-        return String(s).replace(/[&<>"']/g, c => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[c]));
-    }
-
     // ─── Initialize: pick a random starting player (GM only, once) ─────────────
-    async function initializeGame() {
-        if (!isGM) return;
-        const turnSnap = await get(ref(rtdb, `${P.game(gameId)}/currentTurn`));
-        if (turnSnap.exists()) return;
-
-        const partsSnap = await get(ref(rtdb, P.participants(gameId)));
-        const parts = partsSnap.val() || {};
-
-        const teamAPlayers = [], teamBPlayers = [];
-        for (const [uid, p] of Object.entries(parts)) {
-            if (p.team === TEAM.A) teamAPlayers.push(uid);
-            else if (p.team === TEAM.B) teamBPlayers.push(uid);
-        }
-
-        const pools = [];
-        if (teamAPlayers.length) pools.push({ team: TEAM.A, players: teamAPlayers });
-        if (teamBPlayers.length) pools.push({ team: TEAM.B, players: teamBPlayers });
-        if (pools.length === 0) return;
-
-        const pick = pools[Math.floor(Math.random() * pools.length)];
-        const uidPick = pick.players[Math.floor(Math.random() * pick.players.length)];
-
-        await update(ref(rtdb, P.game(gameId)), {
-            currentTurn: { uid: uidPick, team: pick.team }
-        });
-    }
-    initializeGame();
+    if (isGM) initializeStartingTurn(gameId);
 
     // ─── Board ─────────────────────────────────────────────────────────────────
     try {

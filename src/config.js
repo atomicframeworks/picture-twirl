@@ -1,8 +1,3 @@
-// Board configuration
-export const CATEGORY_COUNT = 6;
-export const ROW_COUNT = 4;
-export const POINT_VALUES = [200, 400, 600, 800, 1000];
-
 // String length limits
 export const LIMITS = {
     DISPLAY_NAME: 40,
@@ -34,6 +29,3 @@ export const TEAM_ANSWER = {
 export function teamToAnswer(teamKey) {
     return teamKey === TEAM.A ? TEAM_ANSWER.A : TEAM_ANSWER.B;
 }
-
-// Development mode
-export const DEBUG = import.meta.env.DEV;

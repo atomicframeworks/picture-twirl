@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Refactor in progress.** See [REFACTOR.md](REFACTOR.md) for the audit, the
+> phased cleanup plan, and the rationale behind structural changes. Keep this
+> file and REFACTOR.md in sync — documentation drift is a known past problem here.
+
 ## Project Overview
 
 Picture Twirl is a multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite, vanilla JavaScript, and Firebase Realtime Database. The game features team-based gameplay with a host (GM) who controls game flow and awards points.
@@ -47,7 +51,7 @@ Entry: `main.js` → `startup/boot.js`
 - Single source of truth for screen visibility
 - Uses native `[hidden]` attribute (no global CSS)
 - Emits `app:view-changed` event for observability
-- API: `showView('home'|'create'|'join')`
+- API: `showView('home'|'create'|'gameReady'|'join')`
 
 ### Game Flow
 
@@ -64,9 +68,9 @@ Entry: `main.js` → `startup/boot.js`
 1. Validate game code exists via `gameExists(gameId)`
 2. Collect player display name
 3. On confirm:
-   - Calls `upsertParticipant()` to register player
-   - Calls `renderLobby()` to join lobby
    - Sets session: `{ gameId, isGM: false, displayName }`
+   - Calls `renderLobby()`, which registers the participant via its own
+     `ensureParticipant()` (no separate service module)
 
 **Lobby (`game/lobby.js`)**
 - Real-time sync of participants and team assignments
@@ -74,12 +78,16 @@ Entry: `main.js` → `startup/boot.js`
 - GM can start game when teams are ready
 - Uses `<template id="tpl-lobby">` from index.html
 
-**Live Game (`game/gameState.js` + `game/renderGame.js`)**
-- GM clicks tiles to reveal questions (`postCurrentQuestion()`)
+**Live Game (`game/renderGame.js`)**
+- Single controller: mounts `tpl-game`, attaches ~10 RTDB listeners, builds the
+  board via `createBoard.js`, and owns all GM adjudication writes inline
+  (no separate service/state module).
+- GM clicks a tile → `selectedTile`; GM clicks OK → posts `currentQuestion` +
+  `swirlStartTime`
 - Image starts swirling via `swirl.js` (Canvas-based animation)
 - Players buzz in via `buzz.js` (writes to `/buzzQueue`)
-- Buzz pauses swirl animation automatically
-- GM reveals answer (cancels swirl) and awards points to team
+- Buzz pauses swirl animation automatically (first buzz)
+- GM reveals answer (cancels swirl) and awards points to a team
 - Tile state tracked: `opened` (revealed) vs `answered` (finalized with checkmark)
 
 ### Data Layer
@@ -88,28 +96,32 @@ Entry: `main.js` → `startup/boot.js`
 ```
 /gameIndex/{gameId}: true             # Public existence flag
 /games/{gameId}/
-  ├─ hostUid, title, gmName, createdAt
+  ├─ hostUid, isPublic, title, gmName, createdAt
   ├─ settings: { setId, teamsEnabled }
-  ├─ state: { phase: 'lobby'|'playing' }
+  ├─ state: { phase: 'lobby'|'live'|'ended', endedAt? }
   ├─ teams: { A: {name}, B: {name} }
   ├─ scores: { A: number, B: number }
-  ├─ participants/{uid}: { displayName, team, joinedAt, online?, lastSeen? }
-  ├─ board/{tileId}: { id, col, row, category, imageUrl, answer, value, opened, answered, ... }
-  ├─ currentQuestion: { id, category, imageUrl, value, showAnswer }
+  ├─ participants/{uid}: { displayName, team: 'A'|'B'|'none', joinedAt, isGM, online?, lastSeen? }
+  ├─ board/{col-row}: { id, col, row, category, imageUrl, answer, value,
+  │                     opened, answered, answeredBy, awardedPoints, locked, lastActionAt }
+  ├─ currentTurn: { uid, team }         # display-only "who is up"
+  ├─ selectedTile: { id, category, value }   # GM picked, not yet posted
+  ├─ currentQuestion: { id, category, imageUrl, answer, value, showAnswer }
   ├─ swirlStartTime: serverTimestamp
   └─ buzzQueue/{pushId}: { uid, createdAt }
 ```
 
-**Game Service (`game/services/gameService.js`)**
-- Abstracts RTDB operations: `getTitle()`, `upsertParticipant()`, `postCurrentQuestion()`, `markTileOpened()`, `markTileAnswered()`
-- Uses path helpers from `data/paths.js`
+Note: `phase` is `lobby | live | ended` (not `playing`). RTDB writes go directly
+through `update()`/`set()` in the controllers using path builders from
+`data/paths.js` — there is intentionally **no** service-abstraction module.
 
 **Board Materialization (`game/createGame.js`)**
-- Converts predefined game sets into stable RTDB board snapshot
+- Converts predefined game sets into a stable RTDB board snapshot
 - Supports two input shapes:
   - `{ categories: string[], board: Tile[][] }` (current structure)
-  - `{ columns: [{ title, rows: [] }] }` (legacy)
-- Output: keyed by `"col-row"` (e.g., `"0-3"`) with content + live-state fields
+  - `{ columns: [{ title, rows: [] }] }` (legacy, still handled by `buildBoardFromSet`)
+- Output keyed by `"col-row"` (e.g., `"0-3"`) with content + live-state fields
+- Tile `value` is computed as `(row + 1) * 100` → 100–500
 
 ### Predefined Games (`predefinedGames.js`)
 
@@ -143,9 +155,9 @@ Game sets define content structure:
 - Cloned via `template.content.cloneNode(true)` and injected into `#app`
 
 **Presence Tracking**
-- Client-side: `gameState.js` writes `{ online: true, lastSeen: serverTimestamp() }` on connect
-- Uses `.info/connected` ref and `onDisconnect()` hook
-- Safe attach: waits for participant row to exist before updating (satisfies node-level validators)
+- Client-side: `lobby.js` (`attachPresence`) writes `{ online: true, lastSeen: serverTimestamp() }` on connect
+- Uses `.info/connected` ref and `onDisconnect().remove()` hook
+- On disconnect the participant node is removed so the lobby updates immediately
 
 ### Animation System
 
@@ -201,17 +213,12 @@ src/
 │   ├── templates.js          # Template helpers
 │   └── modal.js              # Modal dialogs
 ├── game/
-│   ├── createGame.js         # RTDB game initialization
-│   ├── lobby.js              # Pre-game lobby
-│   ├── renderGame.js         # Live game rendering
-│   ├── gameState.js          # Real-time game listeners
-│   ├── board.js              # Board rendering
-│   ├── createBoard.js        # Board initialization
-│   ├── teams.js              # Team management
-│   ├── buzz.js               # Buzz queue logic
-│   ├── swirl.js              # Swirl animation
-│   └── services/
-│       └── gameService.js    # RTDB operations
+│   ├── createGame.js         # RTDB game shell + board materialization
+│   ├── lobby.js              # Pre-game lobby controller (listeners + UI + presence)
+│   ├── renderGame.js         # Live game controller (listeners + UI + adjudication)
+│   ├── createBoard.js        # Builds board DOM from RTDB snapshot
+│   ├── buzz.js               # Buzz queue helpers (enqueueBuzz, clearBuzzQueue)
+│   └── swirl.js              # Canvas swirl animation
 └── data/
     └── paths.js              # RTDB path helpers
 ```
@@ -221,10 +228,11 @@ src/
 **Adding a New Predefined Game**
 1. Add entry to `predefinedGames.js` with id, title, categories, board
 2. Place images in `/public/images/`
-3. Board structure: 5 rows x 5 columns (categories), values $100-$500
+3. Board structure: 5 columns (categories) × 5 rows; values computed as `(row+1)*100` → $100–$500
 
 **Modifying Game State**
-- Host-only writes go through `gameService.js` or direct `update()` calls in `gameState.js`
+- Host-only writes are direct `update()`/`set()` calls in `lobby.js` / `renderGame.js`,
+  using path builders from `data/paths.js`
 - Always use `serverTimestamp()` for temporal fields
 - Multi-path updates preferred for atomic state changes
 

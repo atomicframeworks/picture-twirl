@@ -198,10 +198,11 @@ export async function createGameShell(
 
     // --- 2) Optionally materialize board + buzzing in a separate update
     if (materializeBoard) {
-        const set = predefinedGames.find(g => g.id === setId);
-        if (!set) throw new Error(`Unknown setId: ${setId}`);
+        // NB: don't name this `set` — it would shadow the imported Firebase set().
+        const gameSet = predefinedGames.find(g => g.id === setId);
+        if (!gameSet) throw new Error(`Unknown setId: ${setId}`);
 
-        const board = buildBoardFromSet(set, now);
+        const board = buildBoardFromSet(gameSet, now);
 
         await update(rootRef, {
             [`games/${gameId}/board`]: board,

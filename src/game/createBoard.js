@@ -19,10 +19,8 @@
 // -----------------------------------------------------------------------------
 
 import { rtdb } from '../firebase.js';
-import { ref, get, update, serverTimestamp } from 'firebase/database';
+import { ref, get } from 'firebase/database';
 import * as P from '../data/paths.js';
-import { getSession } from '../session.js';
-import { clearBuzzQueue } from './buzz.js';
 
 /**
  * Build the board DOM from /games/{gameId}/board and wire tile clicks.

@@ -19,9 +19,7 @@
 //
 // API
 //   enqueueBuzz(gameId, opts?)         → { ok:boolean, status:'enqueued'|'duplicate_skipped' }
-//   deleteBuzz(gameId, pushId)         → Promise<void> (host-only by rules)
 //   clearBuzzQueue(gameId)             → Promise<void> (host-only by rules)
-//   onBuzzQueue(gameId, cb)            → unsubscribe()  (ordered array of {id, uid, createdAt})
 // -----------------------------------------------------------------------------
 
 import { rtdb, getCurrentUser } from '../firebase.js';
@@ -31,7 +29,6 @@ import {
     set,
     push,
     update,
-    onValue,
     serverTimestamp,
 } from 'firebase/database';
 import * as P from '../data/paths.js';
@@ -69,16 +66,6 @@ export async function enqueueBuzz(gameId, opts = {}) {
 }
 
 /**
- * Delete a single buzz entry (host-only by rules).
- * @param {string} gameId
- * @param {string} pushId
- */
-export async function deleteBuzz(gameId, pushId) {
-    if (!pushId) return;
-    await update(ref(rtdb), { [`${P.buzzQueue(gameId)}/${pushId}`]: null });
-}
-
-/**
  * Clear the entire buzz queue by deleting each child (host-only by rules).
  * IMPORTANT: Do NOT try to set the parent path to null; your rules gate writes
  * at buzzQueue/$pushId, not at the parent.
@@ -97,28 +84,4 @@ export async function clearBuzzQueue(gameId) {
     }
 
     await update(ref(rtdb), updates);
-}
-
-/**
- * Subscribe to the buzz queue and receive an ordered list on each change.
- * The list is sorted ascending by createdAt.
- * @param {string} gameId
- * @param {(items: Array<{ id: string, uid: string, createdAt: number }>) => void} cb
- * @returns {() => void} unsubscribe
- */
-export function onBuzzQueue(gameId, cb) {
-    const off = onValue(ref(rtdb, P.buzzQueue(gameId)), (snap) => {
-        const obj = snap.val();
-        if (!obj) return cb([]);
-
-        const items = Object.entries(obj).map(([id, v]) => ({
-            id,
-            uid: v?.uid,
-            createdAt: typeof v?.createdAt === 'number' ? v.createdAt : 0,
-        }));
-
-        items.sort((a, b) => a.createdAt - b.createdAt);
-        cb(items);
-    });
-    return typeof off === 'function' ? off : () => { };
 }

@@ -15,6 +15,12 @@ dist-ssr
 # Editor crash/temp artifacts
 *.tmp.*
 
+# Playwright / test artifacts (regenerated each run)
+/test-results
+/playwright-report
+/screenshots
+/.playwright
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -218,6 +218,7 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 |---|---|---|---|
 | 2026-06-13 | 0 | Baseline snapshot before refactor | `9086484` |
 | 2026-06-13 | 1 | Remove dead code, fix `set` shadowing, sync CLAUDE.md | `a86d5a1` |
+| 2026-06-13 | 2.1 | Extract `controllerKit.js` (disposer + leave/end flows) | `9a88183` |
 
 > Append a row per commit. Keep the newest at the bottom.
 

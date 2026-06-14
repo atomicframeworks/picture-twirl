@@ -197,7 +197,9 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 - **2.2 — Split `lobby.js`** into listener / render / handler seams; untangle
   the instruction state machine (4.3). *Deferred until 2.1 is tested in-app.*
 - **2.3 — Split `renderGame.js`** the same way. *Deferred until 2.1 tested.*
-- **2.4 — Collapse `boot.js`'s 26-/12-arg dependency bags** into grouped objects.
+- **2.4 — Collapse `boot.js`'s 26-/12-arg dependency bags** into grouped
+  objects. ✅ DONE (`8731620`) — now `{ services, els }`; build-verified +
+  key-set diff confirms no missing deps.
 
 > ⚠️ 2.2/2.3 change control flow inside the two big files and are hard to verify
 > without running the app. Do them only after a human has smoke-tested 2.1
@@ -233,6 +235,8 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-06-13 | 0 | Baseline snapshot before refactor | `9086484` |
 | 2026-06-13 | 1 | Remove dead code, fix `set` shadowing, sync CLAUDE.md | `a86d5a1` |
 | 2026-06-13 | 2.1 | Extract `controllerKit.js` (disposer + leave/end flows) | `9a88183` |
+| 2026-06-14 | 2.5 | Fix cross-platform native dev (Dropbox/node_modules) | `11c161d` |
+| 2026-06-14 | 2.4 | Group `boot.js` deps into `{ services, els }` | `8731620` |
 
 > Append a row per commit. Keep the newest at the bottom.
 

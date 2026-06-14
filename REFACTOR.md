@@ -196,6 +196,6 @@ point-value config in use.
 | Date | Phase | Change | Commit |
 |---|---|---|---|
 | 2026-06-13 | 0 | Baseline snapshot before refactor | `9086484` |
-| 2026-06-13 | 1 | (recorded on commit) | _pending_ |
+| 2026-06-13 | 1 | Remove dead code, fix `set` shadowing, sync CLAUDE.md | `a86d5a1` |
 
 > Append a row per commit. Keep the newest at the bottom.

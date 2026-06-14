@@ -1,0 +1,69 @@
+/* src/gameReady.css
+   Picture Twirl — Game Ready Screen
+   Uses shared components from main.css (including .game-header)
+*/
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Main content area                                                  */
+/* ────────────────────────────────────────────────────────────────── */
+.ready-main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.ready-main .heading-xl {
+  margin-bottom: var(--space-3);
+}
+
+.ready-instruction {
+  font-size: 18px;
+  margin: 0 0 var(--space-8);
+  max-width: 480px;
+}
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Code card                                                          */
+/* ────────────────────────────────────────────────────────────────── */
+.ready-code-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-8);
+  box-shadow: var(--shadow-md);
+  min-width: 280px;
+  max-width: 400px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+.ready-code {
+  font-size: clamp(42px, 10vw, 64px);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #000;
+  user-select: all;
+  font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Mobile adjustments                                                 */
+/* ────────────────────────────────────────────────────────────────── */
+@media (max-width: 420px) {
+  .ready-code-card {
+    padding: var(--space-5) var(--space-6);
+    min-width: 240px;
+  }
+
+  .ready-code {
+    font-size: clamp(36px, 12vw, 52px);
+  }
+}

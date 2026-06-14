@@ -1,0 +1,482 @@
+/* src/main.css
+   Global foundation: variables, resets, shared components
+   ------------------------------------------------ */
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* CSS Variables (Design Tokens)                                          */
+/* ══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Colors */
+  --bg: #fff;
+  --ink: #111;
+  --muted: #6b6b6b;
+  --line: #e8e8e8;
+  --ring: rgba(17, 17, 17, .12);
+  --danger: #d92b2b;
+
+  /* Pill colors (lobby) */
+  --pill: #f2f2f2;
+  --pill-ink: #222;
+  --pill-me: #111;
+  --pill-me-ink: #fff;
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Border radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, .08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, .08);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, .06), 0 1px 0 rgba(0, 0, 0, .03);
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, .25);
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Global Resets                                                          */
+/* ══════════════════════════════════════════════════════════════════════ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Form Elements                                                          */
+/* ══════════════════════════════════════════════════════════════════════ */
+.field {
+  margin: var(--space-2) 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+  color: var(--ink);
+}
+
+.field-hint {
+  margin-top: var(--space-1);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.input {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  font-size: 16px;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.input:focus {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+.input:disabled {
+  background: #f8f8f8;
+  color: #9a9a9a;
+  border-color: #efefef;
+}
+
+.input.is-error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 4px rgba(217, 43, 43, .15);
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Buttons                                                                */
+/* ══════════════════════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border: 1px solid #ccc;
+  border-radius: var(--radius-md);
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s, transform .05s, border-color .15s;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.btn:hover {
+  background: #f6f6f6;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn.primary {
+  border-color: #000;
+}
+
+.btn.secondary {
+  background: #777;
+  color: #fff;
+  border-color: #777;
+}
+
+.btn.ghost {
+  background: #fafafa;
+}
+
+.btn.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button:disabled,
+.btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Cards                                                                  */
+/* ══════════════════════════════════════════════════════════════════════ */
+.card {
+  width: min(680px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: clamp(14px, 2vw, 24px);
+  padding: clamp(18px, 3vw, 32px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-sm {
+  width: min(480px, 100%);
+}
+
+.card-lg {
+  width: min(780px, 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Typography                                                             */
+/* ══════════════════════════════════════════════════════════════════════ */
+.heading-xl {
+  margin: 0 0 var(--space-2);
+  font-size: clamp(28px, 6vw, 42px);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
+
+.heading-lg {
+  margin: 0 0 var(--space-2);
+  font-size: clamp(24px, 5vw, 36px);
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.heading-md {
+  margin: 0 0 var(--space-2);
+  font-size: clamp(20px, 4vw, 28px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.text-muted {
+  color: var(--muted);
+  font-size: clamp(14px, 3vw, 18px);
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Error Messages                                                         */
+/* ══════════════════════════════════════════════════════════════════════ */
+.error-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--danger);
+  font-size: 14px;
+  margin-top: -2px;
+}
+
+.error-row .x {
+  font-size: 18px;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .input {
+    transition: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Actions Tray (Sticky Bottom)                                          */
+/* ══════════════════════════════════════════════════════════════════════ */
+.actions-tray {
+  position: sticky;
+  bottom: 0;
+  z-index: 15;
+  width: 100%;
+  padding: var(--space-4);
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  background: #e5e5e5;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  box-sizing: border-box;
+}
+
+.actions-tray .btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 18px;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: var(--radius-xl);
+  border: none;
+}
+
+.actions-tray .btn.primary {
+  background: #000;
+  color: #fff;
+}
+
+.actions-tray hr {
+  margin: var(--space-4) 0 var(--space-2);
+  border: none;
+  border-top: 1px solid #aaa;
+}
+
+.actions-tray .exit-link {
+  display: block;
+  text-align: center;
+  color: #c00;
+  font-weight: 700;
+  font-size: 18px;
+  text-decoration: none;
+}
+
+.actions-tray .exit-link:hover {
+  text-decoration: underline;
+}
+
+.status-row {
+  font-size: 14px;
+  color: #333;
+}
+
+.actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Space reservation helper for screens that scroll under a tray */
+.with-tray-padding {
+  --tray-h: 160px;
+  padding-bottom: calc(var(--tray-h) + var(--space-4) + env(safe-area-inset-bottom));
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Shared Headers                                                         */
+/* ══════════════════════════════════════════════════════════════════════ */
+.game-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #d3d3d3;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.game-header-title {
+  font-weight: 800;
+  font-size: clamp(28px, 6vw, 42px);
+  line-height: 1.1;
+  margin: 0;
+  color: #000;
+}
+
+.section-header {
+  position: sticky;
+  top: 0;
+  z-index: 19;
+  background: #5a5a5a;
+  padding: var(--space-4);
+  color: #fff;
+}
+
+.section-header-title {
+  font-weight: 600;
+  font-size: clamp(18px, 4vw, 24px);
+  line-height: 1.2;
+  margin: 0;
+  color: #fff;
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Game Code Row (used in lobby + game headers)                          */
+/* ══════════════════════════════════════════════════════════════════════ */
+.game-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: 16px;
+}
+
+.game-code-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.game-code-value {
+  background: #000;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Icon-only button (copy, share, etc.)                                  */
+/* ══════════════════════════════════════════════════════════════════════ */
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: color .15s, transform .15s;
+}
+
+.icon-btn:hover {
+  color: #000;
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
+}
+
+.icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-btn.is-lg {
+  width: 44px;
+  height: 44px;
+}
+
+.icon-btn.is-lg svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Layout Helpers                                                         */
+/* ══════════════════════════════════════════════════════════════════════ */
+.view-root {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.view-centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-4);
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Game Viewer (Question Display)                                        */
+/* ══════════════════════════════════════════════════════════════════════ */
+.viewer .controls {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.viewer:not(.is-gm) .controls {
+  display: none;
+}
+
+.viewer.is-gm .player {
+  display: none;
+}
+
+.viewer .image-wrap {
+  position: relative;
+  width: min(90vw, 640px);
+  margin-inline: auto;
+}
+
+#twirlImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  visibility: hidden;
+}
+
+#twirlCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+[data-ref="buzzBtn"] {
+  min-width: 6.5rem;
+}

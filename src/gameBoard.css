@@ -1,0 +1,305 @@
+/* src/gameBoard.css
+   Game Board — Jeopardy-style layout
+   Uses shared .game-header + .actions-tray from main.css
+*/
+
+.game-root {
+    min-height: 100vh;
+    background: #f5f5f5;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scrollable middle area between sticky header and sticky tray */
+.game-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* ═══════════════════════════════════════ */
+/* Scoreboard (team score panels)          */
+/* ═══════════════════════════════════════ */
+.scoreboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.scoreboard-card {
+    background: #2c3e50;
+    border-radius: 16px;
+    padding: var(--space-3);
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.scoreboard-card.is-a {
+    border: 3px solid #ff9500;
+    box-shadow: 0 0 20px rgba(255, 149, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.scoreboard-card.is-b {
+    border: 3px solid #00ff00;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.scoreboard-content {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.scoreboard-icon {
+    font-size: 48px;
+    line-height: 1;
+}
+
+.scoreboard-info {
+    flex: 1;
+}
+
+.scoreboard-name {
+    color: #fff;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.scoreboard-score {
+    color: #fff;
+    font-size: 36px;
+    font-weight: 800;
+}
+
+.scoreboard-player {
+    color: #fff;
+    font-size: 48px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ═══════════════════════════════════════ */
+/* Status Message                          */
+/* ═══════════════════════════════════════ */
+.game-status {
+    background: #666;
+    color: #fff;
+    padding: var(--space-3);
+    border-radius: 12px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* ═══════════════════════════════════════ */
+/* Board Grid                              */
+/* ═══════════════════════════════════════ */
+.board-container {
+    flex: 1;
+    display: flex;
+}
+
+#board {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+}
+
+.category {
+    background: #666;
+    color: #fff;
+    padding: var(--space-3);
+    font-weight: 700;
+    font-size: 18px;
+    text-align: center;
+    border-radius: 8px;
+    text-transform: capitalize;
+}
+
+.tile {
+    background: #ccc;
+    color: #000;
+    padding: var(--space-4);
+    text-align: center;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 32px;
+    border-radius: 8px;
+    transition: background .2s, transform .1s;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80px;
+}
+
+.tile:hover {
+    transform: scale(1.05);
+}
+
+.tile.selected {
+    background: #000;
+    color: #fff;
+}
+
+.tile.opened {
+    background: #888;
+    color: #fff;
+}
+
+.tile.answered {
+    background: #999;
+    color: #ccc;
+    cursor: default;
+}
+
+.tile.answered:hover {
+    transform: none;
+}
+
+/* ═══════════════════════════════════════ */
+/* Question Viewer                         */
+/* ═══════════════════════════════════════ */
+.question-viewer {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+}
+
+.question-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: #333;
+    font-weight: 700;
+    font-size: clamp(18px, 4vw, 22px);
+}
+
+.question-meta .q-dot {
+    color: #999;
+}
+
+.question-meta .q-value {
+    color: #000;
+}
+
+.image-wrap {
+    position: relative;
+    width: min(90vw, 640px);
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.twirl-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    visibility: hidden;
+}
+
+.twirl-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.answer-text {
+    background: #000;
+    color: #fff;
+    padding: var(--space-3) var(--space-4);
+    border-radius: 12px;
+    font-size: clamp(20px, 5vw, 28px);
+    font-weight: 800;
+    text-align: center;
+    width: min(90vw, 640px);
+}
+
+/* ═══════════════════════════════════════ */
+/* Buzz UI (inside .actions-tray)          */
+/* ═══════════════════════════════════════ */
+.buzz-queue {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: center;
+    min-height: 24px;
+}
+
+.buzz-entry {
+    background: #fff;
+    border: 1px solid var(--line);
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.buzz-entry:first-child {
+    background: #000;
+    color: #fff;
+    border-color: #000;
+}
+
+/* The .buzz-btn lives inside .actions-tray (uses shared .btn styles),
+   but we override its background to the danger color so it reads as "panic" */
+.actions-tray .buzz-btn {
+    background: var(--danger);
+    color: #fff;
+}
+
+.actions-tray .buzz-btn:disabled {
+    background: #888;
+    color: #ccc;
+}
+
+/* ═══════════════════════════════════════ */
+/* GM Controls (inside .actions-tray)      */
+/* ═══════════════════════════════════════ */
+.gm-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.actions-tray .gm-award-row {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.actions-tray .gm-award-row .btn {
+    flex: 1;
+    width: auto;
+}
+
+/* ═══════════════════════════════════════ */
+/* Responsive                              */
+/* ═══════════════════════════════════════ */
+@media (min-width: 768px) {
+    .game-main {
+        padding: var(--space-6);
+    }
+
+    .scoreboard {
+        flex-direction: row;
+        gap: var(--space-4);
+    }
+
+    .scoreboard-card {
+        flex: 1;
+    }
+}

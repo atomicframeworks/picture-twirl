@@ -1,0 +1,110 @@
+/* Picture Twirl – Modal Kit (CSS-only)
+   Accessible dialog with soft UI
+   Uses shared design tokens from main.css */
+
+/* Backdrop layer */
+.pt-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    background: rgba(17, 24, 39, .55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .16s ease;
+}
+
+.pt-modal-backdrop[data-open="true"] {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Dialog */
+.pt-modal {
+    width: min(92vw, 560px);
+    background: var(--bg);
+    color: var(--ink);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-modal);
+    transform: translateY(12px) scale(.98);
+    opacity: 0;
+    transition: transform .16s ease, opacity .16s ease;
+}
+
+.pt-modal-backdrop[data-open="true"] .pt-modal {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+.pt-m-body {
+    padding: 28px var(--space-6) var(--space-4);
+    text-align: center;
+}
+
+.pt-m-title {
+    margin: 0 0 var(--space-2);
+    font-size: 28px;
+    font-weight: 800;
+}
+
+.pt-m-desc {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.35;
+    color: var(--muted);
+}
+
+.pt-m-actions {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4) var(--space-5);
+}
+
+/* Buttons */
+.pt-m-btn {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: var(--radius-lg);
+    padding: 14px var(--space-4);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .08), 0 2px 8px rgba(0, 0, 0, .12);
+}
+
+.pt-m-btn:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.pt-m-btn.primary {
+    background: var(--ink);
+    color: #fff;
+}
+
+.pt-m-btn.secondary {
+    background: #6b7280;
+    color: #fff;
+}
+
+.pt-m-btn.danger {
+    background: var(--danger);
+    color: #fff;
+}
+
+.pt-m-btn.link {
+    background: transparent;
+    color: var(--ink);
+    box-shadow: none;
+    text-decoration: underline;
+}
+
+@media (prefers-reduced-motion:reduce) {
+
+    .pt-modal-backdrop,
+    .pt-modal {
+        transition: none;
+    }
+}

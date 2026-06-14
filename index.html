@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Picture Twirl</title>
+  <link rel="stylesheet" href="/src/main.css">
+  <link rel="stylesheet" href="/src/home.css">
+  <link rel="stylesheet" href="/src/createGame.css">
+  <link rel="stylesheet" href="/src/gameReady.css">
+  <link rel="stylesheet" href="/src/gameBoard.css">
+  <link rel="stylesheet" href="/src/joinGame.css">
+  <link rel="stylesheet" href="/src/lobby.css">
+  <link rel="stylesheet" href="/src/modal.css">
+</head>
+
+<body>
+  <div id="app">
+    <!-- Home screen -->
+    <div id="home" class="view-centered">
+      <div class="card card-sm text-center">
+        <h1 id="siteTitle" class="heading-xl">Picture Twirl</h1>
+        <p class="text-muted" style="margin-bottom: 24px;">A game of swirling images and quick guesses.</p>
+
+        <div id="startingOptions" class="home-actions">
+          <button id="newGameBtn" class="btn primary">Start New Game</button>
+          <button id="joinGameBtn" class="btn primary">Join Game</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREATE New Game Screen -->
+    <!-- Create view root -->
+    <section id="startNewGame" class="view-root" hidden>
+      <!-- STEP 1: Details -->
+      <div id="createStep1" class="create-step1">
+        <header class="create2-header">
+          <h2 class="heading-lg">Create Game</h2>
+          <p class="create2-sub">Set up your game before players join.</p>
+        </header>
+        <div>
+          <form id="createGameForm" class="create-form" novalidate>
+            <div class="field">
+              <label class="field-label" for="gmName">Your Screen Name</label>
+              <input id="gmName" class="input" type="text" placeholder="e.g., Kevin" autocomplete="name">
+              <div class="field-hint">Visible to all players</div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="gameName">Game Name</label>
+              <input id="gameName" class="input" type="text" placeholder="e.g., Friday Funnies">
+              <div class="field-hint">Displayed in the player lobby</div>
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="teamAName">Team 1</label>
+              <input id="teamAName" class="input" type="text" placeholder="Team A" />
+            </div>
+
+            <div class="field">
+              <label class="field-label" for="teamBName">Team 2</label>
+              <input id="teamBName" class="input" type="text" placeholder="Team B" />
+            </div>
+          </form>
+        </div>
+
+        <!-- Shared sticky tray -->
+        <div class="actions-tray">
+          <button id="step1NextBtn" class="btn primary">Next →</button>
+          <hr />
+          <a href="#" id="step1ExitBtn" class="exit-link">Exit</a>
+        </div>
+      </div>
+
+      <!-- STEP 2: Select question set -->
+      <div id="createStep2" class="create-step2" hidden>
+        <header class="game-header">
+          <h1 id="create2Title" class="game-header-title">Game Name</h1>
+        </header>
+        <header class="section-header">
+          <h2 class="section-header-title">Select Category</h2>
+        </header>
+
+        <div id="setListWrap" class="create2-list-wrap">
+          <div id="setList" class="set-list"><!-- cards injected here --></div>
+        </div>
+
+
+        <div class="actions-tray">
+          <!-- Example: with both Back and Next -->
+          <button id="step2BackBtn" class="btn secondary">← Back</button>
+          <button id="step2NextBtn" class="btn primary" disabled>Next →</button>
+          <hr />
+          <a href="#" class="exit-link">Exit</a>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Game Ready Screen -->
+    <section id="gameReady" class="view-root" hidden>
+      <header class="game-header">
+        <h1 id="readyGameTitle" class="game-header-title">Game Name</h1>
+      </header>
+
+      <main class="ready-main">
+        <h2 class="heading-xl">Your game is ready!</h2>
+        <p class="text-muted ready-instruction">Share this code with your players to let them join.</p>
+
+        <div class="ready-code-card">
+          <div id="readyGameCode" class="ready-code">2KVMR</div>
+          <button id="shareCodeBtn" class="icon-btn is-lg" type="button" title="Share code">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+              <polyline points="16 6 12 2 8 6"></polyline>
+              <line x1="12" y1="2" x2="12" y2="15"></line>
+            </svg>
+          </button>
+        </div>
+      </main>
+
+      <footer class="actions-tray">
+        <button id="goToLobbyBtn" class="btn primary">Go to Lobby →</button>
+        <hr />
+        <a href="#" id="endGameFromReadyBtn" class="exit-link">End game</a>
+      </footer>
+    </section>
+
+    <!-- Join Game Screen -->
+    <div id="joinForm" class="view-centered" hidden>
+      <div class="card">
+        <h1 class="heading-xl text-center">Join Game</h1>
+        <p class="text-muted text-center" style="margin-bottom: 20px;">Welcome! Please enter your info below.</p>
+
+        <form id="joinFormInner" class="join-form" novalidate>
+          <!-- Game code -->
+          <div class="field">
+            <label for="joinGameId" class="field-label">Enter game code</label>
+            <input id="joinGameId" type="text" class="input" placeholder="Example: 1XJHQ" autocomplete="one-time-code"
+              inputmode="latin-prose">
+            <div class="field-hint">Provided to you by the host</div>
+
+            <!-- Inline error (hidden until needed) -->
+            <div id="joinErrorRow" class="error-row" hidden>
+              <span class="x">✖</span>
+              <span id="joinErrorText">Sorry, game not found. Please check with your host.</span>
+            </div>
+          </div>
+
+          <!-- Player display name -->
+          <div class="field">
+            <label for="playerName" class="field-label">Your Screen Name</label>
+            <input id="playerName" type="text" class="input" placeholder="Enter your screen name">
+          </div>
+
+          <!-- Actions -->
+          <div class="join-actions">
+            <button type="button" id="cancelJoinBtn" class="btn ghost">Cancel</button>
+
+            <button type="submit" id="confirmJoin" class="btn primary" disabled>Enter Lobby</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <template id="tpl-lobby">
+    <div class="lobby-root">
+      <!-- Sticky header with game title -->
+      <header class="game-header">
+        <h1 class="game-header-title" data-ref="titleEl">Friday Funnies</h1>
+        <div class="game-code-row">
+          <span class="game-code-label">Game Code:</span>
+          <code class="game-code-value" data-ref="codeEl">2KVMR</code>
+          <button class="icon-btn" data-ref="copyCodeBtn" type="button" title="Copy game code">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Section header for assign players -->
+      <header class="section-header">
+        <h2 class="section-header-title">Assign Players</h2>
+      </header>
+
+      <!-- Instruction text -->
+      <div class="lobby-instruction">Tap player to assign to a team.</div>
+
+      <!-- Unassigned players -->
+      <section class="unassigned-section">
+        <div class="unassigned-header">
+          <span class="unassigned-icon">⊘</span>
+          <span class="unassigned-label">Unassigned</span>
+          <span class="unassigned-count" data-ref="poolCount">0</span>
+        </div>
+        <div class="pill-row" data-ref="poolList" aria-label="Players not on a team"></div>
+      </section>
+
+      <!-- Teams -->
+      <main class="lobby-main">
+        <div class="teams-grid">
+          <section class="team-card" data-team="A">
+            <div class="team-head">
+              <span data-ref="teamAName">Team A</span>
+              <span class="team-count" data-ref="teamACount">(0)</span>
+              <span class="team-act">
+                <button class="pill is-clickable" data-ref="teamAAction" title="Join Team A">Join</button>
+              </span>
+            </div>
+            <div class="team-body" data-ref="teamAList"></div>
+          </section>
+
+          <section class="team-card" data-team="B">
+            <div class="team-head">
+              <span data-ref="teamBName">Team B</span>
+              <span class="team-count" data-ref="teamBCount">(0)</span>
+              <span class="team-act">
+                <button class="pill is-clickable" data-ref="teamBAction" title="Join Team B">Join</button>
+              </span>
+            </div>
+            <div class="team-body" data-ref="teamBList"></div>
+          </section>
+        </div>
+      </main>
+
+      <!-- Single bottom actions tray (players + GM) -->
+      <footer class="actions-tray" data-ref="trayEl">
+        <div class="status-row" data-ref="lobbyStatus">Choose your team.</div>
+
+        <!-- Normal player actions -->
+        <div class="actions-row" data-ref="mainActions">
+          <button class="btn" data-ref="joinRandom">Join Random Team</button>
+        </div>
+
+        <!-- Host actions (unchanged) -->
+        <div class="actions-row" data-ref="hostActions" hidden>
+          <button class="btn" data-ref="assignA">Move to Team A</button>
+          <button class="btn" data-ref="assignB">Move to Team B</button>
+          <button class="btn danger" data-ref="kickPlayer">Kick Player</button>
+          <button class="btn ghost" data-ref="cancelEdit">Cancel</button>
+        </div>
+
+        <div class="actions-row" data-ref="gmActions">
+          <button class="btn primary" data-ref="gmStart">Start Game</button>
+        </div>
+        <hr data-ref="footerSeparator" />
+        <a href="#" class="exit-link" data-ref="exitGameBtn">Leave game</a>
+        <a href="#" class="exit-link" data-ref="gmEnd">End game</a>
+      </footer>
+    </div>
+  </template>
+
+
+
+
+  <!-- Game template -->
+  <template id="tpl-game">
+    <div class="game-root">
+      <!-- Header with game title and code -->
+      <header class="game-header">
+        <h1 class="game-header-title" data-ref="gameTitleEl">Friday Funnies</h1>
+        <div class="game-code-row">
+          <span class="game-code-label">Game Code:</span>
+          <code class="game-code-value" data-ref="codeEl">2KVMR</code>
+          <button class="icon-btn" data-ref="copyCodeBtn" type="button" title="Copy game code">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable main area -->
+      <main class="game-main">
+        <!-- Team score cards -->
+        <div class="scoreboard">
+          <div class="scoreboard-card is-a" data-ref="teamACard">
+            <div class="scoreboard-content">
+              <div class="scoreboard-icon" data-ref="teamAIcon">🐕</div>
+              <div class="scoreboard-info">
+                <div class="scoreboard-name" data-ref="teamAName">Team Puppers</div>
+                <div class="scoreboard-score" data-ref="teamAScore">0</div>
+              </div>
+              <div class="scoreboard-player" data-ref="teamAPlayer"></div>
+            </div>
+          </div>
+
+          <div class="scoreboard-card is-b" data-ref="teamBCard">
+            <div class="scoreboard-content">
+              <div class="scoreboard-icon" data-ref="teamBIcon">🐈</div>
+              <div class="scoreboard-info">
+                <div class="scoreboard-name" data-ref="teamBName">Team Kat Fever</div>
+                <div class="scoreboard-score" data-ref="teamBScore">0</div>
+              </div>
+              <div class="scoreboard-player" data-ref="teamBPlayer"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status message -->
+        <div class="game-status" data-ref="statusMessage">Waiting for the next tile ..</div>
+
+        <!-- Board grid (visible when no active question) -->
+        <div class="board-container" data-ref="boardWrap">
+          <div id="board" data-ref="boardEl"></div>
+        </div>
+
+        <!-- Question viewer (visible when currentQuestion is set) -->
+        <div class="question-viewer" data-ref="viewerEl" hidden>
+          <div class="question-meta">
+            <span class="q-category" data-ref="qCategory">Category</span>
+            <span class="q-dot">·</span>
+            <span class="q-value" data-ref="qValue">$200</span>
+          </div>
+
+          <div class="image-wrap">
+            <img class="twirl-image" data-ref="twirlImage" alt="" />
+            <canvas class="twirl-canvas" data-ref="twirlCanvas"></canvas>
+          </div>
+
+          <div class="answer-text" data-ref="answerEl" hidden></div>
+
+          <!-- Buzz queue (visible to all) -->
+          <div class="buzz-queue" data-ref="buzzQueueEl"></div>
+        </div>
+      </main>
+
+      <!-- Sticky bottom action tray -->
+      <footer class="actions-tray" data-ref="trayEl">
+        <!-- Board mode (GM only): confirm tile selection -->
+        <button class="btn primary" data-ref="okBtn" disabled hidden>OK</button>
+
+        <!-- Question mode (non-GM): buzz in -->
+        <button class="btn buzz-btn" data-ref="buzzBtn" hidden>BUZZ IN</button>
+
+        <!-- Question mode (GM): adjudicate -->
+        <div class="gm-controls" data-ref="gmControls" hidden>
+          <button class="btn" data-ref="showAnswerBtn">Show Answer</button>
+          <div class="gm-award-row">
+            <button class="btn" data-ref="awardABtn">Award Team A</button>
+            <button class="btn" data-ref="awardBBtn">Award Team B</button>
+          </div>
+          <button class="btn ghost" data-ref="backToBoardBtn">Back to Board</button>
+        </div>
+
+        <hr />
+        <a href="#" class="exit-link" data-ref="exitGameBtn">Leave game</a>
+        <a href="#" class="exit-link" data-ref="gmEndBtn">End game</a>
+      </footer>
+    </div>
+  </template>
+
+
+  <!-- Main JS -->
+  <script type="module" src="./src/main.js"></script>
+</body>
+
+</html>

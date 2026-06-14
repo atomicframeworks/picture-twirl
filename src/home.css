@@ -1,0 +1,14 @@
+/* src/home.css
+   Picture Twirl — Home Screen
+   Uses shared components from main.css
+*/
+
+.home-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.home-actions .btn {
+    width: 100%;
+}

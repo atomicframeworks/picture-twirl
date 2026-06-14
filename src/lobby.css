@@ -1,0 +1,238 @@
+/* src/lobby.css
+   Picture Twirl — Lobby
+   Uses shared components from main.css (including .game-header)
+*/
+
+.lobby-root {
+    --tray-h: 160px; /* JS updates this dynamically */
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Instruction text                                                   */
+/* ────────────────────────────────────────────────────────────────── */
+.lobby-instruction {
+    padding: var(--space-3) var(--space-4);
+    font-size: 16px;
+    color: #333;
+    background: #fafafa;
+    transition: background .2s, color .2s;
+}
+
+.lobby-instruction.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Unassigned section (card-style like teams)                         */
+/* ────────────────────────────────────────────────────────────────── */
+.unassigned-section {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    margin: var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    min-height: 120px;
+}
+
+.unassigned-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f1f1;
+}
+
+.unassigned-icon {
+    font-size: 24px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.unassigned-label {
+    font-weight: 700;
+    font-size: 18px;
+    flex: 1;
+}
+
+.unassigned-count {
+    font-weight: 600;
+    font-size: 18px;
+    color: #666;
+}
+
+.unassigned-section .pill-row {
+    padding: 12px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 8px;
+    min-height: 80px;
+}
+
+/* Match pill styling in unassigned section to team pills */
+.unassigned-section .pill {
+    align-self: flex-start;
+    height: auto;
+    line-height: 1;
+    padding: 6px 10px;
+    font-size: 14px;
+}
+
+.pill-row {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.pill {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--pill);
+    color: var(--pill-ink);
+    border: 1px solid #e1e1e1;
+    font-size: 14px;
+    line-height: 1;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pill.is-me {
+    background: var(--pill-me);
+    color: var(--pill-me-ink);
+    border-color: #000;
+}
+
+.pill.is-clickable {
+    cursor: pointer;
+}
+
+.pill.is-selected {
+    outline: 3px solid var(--ring);
+    box-shadow: 0 0 0 3px var(--ring) inset;
+}
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Teams area (vertical scroll)                                       */
+/* ────────────────────────────────────────────────────────────────── */
+.lobby-main {
+    flex: 1 1 auto;
+    min-height: 0;
+    /* allows inner scroll */
+    padding: var(--space-3) var(--space-4);
+
+    /* Leave room so content never hides under the sticky tray */
+    padding-bottom: calc(var(--tray-h) + var(--space-4) + env(safe-area-inset-bottom));
+
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+.teams-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.team-card {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    min-height: 160px;
+}
+
+.team-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f1f1;
+    font-weight: 700;
+    font-size: 18px;
+}
+
+.team-count {
+    margin-left: auto;
+    font-weight: 600;
+    color: #666;
+}
+
+.team-body {
+    padding: 12px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 8px;
+    min-height: 80px;
+}
+
+/* Make team pills visually match pool pills exactly */
+.team-body .pill {
+    align-self: flex-start;
+    height: auto;
+    line-height: 1;
+    padding: 6px 10px;
+    font-size: 14px;
+}
+
+/* Inline team action pill in header (Join / Leave) */
+.team-head .team-act {
+    margin-left: 10px;
+}
+
+.team-head .team-act .pill {
+    cursor: pointer;
+}
+
+
+/* ────────────────────────────────────────────────────────────────── */
+/* Desktop tweaks                                                     */
+/* ────────────────────────────────────────────────────────────────── */
+@media (min-width: 900px) {
+    .lobby-title {
+        font-size: 32px;
+    }
+
+    .teams-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Hide GM-only elements for non-GMs (root gets .is-gm from JS) */
+.lobby-root:not(.is-gm) [data-ref="gmStart"],
+.lobby-root:not(.is-gm) [data-ref="gmEnd"] {
+    display: none;
+}
+
+/* Hide player-only elements for GMs */
+.lobby-root.is-gm [data-ref="exitGameBtn"] {
+    display: none;
+}
+
+/* Motion-reduction (prefers-reduced-motion users) */
+@media (prefers-reduced-motion: reduce) {
+    .lobby-root .btn {
+        transition: none;
+    }
+}

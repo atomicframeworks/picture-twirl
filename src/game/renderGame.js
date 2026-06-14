@@ -13,16 +13,16 @@
 // -----------------------------------------------------------------------------
 
 import { rtdb, getCurrentUser } from '../firebase.js';
-import { ref, onValue, update, get, remove, serverTimestamp } from 'firebase/database';
+import { ref, onValue, update, get, serverTimestamp } from 'firebase/database';
 import * as P from '../data/paths.js';
-import { getSession, setSession } from '../session.js';
+import { getSession } from '../session.js';
 import { on as listen } from '../ui/dom.js';
 import { attachCopyButton } from '../ui/copyButton.js';
 import { mountTemplate, collectRefs } from '../ui/templates.js';
-import { modal } from '../ui/modal.js';
 import { createBoard } from './createBoard.js';
 import { startSwirlAnimation } from './swirl.js';
 import { enqueueBuzz, clearBuzzQueue } from './buzz.js';
+import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
 import { TEAM, SWIRL, teamToAnswer } from '../config.js';
 
 export async function renderGameUI(gameId) {
@@ -41,8 +41,7 @@ export async function renderGameUI(gameId) {
     root.classList.toggle('is-gm', !!isGM);
 
     // Cleanup registry
-    const unsubs = [];
-    const track = (off) => { if (typeof off === 'function') unsubs.push(off); };
+    const { track, disposeAll: disposeListeners } = createDisposer();
 
     // Local cache
     let teams = { A: { name: 'Team A' }, B: { name: 'Team B' } };
@@ -59,10 +58,9 @@ export async function renderGameUI(gameId) {
     // ─── Copy code ─────────────────────────────────────────────────────────────
     track(attachCopyButton(refs.copyCodeBtn, () => gameId.toUpperCase()));
 
-    // Clean up all RTDB listeners (defined early so handlers below can reference it)
+    // Clean up all RTDB listeners + swirl (defined early so handlers can reference it)
     function disposeAll() {
-        unsubs.forEach(off => { try { off(); } catch { } });
-        unsubs.length = 0;
+        disposeListeners();
         if (swirlCtrl?.cancel) swirlCtrl.cancel();
         swirlCtrl = null;
     }
@@ -75,23 +73,7 @@ export async function renderGameUI(gameId) {
         track(listen(refs.exitGameBtn, 'click', async (e) => {
             e?.preventDefault?.();
             if (isGM) return;
-            const res = await modal.confirm({
-                title: 'Leave game?',
-                body: 'If you leave now, you may not be able to rejoin this game in progress.',
-                confirmText: 'Leave Game',
-                cancelText: 'Stay in Game',
-                variant: 'danger'
-            });
-            if (res !== 'confirm') return;
-            try {
-                if (myUid) await remove(ref(rtdb, P.participant(gameId, myUid)));
-            } catch (err) {
-                console.warn('Leave game: remove failed', err);
-            } finally {
-                disposeAll();
-                setSession({ gameId: null, isGM: false });
-                window.location.reload();
-            }
+            await leaveGame(gameId, { uid: myUid, dispose: disposeAll });
         }));
     }
 
@@ -100,19 +82,11 @@ export async function renderGameUI(gameId) {
             e?.preventDefault?.();
             if (!isGM) return;
             if (refs.gmEndBtn.dataset.busy === '1') return;
-            const res = await modal.confirm({
-                title: 'End game?',
-                body: 'This will end the game for everyone. You can’t undo this.',
-                confirmText: 'End game',
-                variant: 'danger'
-            });
+            const res = await confirmEndGame();
             if (res !== 'confirm') return;
             refs.gmEndBtn.dataset.busy = '1';
             try {
-                await update(ref(rtdb, P.state(gameId)), {
-                    phase: 'ended',
-                    endedAt: serverTimestamp()
-                });
+                await endGame(gameId);
             } catch (err) {
                 console.error('End failed', err);
                 alert('Could not end the game.');
@@ -124,14 +98,7 @@ export async function renderGameUI(gameId) {
 
     // ─── Phase listener: ended → everyone home ─────────────────────────────────
     track(onValue(ref(rtdb, P.phase(gameId)), (s) => {
-        if (s.val() === 'ended') {
-            try {
-                disposeAll();
-                setSession({ gameId: null, isGM: false });
-            } finally {
-                window.location.reload();
-            }
-        }
+        if (s.val() === 'ended') exitToHome(disposeAll);
     }));
 
     // ─── Title, teams, scores, participants ────────────────────────────────────

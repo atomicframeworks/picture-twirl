@@ -174,14 +174,35 @@ point-value config in use.
 - Rewrite CLAUDE.md to match reality (4.4).
 - One commit, reviewable as "deletions + docs."
 
-### Phase 2 — Structural (the maintainability payoff) — PLANNED
-- Split `lobby.js` and `renderGame.js` along three seams:
-  *(a)* RTDB-listener layer, *(b)* render/refs layer, *(c)* event-handler layer.
-- Untangle the lobby instruction state machine (4.3) during the split.
-- Decide the service-layer question **once**: either reintroduce a thin,
-  *used* service module over `paths.js`, or standardize on direct `paths.js`
-  calls everywhere. Do not leave both patterns half-present.
-- Collapse `boot.js`'s 26-/12-arg dependency bags into small grouped objects.
+### Phase 2 — Structural (the maintainability payoff) — IN PROGRESS
+
+**Service-layer decision (made):** standardize on **direct `paths.js` calls in
+controllers** — no service-abstraction module. The old `gameService.js`
+attempt was dead and we won't resurrect it. Instead we extract only the logic
+that is *duplicated verbatim* across controllers into small, single-purpose
+helpers. This keeps one pattern, not two.
+
+Increments (each its own commit, behavior-preserving, verified by `node --check`
++ grep since the build can't run natively here):
+
+- **2.1 — `game/controllerKit.js` (DONE below).** Extract the code that
+  `lobby.js` and `renderGame.js` duplicate verbatim:
+  - `createDisposer()` → `{ track, disposeAll }` (the unsubscribe-registry pattern)
+  - `exitToHome(dispose)` → dispose + clear session + reload (appeared 5×)
+  - `leaveGame(gameId, { uid, dispose })` → confirm modal + remove participant + exitToHome
+  - `confirmEndGame()` + `endGame(gameId)` → the GM "End game" confirm + phase write
+  Net: removes ~5 copies of the cleanup sequence and 2 copies each of the
+  leave/end dialogs. Also drops now-unused imports (`setSession`, `remove`,
+  `modal`) from the controllers that no longer reference them directly.
+- **2.2 — Split `lobby.js`** into listener / render / handler seams; untangle
+  the instruction state machine (4.3). *Deferred until 2.1 is tested in-app.*
+- **2.3 — Split `renderGame.js`** the same way. *Deferred until 2.1 tested.*
+- **2.4 — Collapse `boot.js`'s 26-/12-arg dependency bags** into grouped objects.
+
+> ⚠️ 2.2/2.3 change control flow inside the two big files and are hard to verify
+> without running the app. Do them only after a human has smoke-tested 2.1
+> (create game → lobby → start → play a tile → buzz → award → end; plus leave
+> as a non-GM). See the smoke-test checklist at the bottom of this file.
 
 ### Phase 3 — Polish — PLANNED
 - Swirl perf (4.5).
@@ -199,3 +220,24 @@ point-value config in use.
 | 2026-06-13 | 1 | Remove dead code, fix `set` shadowing, sync CLAUDE.md | `a86d5a1` |
 
 > Append a row per commit. Keep the newest at the bottom.
+
+---
+
+## 7. Smoke-test checklist (run after structural changes)
+
+The build can't run on native Windows here (Linux rollup binaries from the
+Docker dev container). Run the app via `docker compose up` (or `npm install`
+natively) and walk through:
+
+- [ ] **Create:** Home → New Game → fill details → pick a set → "Your game is
+      ready" shows a code → share/copy code works.
+- [ ] **Lobby (GM):** Go to Lobby → code visible → join self to a team →
+      Start Game (with an unassigned player → "assign to random" modal works).
+- [ ] **Join (player):** open `#CODE` URL or enter code → enter lobby → pick a
+      team → "Joined X team" message.
+- [ ] **Live (GM):** pick a tile → OK → image swirls → Show Answer → Award A/B →
+      score updates, tile shows ✔ → Back to Board.
+- [ ] **Buzz (player):** BUZZ IN during a question → swirl pauses → button shows
+      "BUZZED".
+- [ ] **Leave (player):** Leave game → confirm → returns Home.
+- [ ] **End (GM):** End game → confirm → all clients return Home.

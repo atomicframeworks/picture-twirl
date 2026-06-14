@@ -9,12 +9,13 @@ import {
     ref, onValue, onDisconnect, update, set, serverTimestamp, get, remove
 } from 'firebase/database';
 import * as P from '../data/paths.js';
-import { getSession, setSession } from '../session.js';
+import { getSession } from '../session.js';
 import { renderGameUI } from './renderGame.js';
 import { on as listen } from '../ui/dom.js';
 import { attachCopyButton } from '../ui/copyButton.js';
 import { mountTemplate, collectRefs } from '../ui/templates.js';
 import { modal } from '../ui/modal.js';
+import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
 import { LIMITS, TEAM } from '../config.js';
 
 
@@ -62,7 +63,7 @@ export async function renderLobby(gameId) {
     refs.codeEl.textContent = gameId.toUpperCase();
     root.classList.toggle('is-gm', !!isGM);
 
-    const unsubs = []; const track = (fn) => { if (typeof fn === 'function') unsubs.push(fn); };
+    const { track, disposeAll } = createDisposer();
 
     // Copy code button handler
     track(attachCopyButton(refs.copyCodeBtn, () => gameId.toUpperCase()));
@@ -238,10 +239,7 @@ export async function renderLobby(gameId) {
     if (uid) {
         track(onValue(ref(rtdb, P.participant(gameId, uid)), (s) => {
             if (!s.exists()) {
-                try {
-                    unsubs.forEach(off => { try { off(); } catch { } }); unsubs.length = 0;
-                    setSession({ gameId: null, isGM: false });
-                } finally { window.location.reload(); }
+                exitToHome(disposeAll);
             }
         }));
     }
@@ -366,15 +364,10 @@ export async function renderLobby(gameId) {
         const phase = s.val();
         if (phase === 'live') {
             // Dispose all lobby listeners before mounting game UI
-            unsubs.forEach(off => { try { off(); } catch { } });
-            unsubs.length = 0;
+            disposeAll();
             renderGameUI(gameId);
         } else if (phase === 'ended') {
-            try {
-                unsubs.forEach(off => { try { off(); } catch { } });
-                unsubs.length = 0;
-                setSession({ gameId: null, isGM: false });
-            } finally { window.location.reload(); }
+            exitToHome(disposeAll);
         }
     }));
 
@@ -406,27 +399,7 @@ export async function renderLobby(gameId) {
     if (refs.exitGameBtn) {
         track(listen(refs.exitGameBtn, 'click', async (e) => {
             e?.preventDefault?.();
-            // Confirm before leaving
-            const res = await modal.confirm({
-                title: 'Leave game?',
-                body: 'If you leave now, you may not be able to rejoin this game in progress.',
-                confirmText: 'Leave Game',
-                cancelText: 'Stay in Game',
-                variant: 'danger'
-            });
-
-            if (res !== 'confirm') return;
-
-            try {
-                const me = getCurrentUser()?.uid;
-                if (me) await remove(ref(rtdb, P.participant(gameId, me)));
-            } catch (e) {
-                console.warn('Leave game: remove failed', e);
-            } finally {
-                try { unsubs.forEach(off => { try { off(); } catch { } }); unsubs.length = 0; } catch { }
-                setSession({ gameId: null, isGM: false });
-                window.location.reload();
-            }
+            await leaveGame(gameId, { uid: getCurrentUser()?.uid || null, dispose: disposeAll });
         }));
     }
 
@@ -504,17 +477,12 @@ export async function renderLobby(gameId) {
                 if (refs.gmEnd.dataset.busy === '1') return;
 
                 // Ask for confirmation
-                const res = await modal.confirm({
-                    title: 'End game?',
-                    body: 'This will end the game for everyone. You can’t undo this.',
-                    confirmText: 'End game',
-                    variant: 'danger'
-                });
+                const res = await confirmEndGame();
                 if (res !== 'confirm') return;
 
                 refs.gmEnd.dataset.busy = '1';
                 try {
-                    await update(ref(rtdb, P.state(gameId)), { phase: 'ended', endedAt: serverTimestamp() });
+                    await endGame(gameId);
                 } catch (e) {
                     console.error('End failed', e);
                     alert('Could not end the game.');

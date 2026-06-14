@@ -184,6 +184,11 @@ export async function renderGameUI(gameId) {
         refs.teamAPlayer.textContent = '';
         refs.teamBPlayer.textContent = '';
 
+        // Highlight the scoreboard card for whichever team is up.
+        const activeTeam = currentTurn?.team || null;
+        refs.teamACard?.classList.toggle('is-active', activeTeam === TEAM.A);
+        refs.teamBCard?.classList.toggle('is-active', activeTeam === TEAM.B);
+
         if (!currentTurn) return;
         const player = participants[currentTurn.uid];
         if (!player) return;
@@ -296,6 +301,8 @@ export async function renderGameUI(gameId) {
                 refs.answerEl.textContent = currentQuestion.answer || '';
                 refs.answerEl.hidden = false;
                 if (swirlCtrl?.cancel) swirlCtrl.cancel();
+                // Make sure the reveal is in view (it sits below a tall image).
+                refs.answerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             } else {
                 refs.answerEl.hidden = true;
                 refs.answerEl.textContent = '';

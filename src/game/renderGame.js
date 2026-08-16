@@ -90,23 +90,31 @@ export async function renderGameUI(gameId) {
         }));
     }
 
+    async function handleEndGame(btnEl) {
+        if (!isGM) return;
+        if (btnEl?.dataset.busy === '1') return;
+        const res = await confirmEndGame();
+        if (res !== 'confirm') return;
+        if (btnEl) btnEl.dataset.busy = '1';
+        try {
+            await endGame(gameId);
+        } catch (err) {
+            console.error('End failed', err);
+            alert('Could not end the game.');
+        } finally {
+            if (btnEl) btnEl.dataset.busy = '0';
+        }
+    }
+
     if (refs.gmEndBtn) {
-        track(listen(refs.gmEndBtn, 'click', async (e) => {
+        track(listen(refs.gmEndBtn, 'click', (e) => {
             e?.preventDefault?.();
-            if (!isGM) return;
-            if (refs.gmEndBtn.dataset.busy === '1') return;
-            const res = await confirmEndGame();
-            if (res !== 'confirm') return;
-            refs.gmEndBtn.dataset.busy = '1';
-            try {
-                await endGame(gameId);
-            } catch (err) {
-                console.error('End failed', err);
-                alert('Could not end the game.');
-            } finally {
-                refs.gmEndBtn.dataset.busy = '0';
-            }
+            handleEndGame(refs.gmEndBtn);
         }));
+    }
+
+    if (refs.gmEndInQuestion) {
+        track(listen(refs.gmEndInQuestion, 'click', () => handleEndGame(refs.gmEndInQuestion)));
     }
 
     // ─── Phase listener: ended → everyone home ─────────────────────────────────
@@ -229,7 +237,9 @@ export async function renderGameUI(gameId) {
 
     function updatePauseButton() {
         if (!refs.pauseSwirlBtn) return;
-        refs.pauseSwirlBtn.textContent = swirlPausedByGM ? '▶ Resume Swirl' : '⏸ Pause Swirl';
+        refs.pauseSwirlBtn.dataset.paused = swirlPausedByGM ? 'true' : 'false';
+        const label = refs.pauseSwirlBtn.querySelector('.gm-icon-btn__label');
+        if (label) label.textContent = swirlPausedByGM ? 'Resume' : 'Pause';
     }
 
     // Reveal-progress bar driven by the swirl's onProgress callback.
@@ -320,6 +330,8 @@ export async function renderGameUI(gameId) {
 
         // GM controls: only GM, only while question is active
         if (refs.gmControls) refs.gmControls.hidden = !isGM || !active;
+        // End game link: board-mode fallback — hidden during question (icon bar covers it)
+        if (refs.gmEndBtn) refs.gmEndBtn.hidden = !isGM || active;
 
         if (!active) {
             // Cancel swirl if running
@@ -342,9 +354,10 @@ export async function renderGameUI(gameId) {
         if (refs.qCategory) refs.qCategory.textContent = currentQuestion.category || '';
         if (refs.qValue) refs.qValue.textContent = `$${currentQuestion.value ?? ''}`;
 
-        // Swirl timer + pause control only matter while actively revealing.
+        // Swirl timer + pause/reveal controls only matter while actively revealing.
         if (refs.swirlTimer) refs.swirlTimer.hidden = !!currentQuestion.showAnswer;
         if (refs.pauseSwirlBtn) refs.pauseSwirlBtn.hidden = !!currentQuestion.showAnswer;
+        if (refs.showAnswerBtn) refs.showAnswerBtn.hidden = !!currentQuestion.showAnswer;
 
         // Load image and (re)start swirl when URL changes
         if (refs.twirlImage && currentQuestion.imageUrl && currentQuestion.imageUrl !== lastImageUrl) {

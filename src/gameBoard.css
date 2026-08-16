@@ -383,34 +383,103 @@
 }
 
 /* ═══════════════════════════════════════ */
-/* GM Controls (inside .actions-tray)      */
+/* GM Controls — compact icon toolbar      */
 /* ═══════════════════════════════════════ */
-.gm-controls {
+.gm-icon-bar {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: center;
+}
+
+.gm-icon-btn {
+    flex: 1;
+    min-width: 44px;
+    max-width: 76px;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    align-items: center;
+    gap: 5px;
+    padding: var(--space-2) var(--space-1);
+    background: #fff;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    color: var(--ink);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: transform .1s ease, background .15s ease, border-color .15s ease;
 }
 
-.actions-tray .gm-award-row {
+.gm-icon-btn:hover {
+    background: #FAF5FF;
+    border-color: var(--brand-1);
+    transform: translateY(-1px);
+}
+
+.gm-icon-btn:active {
+    transform: translateY(0);
+}
+
+.gm-icon-btn:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.gm-icon-btn__icon {
+    width: 40px;
+    height: 40px;
     display: flex;
-    gap: var(--space-2);
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: rgba(124, 58, 237, .1);
+    color: var(--brand-1);
 }
 
-.actions-tray .gm-award-row .btn {
-    flex: 1;
-    width: auto;
+.gm-icon-btn__label {
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+    color: var(--ink);
+    white-space: nowrap;
 }
 
-/* Award buttons tinted to their team colors */
-.actions-tray [data-ref="awardABtn"] {
-    background: linear-gradient(135deg, #7C3AED, #A855F7);
-    color: #fff;
+/* Award A: purple */
+.gm-icon-btn.is-team-a .gm-icon-btn__icon {
+    background: rgba(124, 58, 237, .12);
+    color: #7C3AED;
+}
+.gm-icon-btn.is-team-a:hover {
+    border-color: #A855F7;
 }
 
-.actions-tray [data-ref="awardBBtn"] {
-    background: linear-gradient(135deg, #06B6D4, #3B82F6);
-    color: #fff;
+/* Award B: cyan */
+.gm-icon-btn.is-team-b .gm-icon-btn__icon {
+    background: rgba(6, 182, 212, .12);
+    color: #06B6D4;
 }
+.gm-icon-btn.is-team-b:hover {
+    border-color: #06B6D4;
+    background: #F0FFFE;
+}
+
+/* End Game: danger */
+.gm-icon-btn.is-danger .gm-icon-btn__icon {
+    background: rgba(239, 68, 68, .1);
+    color: var(--danger);
+}
+.gm-icon-btn.is-danger:hover {
+    border-color: var(--danger);
+    background: #FEF2F2;
+}
+
+/* Pause/Play SVG swap via data-paused attribute on the button */
+.gm-icon-btn .icon-play { display: none; }
+[data-paused="true"] .icon-pause { display: none; }
+[data-paused="true"] .icon-play { display: flex; }
 
 /* ═══════════════════════════════════════ */
 /* Responsive                              */

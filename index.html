@@ -350,15 +350,47 @@
         <!-- Question mode (non-GM): buzz in -->
         <button class="btn buzz-btn" data-ref="buzzBtn" hidden>BUZZ IN</button>
 
-        <!-- Question mode (GM): adjudicate -->
+        <!-- Question mode (GM): adjudicate — compact icon toolbar -->
         <div class="gm-controls" data-ref="gmControls" hidden>
-          <button class="btn secondary" data-ref="pauseSwirlBtn">⏸ Pause Swirl</button>
-          <button class="btn" data-ref="showAnswerBtn">Show Answer</button>
-          <div class="gm-award-row">
-            <button class="btn" data-ref="awardABtn">Award Team A</button>
-            <button class="btn" data-ref="awardBBtn">Award Team B</button>
+          <div class="gm-icon-bar">
+            <button class="gm-icon-btn" data-ref="pauseSwirlBtn" title="Pause swirl">
+              <span class="gm-icon-btn__icon">
+                <svg class="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>
+                <svg class="icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5,3 19,12 5,21"/></svg>
+              </span>
+              <span class="gm-icon-btn__label">Pause</span>
+            </button>
+            <button class="gm-icon-btn" data-ref="showAnswerBtn" title="Reveal answer">
+              <span class="gm-icon-btn__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </span>
+              <span class="gm-icon-btn__label">Reveal</span>
+            </button>
+            <button class="gm-icon-btn is-team-a" data-ref="awardABtn" title="Award Team A">
+              <span class="gm-icon-btn__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </span>
+              <span class="gm-icon-btn__label">Award A</span>
+            </button>
+            <button class="gm-icon-btn is-team-b" data-ref="awardBBtn" title="Award Team B">
+              <span class="gm-icon-btn__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </span>
+              <span class="gm-icon-btn__label">Award B</span>
+            </button>
+            <button class="gm-icon-btn" data-ref="backToBoardBtn" title="Back to board">
+              <span class="gm-icon-btn__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+              </span>
+              <span class="gm-icon-btn__label">Board</span>
+            </button>
+            <button class="gm-icon-btn is-danger" data-ref="gmEndInQuestion" title="End game">
+              <span class="gm-icon-btn__icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              </span>
+              <span class="gm-icon-btn__label">End Game</span>
+            </button>
           </div>
-          <button class="btn ghost" data-ref="backToBoardBtn">Back to Board</button>
         </div>
 
         <hr />

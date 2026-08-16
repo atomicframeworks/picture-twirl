@@ -1,0 +1,38 @@
+When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it
+
+
+- Note for kevin - Get claude to make command to start app in 'sharing' mode
+
+--- In untwiriling 
+    when 'buzzing in' and its paused, the progress bar still says 'revealing' it shhould say pasued or maybe whomever buzzed in?
+
+    - As the GM it doesn't show the answer. The GM needs answer to be able to verify that players are correct
+    - On the GM screen it shows 'Award A' and 'Award B', the teams have names - we should show their name instead of 'a' and 'b'
+    - It shows two spots with the category and amount (game-status div and question-meta div)
+        - Keep one the category and point value displays still good to know
+
+    - Related to buzzing in on a question:
+        - Need to show the list of people who buzzed in, in order of who buzzed in, Need to show the team they are on.
+            Flow Concept - Team A buzzes, they attempt to answer and get it wrong, GM can see if team B wants to respond/guess (maybe team B has buzzed in / maybe not who knows we can see the list). If team B has no guess, GM can 'continue' the untwirling and proceed to next buzz in like normal
+
+    - GM actions are showing 'pause' even when a user has buzzed in and it is already paused. Its pause / play action status should match the status of the untwirling
+        Q: Should it be pause / play or pause / continue - Currently is pause & resume - I like resume?
+        Note: This action is broken, fix it when we sync with buzzing in
+
+    - When a user answers correctly the GM has multiple options (Reveal, award a, award b)
+        Seems like we should first reveal, then allow the GM to pick which team got it right (and possible no team option which we dont have currently)
+        
+    - Misc note: there is small grey line at bottom under GM actions (not needed)
+
+    - After GM hits award a team - it shows image (good), shows name of answer (good), shows who answered it (good), Should show the team that got the poinnts too.
+        - Also the GM actions need to be updated, still shows award a and B - those actions should be gone
+
+    Questions:
+        - Do we need to show the game name & game code at the top?
+            A: No, keep it simple and focus on the untwirled image        
+            A: Currently showing who buzzed in and which team when a user buzzes in the team score area at the top. We do want to keep this info (who buzzed in and their team)
+        - Do we need to show the team names and scores at the top?
+            A: No, keep it simple and focus on the untwirled image        
+
+        - Is there a list of people that have buzzed in?
+            TBD on how we go back and forth between teams

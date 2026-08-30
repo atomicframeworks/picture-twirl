@@ -21,6 +21,10 @@ npm run build
 
 # Preview production build
 npm run preview
+
+# Dev server + public HTTPS URL via Cloudflare quick tunnel
+# (dev on this machine, test on a phone or another computer)
+npm run share
 ```
 
 ## Architecture
@@ -221,6 +225,9 @@ src/
 │   └── swirl.js              # Canvas swirl animation
 └── data/
     └── paths.js              # RTDB path helpers
+
+scripts/
+└── share.js                 # Dev server + Cloudflare quick tunnel (npm run share)
 ```
 
 ## Common Patterns

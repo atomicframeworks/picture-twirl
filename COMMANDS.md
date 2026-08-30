@@ -14,6 +14,24 @@ npm run build          # production build → dist/
 npm run preview        # serve the build
 ```
 
+## Share mode (dev here, test on another device)
+```bash
+npm run share          # dev server + public HTTPS URL via Cloudflare
+```
+Prints a `https://<random>.trycloudflare.com` URL once it's actually routable —
+open it on a phone, tablet, or the other machine. Ctrl+C stops both the server
+and the tunnel.
+
+- No Cloudflare account needed. The URL is random and dies with the process,
+  so a fresh one every run — don't bake it into anything.
+- HMR works over the tunnel (wss on 443). While sharing, use the tunnel URL on
+  this machine too; `localhost:3000` still serves but its HMR socket won't connect.
+- Anyone with the link reaches your dev server, so treat it as public.
+- Firebase anonymous auth works from the tunnel origin as-is (authorized-domain
+  checks only apply to popup/redirect sign-in, which this app doesn't use).
+- Port 3000 must be free — share mode uses `strictPort` so a shifted port can't
+  leave the tunnel pointing at nothing.
+
 ## Tests (Playwright — auto-starts the dev server)
 ```bash
 npm run test:e2e                       # run all

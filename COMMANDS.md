@@ -30,6 +30,40 @@ npm run lint           # must be 0
 npm run lint:fix       # auto-fix
 ```
 
+## Git — get the latest from GitHub
+```bash
+git pull                               # fetch + merge (needs an upstream, see below)
+git pull origin main                   # explicit — always works
+git fetch origin                       # download only, change nothing locally
+git log --oneline HEAD..origin/main    # what would come in (run after fetch)
+```
+If `git pull` says *"no tracking information for the current branch"*, set the
+upstream once and plain `git pull` works from then on:
+```bash
+git branch --set-upstream-to=origin/main main
+```
+Local edits in the way? Stash, pull, restore:
+```bash
+git stash && git pull && git stash pop
+```
+Re-run `npm install` after a pull that changed `package.json`.
+
+## Git — first time on a new machine
+```bash
+git clone https://github.com/atomicframeworks/picture-twirl.git
+cd picture-twirl
+npm install
+```
+
+## Git — send changes up
+```bash
+git status                             # what's changed
+git diff                               # review before staging
+git add -A                             # stage everything
+git commit -m "message"                # commit
+git push                               # push (first push: git push -u origin main)
+```
+
 ## Gotcha
 Build error `Cannot find module @rollup/rollup-win32-...`? → `node_modules` got
 synced across OSes via Dropbox. Just re-run `npm install` on this machine.

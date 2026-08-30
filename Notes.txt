@@ -1,10 +1,7 @@
 When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it
 
-
-- Note for kevin - Get claude to make command to start app in 'sharing' mode
-
 --- In untwiriling 
-    when 'buzzing in' and its paused, the progress bar still says 'revealing' it shhould say pasued or maybe whomever buzzed in?
+    when 'buzzing in' and its paused, the progress bar still says 'revealing' it should say pasued or maybe whomever buzzed in?
 
     - As the GM it doesn't show the answer. The GM needs answer to be able to verify that players are correct
     - On the GM screen it shows 'Award A' and 'Award B', the teams have names - we should show their name instead of 'a' and 'b'

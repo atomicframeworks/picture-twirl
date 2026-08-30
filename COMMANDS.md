@@ -32,15 +32,10 @@ npm run lint:fix       # auto-fix
 
 ## Git — get the latest from GitHub
 ```bash
-git pull                               # fetch + merge (needs an upstream, see below)
-git pull origin main                   # explicit — always works
+git pull                               # fetch + merge from origin/main
+git pull origin main                   # same thing, spelled out
 git fetch origin                       # download only, change nothing locally
 git log --oneline HEAD..origin/main    # what would come in (run after fetch)
-```
-If `git pull` says *"no tracking information for the current branch"*, set the
-upstream once and plain `git pull` works from then on:
-```bash
-git branch --set-upstream-to=origin/main main
 ```
 Local edits in the way? Stash, pull, restore:
 ```bash

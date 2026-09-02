@@ -354,6 +354,12 @@ export async function renderGameUI(gameId) {
             swirlCtrl = null;
             lastImageUrl = null;
             prevShowAnswer = false;
+            // Wipe canvas and image so the old picture doesn't flash on the next question.
+            if (refs.twirlCanvas) {
+                const ctx = refs.twirlCanvas.getContext('2d');
+                ctx?.clearRect(0, 0, refs.twirlCanvas.width, refs.twirlCanvas.height);
+            }
+            if (refs.twirlImage) refs.twirlImage.src = '';
             if (refs.answerEl) {
                 refs.answerEl.hidden = true;
                 refs.answerEl.textContent = '';

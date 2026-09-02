@@ -33,3 +33,14 @@ When its time to pick a tile - it says 'kevins turn to pick a tile', but really 
 
         - Is there a list of people that have buzzed in?
             TBD on how we go back and forth between teams
+
+08.30
+
+The GM view after a player has buzzed in should display the buzzed in player within the team card that shows the points. Currently, the buzze4d in player shows as a pill at the bottom of the screen below the fold and it may not be visible.
+
+Let anybody on the team pick the category and not just the GM. On the category selection flow. 
+
+K: When starting a new category to untwirl the previously shown image from the previous category is still there for a second and visible / flashes before we see the new twirled image. So maybe can 'clean up' the old image when we award points or go back to the game board after showing a category
+
+K: there is a "game-status" div and also a "question-meta" div - these have duplicate information when we are on a twirled question. Maybe only keep one. The 'game-status' only shows extra information of 'answer revealed' which doesnt seem useful. So maybe just remove 'game-status' from the twirled question view. FIXED 08.02
+

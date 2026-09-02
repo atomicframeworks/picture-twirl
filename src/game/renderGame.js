@@ -23,7 +23,7 @@ import { createBoard } from './createBoard.js';
 import { startSwirlAnimation } from './swirl.js';
 import { enqueueBuzz, clearBuzzQueue } from './buzz.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
-import { initializeStartingTurn } from './turn.js';
+import { initializeStartingTurn, advanceTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
 import { playBuzz, playCorrect, playReveal, unlockAudio } from '../ui/sound.js';
@@ -51,7 +51,8 @@ export async function renderGameUI(gameId) {
     let teams = { A: { name: 'Team A' }, B: { name: 'Team B' } };
     let participants = {};
     let scores = { A: 0, B: 0 };
-    let currentTurn = null;       // { uid, team } — display only ("who is up")
+    let currentTurn = null;       // { team } — which team picks next
+    let turnFirstSeen = false;    // skip coin flip on reconnect/refresh
     let selectedTile = null;      // { id, category, value } — GM has picked, not yet posted
     let currentQuestion = null;   // { id, category, imageUrl, value, showAnswer }
     let swirlStartTime = null;
@@ -150,12 +151,19 @@ export async function renderGameUI(gameId) {
 
     track(onValue(ref(rtdb, P.participants(gameId)), (s) => {
         participants = s.val() || {};
-        updateActivePlayerDisplay();
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/currentTurn`), (s) => {
-        currentTurn = s.val();
-        updateActivePlayerDisplay();
+        const val = s.val();
+        if (!turnFirstSeen) {
+            // First snapshot on mount — existing state, no animation.
+            turnFirstSeen = true;
+        } else if (!currentTurn && val) {
+            // Null → value: game just started, show coin flip.
+            showCoinFlip(val.team);
+        }
+        currentTurn = val;
+        updateActiveTurnDisplay();
         updateStatusMessage();
     }));
 
@@ -248,24 +256,31 @@ export async function renderGameUI(gameId) {
         if (refs.swirlLabel) refs.swirlLabel.textContent = progress >= 1 ? 'Revealed!' : 'Revealing…';
     }
 
-    // ─── Helpers ───────────────────────────────────────────────────────────────
-    function updateActivePlayerDisplay() {
-        if (!refs.teamAPlayer || !refs.teamBPlayer) return;
-        refs.teamAPlayer.textContent = '';
-        refs.teamBPlayer.textContent = '';
+    // ─── Coin flip overlay (shown once when the first turn is assigned) ────────
+    function showCoinFlip(team) {
+        const teamName = teams[team]?.name || `Team ${team}`;
+        const overlay = document.createElement('div');
+        overlay.className = 'coin-flip-overlay';
+        overlay.innerHTML = `
+            <div class="coin-flip-card">
+                <div class="coin-flip-coin" aria-hidden="true">🪙</div>
+                <div class="coin-flip-team">${escapeHtml(teamName)}</div>
+                <div class="coin-flip-sub">picks first!</div>
+            </div>`;
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('is-visible'));
+        const cleanup = () => { overlay.classList.remove('is-visible'); setTimeout(() => overlay.remove(), 400); };
+        setTimeout(cleanup, 3500);
+        track(() => overlay.remove());
+    }
 
-        // Highlight the scoreboard card for whichever team is up.
+    // ─── Helpers ───────────────────────────────────────────────────────────────
+    function updateActiveTurnDisplay() {
         const activeTeam = currentTurn?.team || null;
         refs.teamACard?.classList.toggle('is-active', activeTeam === TEAM.A);
         refs.teamBCard?.classList.toggle('is-active', activeTeam === TEAM.B);
-
-        if (!currentTurn) return;
-        const player = participants[currentTurn.uid];
-        if (!player) return;
-        const name = (player.displayName || 'Player').toUpperCase();
-
-        if (currentTurn.team === TEAM.A) refs.teamAPlayer.textContent = name;
-        else if (currentTurn.team === TEAM.B) refs.teamBPlayer.textContent = name;
+        if (refs.teamAPlayer) refs.teamAPlayer.textContent = '';
+        if (refs.teamBPlayer) refs.teamBPlayer.textContent = '';
     }
 
     function updateStatusMessage() {
@@ -288,11 +303,10 @@ export async function renderGameUI(gameId) {
         }
 
         if (currentTurn) {
-            const player = participants[currentTurn.uid];
-            const name = player?.displayName || 'Player';
+            const teamName = teams[currentTurn.team]?.name || `Team ${currentTurn.team}`;
             refs.statusMessage.textContent = isGM
-                ? `${name}'s turn — pick a tile`
-                : `${name} is up`;
+                ? `${teamName} — pick a category`
+                : `${teamName} is picking a category`;
             return;
         }
 
@@ -321,6 +335,7 @@ export async function renderGameUI(gameId) {
         // Toggle board vs viewer
         if (refs.boardWrap) refs.boardWrap.hidden = active;
         if (refs.viewerEl) refs.viewerEl.hidden = !active;
+        if (refs.statusMessage) refs.statusMessage.hidden = active;
         if (refs.okBtn) refs.okBtn.hidden = active || !isGM;
 
         // Buzz button: non-GM, only while question is active and answer not yet shown
@@ -503,6 +518,7 @@ export async function renderGameUI(gameId) {
         });
 
         await clearBuzzQueue(gameId);
+        await advanceTurn(gameId, teamKey); // winner picks next
     }
 
     if (refs.awardABtn) track(listen(refs.awardABtn, 'click', () => awardTeam(TEAM.A)));
@@ -517,6 +533,7 @@ export async function renderGameUI(gameId) {
                 swirlPaused: false
             });
             await clearBuzzQueue(gameId);
+            await advanceTurn(gameId, null); // no award → other team picks next
         }));
     }
 

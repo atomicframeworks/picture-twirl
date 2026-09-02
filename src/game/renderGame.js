@@ -151,6 +151,21 @@ export async function renderGameUI(gameId) {
 
     track(onValue(ref(rtdb, P.participants(gameId)), (s) => {
         participants = s.val() || {};
+
+        // GM: promote any tile request from the active team into selectedTile.
+        // Players can't write selectedTile directly (Firebase rules), so they write
+        // to their own participant node and the GM client picks it up here.
+        if (!isGM || currentQuestion || selectedTile) return;
+        for (const [uid, p] of Object.entries(participants)) {
+            if (p.tileRequest && p.team === currentTurn?.team) {
+                const req = p.tileRequest;
+                update(ref(rtdb), {
+                    [`${P.game(gameId)}/selectedTile`]: { id: req.id, category: req.category, value: req.value },
+                    [`${P.participant(gameId, uid)}/tileRequest`]: null
+                }).catch(err => console.error('Tile request promotion failed:', err));
+                break;
+            }
+        }
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/currentTurn`), (s) => {
@@ -447,16 +462,23 @@ export async function renderGameUI(gameId) {
     try {
         const boardEl = await createBoard(gameId, {
             onTileClick: async (tileData) => {
-                if (!isGM) return;                  // GM-only
-                if (currentQuestion) return;        // Question already active
+                const isMyTeamsTurn = currentTurn?.team && participants[myUid]?.team === currentTurn.team;
+                if (!isGM && !isMyTeamsTurn) return; // only GM or the active team may pick
+                if (currentQuestion) return;         // question already active
                 if (tileData.answered) return;
-                await update(ref(rtdb, P.game(gameId)), {
-                    selectedTile: {
-                        id: tileData.id,
-                        category: tileData.category,
-                        value: tileData.value
-                    }
-                });
+
+                if (isGM) {
+                    // GM can write selectedTile directly.
+                    await update(ref(rtdb, P.game(gameId)), {
+                        selectedTile: { id: tileData.id, category: tileData.category, value: tileData.value }
+                    });
+                } else {
+                    // Players can't write to the game root (Firebase rules). Write a
+                    // request to their own participant node; the GM client promotes it above.
+                    await update(ref(rtdb, P.participant(gameId, myUid)), {
+                        tileRequest: { id: tileData.id, category: tileData.category, value: tileData.value }
+                    });
+                }
             }
         });
         refs.boardEl.replaceWith(boardEl);

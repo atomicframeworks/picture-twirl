@@ -209,6 +209,9 @@ export async function renderGameUI(gameId) {
         hasBuzz = ordered.length > 0;
         applySwirlPause();
 
+        // Show first buzzer per team in the scoreboard cards (always visible at top).
+        updateBuzzDisplay(ordered);
+
         // Players: disable buzz button after they've buzzed
         if (refs.buzzBtn && !isGM) {
             const meBuzzed = ordered.some(e => e.uid === myUid);
@@ -281,6 +284,21 @@ export async function renderGameUI(gameId) {
         refs.teamBCard?.classList.toggle('is-active', activeTeam === TEAM.B);
         if (refs.teamAPlayer) refs.teamAPlayer.textContent = '';
         if (refs.teamBPlayer) refs.teamBPlayer.textContent = '';
+    }
+
+    // Show the first buzzer from each team in their scoreboard card badge.
+    function updateBuzzDisplay(ordered) {
+        const firstByTeam = {};
+        for (const entry of ordered) {
+            const p = participants?.[entry.uid];
+            if (!p) continue;
+            const t = p.team;
+            if ((t === TEAM.A || t === TEAM.B) && !firstByTeam[t]) {
+                firstByTeam[t] = (p.displayName || 'Player').toUpperCase();
+            }
+        }
+        if (refs.teamAPlayer) refs.teamAPlayer.textContent = firstByTeam[TEAM.A] ? `🔔 ${firstByTeam[TEAM.A]}` : '';
+        if (refs.teamBPlayer) refs.teamBPlayer.textContent = firstByTeam[TEAM.B] ? `🔔 ${firstByTeam[TEAM.B]}` : '';
     }
 
     function updateStatusMessage() {

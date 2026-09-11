@@ -130,8 +130,15 @@ export async function renderGameUI(gameId) {
 
     track(onValue(ref(rtdb, P.teams(gameId)), (s) => {
         teams = s.val() || teams;
-        refs.teamAName.textContent = teams.A?.name || 'Team A';
-        refs.teamBName.textContent = teams.B?.name || 'Team B';
+        const nameA = teams.A?.name || 'Team A';
+        const nameB = teams.B?.name || 'Team B';
+        refs.teamAName.textContent = nameA;
+        refs.teamBName.textContent = nameB;
+        // Keep award button labels in sync with actual team names.
+        const labelA = refs.awardABtn?.querySelector('.gm-icon-btn__label');
+        const labelB = refs.awardBBtn?.querySelector('.gm-icon-btn__label');
+        if (labelA) labelA.textContent = nameA;
+        if (labelB) labelB.textContent = nameB;
     }));
 
     track(onValue(ref(rtdb, P.scores(gameId)), (s) => {

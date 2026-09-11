@@ -198,6 +198,7 @@ export async function renderGameUI(gameId) {
         updateBoardSelection();
         updateStatusMessage();
         updateOkButton();
+        updateTurnGlow();
     }));
 
     // ─── Current question (drives the viewer) ──────────────────────────────────
@@ -360,9 +361,9 @@ export async function renderGameUI(gameId) {
 
     // Pulse the board border for the player whose team is picking.
     function updateTurnGlow() {
-        if (!refs.statusMessage) return;
+        if (!refs.boardWrap) return;
         const isMyTeamsTurn = !isGM && currentTurn?.team && participants[myUid]?.team === currentTurn.team;
-        refs.statusMessage.classList.toggle('is-my-turn', !!isMyTeamsTurn && !currentQuestion);
+        refs.boardWrap.classList.toggle('is-my-turn', !!isMyTeamsTurn && !selectedTile && !currentQuestion);
     }
 
     function updateBoardSelection() {

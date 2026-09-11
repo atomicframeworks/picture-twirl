@@ -548,7 +548,8 @@
 /* ═══════════════════════════════════════ */
 /* Active-team board glow (players only)   */
 /* ═══════════════════════════════════════ */
-.game-status.is-my-turn {
+.board-container.is-my-turn {
+    border-radius: var(--radius-md);
     animation: my-turn-pulse 3s ease-in-out infinite;
 }
 
@@ -566,7 +567,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .game-status.is-my-turn {
+    .board-container.is-my-turn {
         animation: none;
         box-shadow:
             0 0 0 3px rgba(6, 182, 212, 0.65),

@@ -1,10 +1,10 @@
-When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it
+When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it FIXED 09.11 NOTE: added a subtle glow to the .game-status card. We may need to remove - not necessary and problematic.
 
 --- In untwiriling 
-    when 'buzzing in' and its paused, the progress bar still says 'revealing' it should say pasued or maybe whomever buzzed in?
+    when 'buzzing in' and its paused, the progress bar still says 'revealing' it should say paused or maybe whomever buzzed in?
 
     - As the GM it doesn't show the answer. The GM needs answer to be able to verify that players are correct
-    - On the GM screen it shows 'Award A' and 'Award B', the teams have names - we should show their name instead of 'a' and 'b'
+    - On the GM screen it shows 'Award A' and 'Award B', the teams have names - we should show their name instead of 'a' and 'b' FIXED 09.11
     - It shows two spots with the category and amount (game-status div and question-meta div)
         - Keep one the category and point value displays still good to know
 
@@ -34,13 +34,47 @@ When its time to pick a tile - it says 'kevins turn to pick a tile', but really 
         - Is there a list of people that have buzzed in?
             TBD on how we go back and forth between teams
 
-08.30
+08.30 Work Log
 
-The GM view after a player has buzzed in should display the buzzed in player within the team card that shows the points. Currently, the buzze4d in player shows as a pill at the bottom of the screen below the fold and it may not be visible.
+The GM view after a player has buzzed in should display the buzzed in player within the team card that shows the points. Currently, the buzze4d in player shows as a pill at the bottom of the screen below the fold and it may not be visible. FIXED 08.02
 
-Let anybody on the team pick the category and not just the GM. On the category selection flow. 
+Let anybody on the team pick the category and not just the GM. On the category selection flow. FIXED 08.02
 
-K: When starting a new category to untwirl the previously shown image from the previous category is still there for a second and visible / flashes before we see the new twirled image. So maybe can 'clean up' the old image when we award points or go back to the game board after showing a category
+K: When starting a new category to untwirl the previously shown image from the previous category is still there for a second and visible / flashes before we see the new twirled image. So maybe can 'clean up' the old image when we award points or go back to the game board after showing a category FIXED 08.02
 
 K: there is a "game-status" div and also a "question-meta" div - these have duplicate information when we are on a twirled question. Maybe only keep one. The 'game-status' only shows extra information of 'answer revealed' which doesnt seem useful. So maybe just remove 'game-status' from the twirled question view. FIXED 08.02
+
+Questions
+
+Should the GM be able to join a team?
+
+Should there be a single player option?
+
+Changes
+
+I have no idea what my player name is or which team i'm on. I need a persistent message or label. Same for GM. They need a persistent label. The team badge is fixed at the top of the screen. Not sticky. 
+
+Action buttons. These are in a bottom sheet with no transparency. obscure the playing field.
+
+When a player buzzes in, display a short banner in the GM window. Display their name and team.
+
+Clicking the copy button in the header should update the state and button shape to confirm the code is copied to the clipboard and ready for use. "Code copied" should be displayed, then after a second or two go back to the default state.
+
+When the GM awards a player, display a brief banner message showing the award, the playr, and the team. 
+
+Bugs
+
+Scrolling the GM window is unpredictable. Sometimes it scrolls. Other times not. Ideally - remove all scrolling.
+
+End game (GM) and leave game (player) buttons don't Work
+
+Reloading the browser window during a game exits the game without warning and presents the Join Game screen.
+
+The GM view during an untwirl is not responsive at certain browser screen sizes. This obscures the status bar and the current player. 
+
+Process
+
+Should we move this file over to git issues?
+
+
 

@@ -160,6 +160,7 @@ export async function renderGameUI(gameId) {
 
     track(onValue(ref(rtdb, P.participants(gameId)), (s) => {
         participants = s.val() || {};
+        updateTurnGlow();
 
         // GM: promote any tile request from the active team into selectedTile.
         // Players can't write selectedTile directly (Firebase rules), so they write
@@ -189,6 +190,7 @@ export async function renderGameUI(gameId) {
         currentTurn = val;
         updateActiveTurnDisplay();
         updateStatusMessage();
+        updateTurnGlow();
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/selectedTile`), (s) => {
@@ -346,13 +348,21 @@ export async function renderGameUI(gameId) {
 
         if (currentTurn) {
             const teamName = teams[currentTurn.team]?.name || `Team ${currentTurn.team}`;
-            refs.statusMessage.textContent = isGM
-                ? `${teamName} — pick a category`
+            const isMyTeamsTurn = !isGM && participants[myUid]?.team === currentTurn.team;
+            refs.statusMessage.textContent = isMyTeamsTurn
+                ? `${teamName} — pick a category.`
                 : `${teamName} is picking a category`;
             return;
         }
 
         refs.statusMessage.textContent = 'Waiting for the next tile…';
+    }
+
+    // Pulse the board border for the player whose team is picking.
+    function updateTurnGlow() {
+        if (!refs.statusMessage) return;
+        const isMyTeamsTurn = !isGM && currentTurn?.team && participants[myUid]?.team === currentTurn.team;
+        refs.statusMessage.classList.toggle('is-my-turn', !!isMyTeamsTurn && !currentQuestion);
     }
 
     function updateBoardSelection() {
@@ -389,6 +399,8 @@ export async function renderGameUI(gameId) {
         if (refs.gmControls) refs.gmControls.hidden = !isGM || !active;
         // End game link: board-mode fallback — hidden during question (icon bar covers it)
         if (refs.gmEndBtn) refs.gmEndBtn.hidden = !isGM || active;
+
+        updateTurnGlow();
 
         if (!active) {
             // Cancel swirl if running

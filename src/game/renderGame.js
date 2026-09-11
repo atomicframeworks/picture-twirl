@@ -139,6 +139,8 @@ export async function renderGameUI(gameId) {
         const labelB = refs.awardBBtn?.querySelector('.gm-icon-btn__label');
         if (labelA) labelA.textContent = nameA;
         if (labelB) labelB.textContent = nameB;
+        if (refs.awardABtn) refs.awardABtn.title = `Award ${nameA}`;
+        if (refs.awardBBtn) refs.awardBBtn.title = `Award ${nameB}`;
     }));
 
     track(onValue(ref(rtdb, P.scores(gameId)), (s) => {

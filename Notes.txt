@@ -1,5 +1,8 @@
 When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it NOTE: added a subtle glow to the category board to give them a nudge. FIXED 09.11 
 
+
+Game Flow:
+   
 --- In untwiriling 
     when 'buzzing in' and its paused, the progress bar still says 'revealing' it should say paused or maybe whomever buzzed in?
 

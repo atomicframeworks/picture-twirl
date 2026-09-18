@@ -546,32 +546,61 @@
 }
 
 /* ═══════════════════════════════════════ */
-/* Active-team board glow (players only)   */
+/* Active-team breathing spotlight         */
+/* Targets status bar + top of board only  */
 /* ═══════════════════════════════════════ */
-.board-container.is-my-turn {
-    border-radius: var(--radius-md);
-    animation: my-turn-pulse 3s ease-in-out infinite;
+
+/* Status bar: diffuse ambient halo around the instruction text */
+.game-status.is-my-turn {
+    animation: status-breathe 2.8s ease-in-out infinite;
 }
 
-@keyframes my-turn-pulse {
+/* Board top: soft upward light bleeding into category headers */
+.game-status.is-my-turn + .board-container {
+    animation: board-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes status-breathe {
     0%, 100% {
         box-shadow:
-            0 0 0 2px rgba(6, 182, 212, 0.35),
-            0 0 18px 4px rgba(245, 158, 11, 0.38);
+            var(--shadow-sm),
+            0 0 12px rgba(6, 182, 212, 0.22),
+            0 5px 16px rgba(245, 158, 11, 0.18);
     }
     50% {
         box-shadow:
-            0 0 0 3px rgba(6, 182, 212, 0.70),
-            0 0 36px 10px rgba(245, 158, 11, 0.65);
+            var(--shadow-sm),
+            0 0 22px rgba(6, 182, 212, 0.40),
+            0 7px 26px rgba(245, 158, 11, 0.30);
+    }
+}
+
+@keyframes board-breathe {
+    0%, 100% {
+        box-shadow:
+            0 -6px 14px rgba(6, 182, 212, 0.12),
+            0 -3px 12px rgba(245, 158, 11, 0.10);
+    }
+    50% {
+        box-shadow:
+            0 -8px 24px rgba(6, 182, 212, 0.26),
+            0 -5px 20px rgba(245, 158, 11, 0.18);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .board-container.is-my-turn {
+    .game-status.is-my-turn {
         animation: none;
         box-shadow:
-            0 0 0 3px rgba(6, 182, 212, 0.65),
-            0 0 18px 3px rgba(245, 158, 11, 0.25);
+            var(--shadow-sm),
+            0 0 16px rgba(6, 182, 212, 0.30),
+            0 5px 20px rgba(245, 158, 11, 0.22);
+    }
+    .game-status.is-my-turn + .board-container {
+        animation: none;
+        box-shadow:
+            0 -6px 18px rgba(6, 182, 212, 0.18),
+            0 -3px 14px rgba(245, 158, 11, 0.13);
     }
 }
 

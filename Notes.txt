@@ -1,4 +1,4 @@
-When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it NOTE: added a subtle glow to the category board to give them a nudge. FIXED 09.11 
+When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it NOTE: added a subtle glow to the category board to give them a nudge. FIXED 09.11 Tweak glow radius. Too large. OK. 
 
 
 Game Flow:
@@ -39,13 +39,13 @@ Game Flow:
 
 08.30 Work Log
 
-The GM view after a player has buzzed in should display the buzzed in player within the team card that shows the points. Currently, the buzze4d in player shows as a pill at the bottom of the screen below the fold and it may not be visible. FIXED 08.02
+The GM view after a player has buzzed in should display the buzzed in player within the team card that shows the points. Currently, the buzze4d in player shows as a pill at the bottom of the screen below the fold and it may not be visible. FIXED 08.02 Confirmed 09.13
 
-Let anybody on the team pick the category and not just the GM. On the category selection flow. FIXED 08.02
+Let anybody on the team pick the category and not just the GM. On the category selection flow. FIXED 08.02 Confirmed 09.13
 
-K: When starting a new category to untwirl the previously shown image from the previous category is still there for a second and visible / flashes before we see the new twirled image. So maybe can 'clean up' the old image when we award points or go back to the game board after showing a category FIXED 08.02
+K: When starting a new category to untwirl the previously shown image from the previous category is still there for a second and visible / flashes before we see the new twirled image. So maybe can 'clean up' the old image when we award points or go back to the game board after showing a category FIXED 08.02 confirmed 09.13
 
-K: there is a "game-status" div and also a "question-meta" div - these have duplicate information when we are on a twirled question. Maybe only keep one. The 'game-status' only shows extra information of 'answer revealed' which doesnt seem useful. So maybe just remove 'game-status' from the twirled question view. FIXED 08.02
+K: there is a "game-status" div and also a "question-meta" div - these have duplicate information when we are on a twirled question. Maybe only keep one. The 'game-status' only shows extra information of 'answer revealed' which doesnt seem useful. So maybe just remove 'game-status' from the twirled question view. FIXED 08.02 Confirmed 09.13
 
 Questions
 
@@ -53,7 +53,7 @@ Should the GM be able to join a team?
 
 Should there be a single player option?
 
-Changes
+Gameplay notes
 
 I have no idea what my player name is or which team i'm on. I need a persistent message or label. Same for GM. They need a persistent label. The team badge is fixed at the top of the screen. Not sticky. 
 
@@ -73,11 +73,17 @@ End game (GM) and leave game (player) buttons don't Work
 
 Reloading the browser window during a game exits the game without warning and presents the Join Game screen.
 
-The GM view during an untwirl is not responsive at certain browser screen sizes. This obscures the status bar and the current player. 
+The GM view during twirling is not responsive at certain browser screen sizes. This obscures the status bar and the current player. 
 
 Process
 
 Should we move this file over to git issues?
+
+09.13 Review
+
+Coin flip does not appear on joined player screen.
+
+IF GM loses session, and attempts to rejoin, the GM is now longer the GM. Just a player
 
 
 

@@ -361,9 +361,9 @@ export async function renderGameUI(gameId) {
 
     // Pulse the board border for the player whose team is picking.
     function updateTurnGlow() {
-        if (!refs.boardWrap) return;
+        if (!refs.statusMessage) return;
         const isMyTeamsTurn = !isGM && currentTurn?.team && participants[myUid]?.team === currentTurn.team;
-        refs.boardWrap.classList.toggle('is-my-turn', !!isMyTeamsTurn && !selectedTile && !currentQuestion);
+        refs.statusMessage.classList.toggle('is-my-turn', !!isMyTeamsTurn && !selectedTile && !currentQuestion);
     }
 
     function updateBoardSelection() {

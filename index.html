@@ -266,51 +266,56 @@
   <!-- Game template -->
   <template id="tpl-game">
     <div class="game-root">
-      <!-- Header with game title and code -->
-      <header class="game-header">
-        <h1 class="game-header-title" data-ref="gameTitleEl">Friday Funnies</h1>
-        <div class="game-code-row">
-          <span class="game-code-label">Game Code:</span>
-          <code class="game-code-value" data-ref="codeEl">2KVMR</code>
-          <button class="icon-btn" data-ref="copyCodeBtn" type="button" title="Copy game code">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-          </button>
-        </div>
-      </header>
+      <!-- Fixed top region: header + scorecards + status — always above the scroll area -->
+      <div class="game-top" data-ref="gameTop">
+        <header class="game-header">
+          <h1 class="game-header-title" data-ref="gameTitleEl">Friday Funnies</h1>
+          <div class="game-code-row">
+            <span class="game-code-label">Game Code:</span>
+            <code class="game-code-value" data-ref="codeEl">2KVMR</code>
+            <button class="icon-btn" data-ref="copyCodeBtn" type="button" title="Copy game code">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
+        </header>
 
-      <!-- Scrollable main area -->
-      <main class="game-main">
-        <!-- Team score cards -->
-        <div class="scoreboard">
-          <div class="scoreboard-card is-a" data-ref="teamACard">
-            <div class="scoreboard-content">
-              <div class="scoreboard-icon" data-ref="teamAIcon">🐕</div>
-              <div class="scoreboard-info">
-                <div class="scoreboard-name" data-ref="teamAName">Team Puppers</div>
-                <div class="scoreboard-score" data-ref="teamAScore">0</div>
+        <!-- Scorecards + status: outside the scroll container so they never scroll away -->
+        <div class="game-info-band">
+          <!-- Team score cards -->
+          <div class="scoreboard">
+            <div class="scoreboard-card is-a" data-ref="teamACard">
+              <div class="scoreboard-content">
+                <div class="scoreboard-icon" data-ref="teamAIcon">🐕</div>
+                <div class="scoreboard-info">
+                  <div class="scoreboard-name" data-ref="teamAName">Team Puppers</div>
+                  <div class="scoreboard-score" data-ref="teamAScore">0</div>
+                </div>
+                <div class="scoreboard-player" data-ref="teamAPlayer"></div>
               </div>
-              <div class="scoreboard-player" data-ref="teamAPlayer"></div>
+            </div>
+
+            <div class="scoreboard-card is-b" data-ref="teamBCard">
+              <div class="scoreboard-content">
+                <div class="scoreboard-icon" data-ref="teamBIcon">🐈</div>
+                <div class="scoreboard-info">
+                  <div class="scoreboard-name" data-ref="teamBName">Team Kat Fever</div>
+                  <div class="scoreboard-score" data-ref="teamBScore">0</div>
+                </div>
+                <div class="scoreboard-player" data-ref="teamBPlayer"></div>
+              </div>
             </div>
           </div>
 
-          <div class="scoreboard-card is-b" data-ref="teamBCard">
-            <div class="scoreboard-content">
-              <div class="scoreboard-icon" data-ref="teamBIcon">🐈</div>
-              <div class="scoreboard-info">
-                <div class="scoreboard-name" data-ref="teamBName">Team Kat Fever</div>
-                <div class="scoreboard-score" data-ref="teamBScore">0</div>
-              </div>
-              <div class="scoreboard-player" data-ref="teamBPlayer"></div>
-            </div>
-          </div>
+          <!-- Status message -->
+          <div class="game-status" data-ref="statusMessage">Waiting for the next tile ..</div>
         </div>
+      </div>
 
-        <!-- Status message -->
-        <div class="game-status" data-ref="statusMessage">Waiting for the next tile ..</div>
-
+      <!-- Scrollable main area (image and board scroll here; nothing above can bleed through) -->
+      <main class="game-main" data-ref="gameMain">
         <!-- Board grid (visible when no active question) -->
         <div class="board-container" data-ref="boardWrap">
           <div id="board" data-ref="boardEl"></div>
@@ -318,6 +323,8 @@
 
         <!-- Question viewer (visible when currentQuestion is set) -->
         <div class="question-viewer" data-ref="viewerEl" hidden>
+          <!-- Sentinel: when this exits the scroll viewport the GM header collapses -->
+          <div class="question-sentinel" data-ref="questionSentinel" aria-hidden="true"></div>
           <div class="question-meta">
             <span class="q-category" data-ref="qCategory">Category</span>
             <span class="q-dot">·</span>

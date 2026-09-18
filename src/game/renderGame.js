@@ -59,10 +59,12 @@ export async function renderGameUI(gameId) {
     let swirlCtrl = null;
     let lastImageUrl = null;
     let hasBuzz = false;          // someone is in the buzz queue
+    let firstBuzzerName = null;   // display name of the first person in the buzz queue
     let swirlPausedByGM = false;  // GM hit pause (synced via RTDB)
     let prevScores = null;        // detect score increases → celebrate
     let prevBuzzCount = 0;        // detect new buzzes → buzz sound
     let prevShowAnswer = false;   // detect reveal → chime
+    let compactObserver = null;   // IntersectionObserver for GM compact-header collapse
 
     // Unlock audio on the first user gesture (browsers gate autoplay).
     const unlockOnce = () => unlockAudio();
@@ -77,6 +79,7 @@ export async function renderGameUI(gameId) {
         disposeListeners();
         if (swirlCtrl?.cancel) swirlCtrl.cancel();
         swirlCtrl = null;
+        if (compactObserver) { compactObserver.disconnect(); compactObserver = null; }
     }
 
     // ─── Tray exit links: wire BEFORE async work so they always attach ─────────
@@ -234,7 +237,12 @@ export async function renderGameUI(gameId) {
 
         // A buzz pauses the swirl (for everyone, via the shared queue).
         hasBuzz = ordered.length > 0;
+        firstBuzzerName = ordered.length > 0
+            ? (participants?.[ordered[0].uid]?.displayName || null)
+            : null;
         applySwirlPause();
+        refreshSwirlLabel();
+        updateStatusMessage();
 
         // Show first buzzer per team in the scoreboard cards (always visible at top).
         updateBuzzDisplay(ordered);
@@ -252,6 +260,8 @@ export async function renderGameUI(gameId) {
         swirlPausedByGM = s.val() === true;
         applySwirlPause();
         updatePauseButton();
+        refreshSwirlLabel();
+        updateStatusMessage();
     }));
 
     // Pause the local swirl if a buzz is in OR the GM paused; resume otherwise.
@@ -280,10 +290,30 @@ export async function renderGameUI(gameId) {
         if (label) label.textContent = swirlPausedByGM ? 'Resume' : 'Pause';
     }
 
+    // Progress bar label: reflects actual state (paused / buzzed / revealing).
+    function refreshSwirlLabel() {
+        if (!refs.swirlLabel) return;
+        if (hasBuzz) {
+            refs.swirlLabel.textContent = firstBuzzerName
+                ? `Buzzed in — ${firstBuzzerName}`
+                : 'Buzzed in';
+        } else if (swirlPausedByGM) {
+            refs.swirlLabel.textContent = 'Paused';
+        } else {
+            refs.swirlLabel.textContent = 'Revealing…';
+        }
+    }
+
     // Reveal-progress bar driven by the swirl's onProgress callback.
     function setSwirlProgress(progress) {
         if (refs.swirlFill) refs.swirlFill.style.width = `${Math.round(progress * 100)}%`;
-        if (refs.swirlLabel) refs.swirlLabel.textContent = progress >= 1 ? 'Revealed!' : 'Revealing…';
+        if (refs.swirlLabel) {
+            if (progress >= 1) {
+                refs.swirlLabel.textContent = 'Revealed!';
+            } else {
+                refreshSwirlLabel();
+            }
+        }
     }
 
     // ─── Coin flip overlay (shown once when the first turn is assigned) ────────
@@ -333,9 +363,18 @@ export async function renderGameUI(gameId) {
 
         if (currentQuestion) {
             const { category, value, showAnswer } = currentQuestion;
-            refs.statusMessage.textContent = showAnswer
-                ? `Answer revealed — ${category} for $${value}`
-                : `${category} for $${value}`;
+            if (isGM) {
+                let state;
+                if (showAnswer)         state = 'Answer revealed';
+                else if (hasBuzz)       state = firstBuzzerName ? `Buzzed in — ${firstBuzzerName}` : 'Buzzed in';
+                else if (swirlPausedByGM) state = 'Paused';
+                else                    state = 'Revealing';
+                refs.statusMessage.textContent = `${category} · $${value} — ${state}`;
+            } else {
+                refs.statusMessage.textContent = showAnswer
+                    ? `Answer revealed — ${category} for $${value}`
+                    : `${category} for $${value}`;
+            }
             return;
         }
 
@@ -388,7 +427,7 @@ export async function renderGameUI(gameId) {
         // Toggle board vs viewer
         if (refs.boardWrap) refs.boardWrap.hidden = active;
         if (refs.viewerEl) refs.viewerEl.hidden = !active;
-        if (refs.statusMessage) refs.statusMessage.hidden = active;
+        if (refs.statusMessage) refs.statusMessage.hidden = active && !isGM;
         if (refs.okBtn) refs.okBtn.hidden = active || !isGM;
 
         // Buzz button: non-GM, only while question is active and answer not yet shown
@@ -402,6 +441,21 @@ export async function renderGameUI(gameId) {
         if (refs.gmEndBtn) refs.gmEndBtn.hidden = !isGM || active;
 
         updateTurnGlow();
+
+        // ── GM compact-header collapse (IntersectionObserver on sentinel) ──────
+        if (active && isGM) {
+            if (!compactObserver && refs.questionSentinel && refs.gameTop && refs.gameMain) {
+                // First time this question becomes active: reset scroll and start observer.
+                if (refs.gameMain) refs.gameMain.scrollTop = 0;
+                compactObserver = new IntersectionObserver((entries) => {
+                    refs.gameTop.classList.toggle('is-compact', !entries[0].isIntersecting);
+                }, { root: refs.gameMain, threshold: 0 });
+                compactObserver.observe(refs.questionSentinel);
+            }
+        } else {
+            if (compactObserver) { compactObserver.disconnect(); compactObserver = null; }
+            if (refs.gameTop) refs.gameTop.classList.remove('is-compact');
+        }
 
         if (!active) {
             // Cancel swirl if running

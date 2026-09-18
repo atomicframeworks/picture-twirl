@@ -4,10 +4,12 @@
 */
 
 .game-root {
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh; /* dynamic viewport height: adjusts for mobile browser chrome */
     background: transparent;
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* clip children; game-main owns the scroll */
 }
 
 /* Scrollable middle area between sticky header and sticky tray */
@@ -20,6 +22,87 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+}
+
+/* ═══════════════════════════════════════ */
+/* Fixed top region (header + info band)   */
+/* Lives outside .game-main so the scroll  */
+/* container can never bleed through it.   */
+/* ═══════════════════════════════════════ */
+.game-top {
+    flex-shrink: 0; /* never compress; game-main takes remaining space */
+    z-index: 10;
+}
+
+.game-info-band {
+    background: var(--bg, #F6F4FF);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    box-shadow: 0 4px 12px rgba(30, 27, 46, .07);
+    transition: gap 0.25s ease, padding 0.25s ease;
+}
+
+/* ─── GM compact header collapse ──────── */
+
+/* Collapse the gradient game-header when sentinel exits scroll viewport */
+.game-top > .game-header {
+    overflow: hidden;
+    transition: max-height 0.25s ease, padding-top 0.25s ease, padding-bottom 0.25s ease, opacity 0.2s ease;
+    max-height: 240px;
+}
+
+.game-top.is-compact > .game-header {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+}
+
+/* Compact info band */
+.game-top.is-compact .game-info-band {
+    padding: var(--space-2) var(--space-4);
+    gap: var(--space-2);
+}
+
+/* Compact scorecards: drop emoji icon, tighten padding and type */
+.game-top.is-compact .scoreboard-icon {
+    display: none;
+}
+
+.game-top.is-compact .scoreboard-card {
+    padding: var(--space-2) var(--space-3);
+    transition: padding 0.25s ease;
+}
+
+.game-top.is-compact .scoreboard-name {
+    font-size: 12px;
+}
+
+.game-top.is-compact .scoreboard-score {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.game-top.is-compact .scoreboard-player:not(:empty) {
+    font-size: 10px;
+    padding: 2px 7px;
+    top: 6px;
+    right: 8px;
+}
+
+/* Compact status bar */
+.game-top.is-compact .game-status {
+    padding: var(--space-2) var(--space-3);
+    font-size: 13px;
+}
+
+/* Sentinel: zero-height, invisible — just a scroll position marker */
+.question-sentinel {
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
 }
 
 /* ═══════════════════════════════════════ */
@@ -39,6 +122,7 @@
     overflow: hidden;
     color: #fff;
     box-shadow: var(--shadow-md);
+    transition: padding 0.25s ease;
 }
 
 .scoreboard-card.is-a {

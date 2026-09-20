@@ -20,7 +20,7 @@ import { on as listen } from '../ui/dom.js';
 import { attachCopyButton } from '../ui/copyButton.js';
 import { mountTemplate, collectRefs } from '../ui/templates.js';
 import { createBoard } from './createBoard.js';
-import { startSwirlAnimation } from './swirl.js';
+import { startSwirlAnimation, drawUnswirled } from './swirl.js';
 import { enqueueBuzz, clearBuzzQueue } from './buzz.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
 import { initializeStartingTurn, advanceTurn } from './turn.js';
@@ -55,7 +55,8 @@ export async function renderGameUI(gameId) {
     let turnFirstSeen = false;    // skip coin flip on reconnect/refresh
     let selectedTile = null;      // { id, category, value } — GM has picked, not yet posted
     let currentQuestion = null;   // { id, category, imageUrl, value, showAnswer }
-    let swirlStartTime = null;
+    let swirlStartTime = null;    // server timestamp (ms) when the current swirl began
+    let serverTimeOffset = 0;     // ms to add to Date.now() to get server time (.info/serverTimeOffset)
     let swirlCtrl = null;
     let lastImageUrl = null;
     let hasBuzz = false;          // someone is in the buzz queue
@@ -215,6 +216,13 @@ export async function renderGameUI(gameId) {
         swirlStartTime = typeof s.val() === 'number' ? s.val() : null;
     }));
 
+    // Clock skew between this device and Firebase. swirlStartTime is a server
+    // timestamp, so comparing it against a raw Date.now() puts a client whose
+    // clock runs ahead straight to the end of the reveal (or behind → late).
+    track(onValue(ref(rtdb, '.info/serverTimeOffset'), (s) => {
+        serverTimeOffset = Number(s.val()) || 0;
+    }));
+
     // ─── Buzz queue ────────────────────────────────────────────────────────────
     track(onValue(ref(rtdb, P.buzzQueue(gameId)), (s) => {
         const obj = s.val() || {};
@@ -274,13 +282,10 @@ export async function renderGameUI(gameId) {
     }
 
     // Draw the fully-clear image onto the swirl canvas (used on answer reveal).
+    // Same working-resolution cap as the swirl so a huge source can't exceed
+    // mobile canvas limits at reveal time.
     function unswirlImage() {
-        const img = refs.twirlImage;
-        const cv = refs.twirlCanvas;
-        if (!img || !cv || !img.naturalWidth) return;
-        cv.width = img.naturalWidth;
-        cv.height = img.naturalHeight;
-        cv.getContext('2d')?.drawImage(img, 0, 0, cv.width, cv.height);
+        drawUnswirled(refs.twirlImage, refs.twirlCanvas);
     }
 
     function updatePauseButton() {
@@ -494,8 +499,9 @@ export async function renderGameUI(gameId) {
             setSwirlProgress(0);
             refs.twirlImage.onload = () => {
                 if (swirlCtrl?.cancel) swirlCtrl.cancel();
-                const now = Date.now();
-                const elapsed = swirlStartTime ? Math.max(0, now - swirlStartTime) : 0;
+                // Server-aligned: how far into the reveal everyone else already is.
+                const serverNow = Date.now() + serverTimeOffset;
+                const elapsed = swirlStartTime ? Math.max(0, serverNow - swirlStartTime) : 0;
                 swirlCtrl = startSwirlAnimation(
                     refs.twirlImage,
                     refs.twirlCanvas,

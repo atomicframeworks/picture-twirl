@@ -146,11 +146,22 @@ point-value config in use.
 - Claimed phases `lobby|playing`; real is `lobby|live|ended`.
 - Claimed GM writes go through `gameService.js` (dead file).
 
-### 4.5 Performance (deferred to Phase 3)
-- `swirl.js` runs a per-pixel double loop with `sqrt/sin/cos` **every frame** for
-  30s. Millions of trig ops/frame on the full-res image → jank on phones (the
-  target device). Options: precompute a displacement map, downscale the working
-  canvas, or move to CSS/WebGL distortion.
+### 4.5 Performance (fixed — Phase 3, swirl)
+- `swirl.js` ran a per-pixel double loop with `sqrt/sin/cos` **every frame** for
+  30s on the full-res image. Surfaced in testing as "the remote player sees the
+  picture unswirled": on a phone a 6000×4269 source (`rihanna.jpg`) took seconds
+  per frame, and the clear image was painted to the visible canvas before the
+  first swirled frame landed. Separately, `elapsed` was `Date.now() -
+  swirlStartTime` (a server timestamp) — any device whose clock ran ahead jumped
+  straight to the end of the reveal.
+- **Fix:** work at a capped resolution (`MAX_WORKING_PX` = 720 long edge) from an
+  offscreen source canvas; draw the first frame synchronously at the synced
+  position; precompute per-pixel geometry + a per-frame cos/sin table keyed by
+  whole-pixel distance; reuse the output buffer; one rAF loop (pause/resume used
+  to stack loops that `cancel()` couldn't all stop). `renderGame.js` now applies
+  `.info/serverTimeOffset` and reveals via `drawUnswirled()` at the same cap.
+- Still open: `public/images/rihanna.jpg` is 2 MB / 25.6 MP — slow to *download*
+  on a remote phone regardless; resize the asset.
 
 ### 4.6 Tooling / structure (Phase 3)
 - `package-lock.json` **is** committed (good). No linter/formatter/tests.
@@ -242,7 +253,8 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
   from Phase 3 because it verifies the closure seam-split (catches out-of-scope
   refs a build misses). Tree is clean (0 errors). **Run `npm run lint` after
   every refactor step from here on.**
-- Swirl perf (4.5).
+- ✅ **Swirl perf** (4.5): capped working resolution, offscreen source, trig
+  table, single rAF loop, server-aligned clock. See 4.5.
 - Single CSS strategy / bundling.
 - Format (Prettier) — deferred; would reformat the whole 4-space tree, do it as
   its own isolated commit.

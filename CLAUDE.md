@@ -167,10 +167,19 @@ Game sets define content structure:
 
 **Swirl Effect (`game/swirl.js`)**
 - Canvas-based progressive reveal over 30s
-- Server-aligned elapsed time (uses `swirlStartTime` from RTDB)
-- Pauses automatically when buzzQueue is non-empty
-- Cancels on answer reveal
-- Returns control object: `{ pause(), resume(), cancel() }`
+- Server-aligned elapsed time: `swirlStartTime` (RTDB server timestamp) is
+  compared against `Date.now() + .info/serverTimeOffset`, never raw `Date.now()`,
+  so a device with a skewed clock still starts at the same point as everyone else
+- Runs at a capped working resolution (`MAX_WORKING_PX` = 720 on the long edge)
+  from an offscreen source canvas — the visible canvas never flashes the clear
+  picture, and huge source images (one set ships 6000×4269) stay cheap on phones
+- Per-pixel geometry is precomputed; cos/sin come from a per-frame table keyed by
+  whole-pixel distance from centre (not two trig calls per pixel per frame)
+- Pauses automatically when buzzQueue is non-empty (pause stops the rAF loop;
+  resume restarts exactly one — no stacked loops)
+- Cancels on answer reveal; `drawUnswirled()` draws the clear image at the same
+  capped size
+- Returns control object: `{ pause(), resume(), cancel(), isPaused() }`
 
 **Buzz Queue (`game/buzz.js`)**
 - Players push to `/buzzQueue` with `{ uid, createdAt: serverTimestamp() }`

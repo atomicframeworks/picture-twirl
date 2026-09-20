@@ -276,6 +276,7 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-06-14 | 3 (lint) | ESLint flat config + gate; remove dead `buzzCount` | `20579e7` |
 | 2026-06-14 | 3 (dx) | Add `.env.local.example` | `d2f01c8` |
 | 2026-06-14 | 2.2 (step 2) | Untangle lobby instruction state machine → `lobbyInstructions.js` | `005f65d` |
+| 2026-09-20 | 3 (perf) | Swirl: server-aligned clock (`.info/serverTimeOffset`), capped working resolution, single rAF loop | `0e9020a` |
 
 > Append a row per commit. Keep the newest at the bottom.
 

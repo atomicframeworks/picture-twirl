@@ -102,12 +102,17 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
 
   <section class="finale-s finale-s--cta" data-ref="sCta">
     <div class="finale-cta-title" data-ref="ctaTitle"></div>
-    <p class="finale-play-q">Play again?</p>
-    <div class="finale-vote-row">
-      <button class="btn secondary finale-vote-btn" data-ref="voteYes">👍 Yes</button>
-      <button class="btn ghost finale-vote-btn" data-ref="voteNo">👎 No</button>
+
+    <!-- Players only: vote controls -->
+    <p class="finale-play-q" data-ref="voteHeading">Play again?</p>
+    <div class="finale-vote-row" data-ref="voteRow">
+      <button class="btn ghost finale-vote-btn" data-ref="voteYes" aria-pressed="false">Yes</button>
+      <button class="btn ghost finale-vote-btn" data-ref="voteNo" aria-pressed="false">No</button>
     </div>
-    <div class="finale-vote-tally" data-ref="voteTally" hidden></div>
+    <div class="finale-vote-confirm" data-ref="voteConfirmMsg"></div>
+
+    <!-- GM only: live vote summary + decision buttons -->
+    <div class="finale-gm-summary" data-ref="gmVoteSummary"></div>
     <div class="finale-gm-actions" data-ref="gmActions" hidden>
       <button class="btn primary" data-ref="playAgainBtn">Play Again</button>
       <button class="btn ghost" data-ref="endSessionBtn">End Session</button>
@@ -161,37 +166,86 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
 
         // ── CTA section ──────────────────────────────────────────────────────
         refs.ctaTitle.textContent = gameTitle ? `Thanks for playing ${gameTitle}!` : 'Thanks for playing!';
-        if (isGM) refs.gmActions.hidden = false;
+
+        if (isGM) {
+            // GM sees: live vote summary + action buttons; no vote controls
+            refs.voteHeading.hidden = true;
+            refs.voteRow.hidden = true;
+            refs.voteConfirmMsg.hidden = true;
+            refs.gmVoteSummary.textContent = 'Waiting for player votes…';
+            refs.gmActions.hidden = false;
+        } else {
+            // Players see: vote controls; no GM summary or action buttons
+            refs.gmVoteSummary.hidden = true;
+            refs.gmActions.hidden = true;
+            // Pre-vote confirm line (applyVoteHighlight will keep this in sync)
+            refs.voteConfirmMsg.textContent = 'You can change your vote.';
+        }
 
         // ── Vote listener ────────────────────────────────────────────────────
         let unsubVotes = null;
         let myVote = null;
 
+        // Applies selected state from a vote value ('yes' | 'no' | null).
+        // Derives button text and confirmation message from persisted state so
+        // the UI is correct after reload, reconnect, or any Firebase re-push.
+        // Derived from persisted playAgainVote ('yes' | 'no' | null).
+        // Only the is-voted class and aria-pressed toggle — button text stays fixed
+        // so there is no layout shift and no emoji/checkmark juggling.
+        function applyVoteHighlight(vote) {
+            if (refs.voteYes) {
+                const sel = vote === 'yes';
+                refs.voteYes.classList.toggle('is-voted', sel);
+                refs.voteYes.setAttribute('aria-pressed', String(sel));
+                refs.voteYes.textContent = sel ? '✓ Yes' : 'Yes';
+            }
+            if (refs.voteNo) {
+                const sel = vote === 'no';
+                refs.voteNo.classList.toggle('is-voted', sel);
+                refs.voteNo.setAttribute('aria-pressed', String(sel));
+                refs.voteNo.textContent = sel ? '✓ No' : 'No';
+            }
+            if (refs.voteConfirmMsg) {
+                refs.voteConfirmMsg.textContent = vote === 'yes' ? 'Your vote: Yes'
+                    : vote === 'no' ? 'Your vote: No'
+                    : 'You can change your vote.';
+            }
+        }
+
         unsubVotes = onValue(ref(rtdb, P.participants(gameId)), (snap) => {
             const parts = snap.val() || {};
-            let yes = 0, total = 0;
+            // GM is excluded from both numerator and denominator.
+            let yes = 0, voted = 0, total = 0;
             for (const p of Object.values(parts)) {
                 if (p.isGM) continue;
                 total++;
-                if (p.playAgainVote === 'yes') yes++;
+                if (p.playAgainVote === 'yes') { yes++; voted++; }
+                else if (p.playAgainVote === 'no') voted++;
             }
-            if (isGM && refs.voteTally) {
-                refs.voteTally.textContent = total > 0
-                    ? `${yes} of ${total} ${total === 1 ? 'player' : 'players'} want another round` : '';
-                refs.voteTally.hidden = total === 0;
+
+            // GM: show live vote summary
+            if (isGM && refs.gmVoteSummary) {
+                refs.gmVoteSummary.textContent = voted === 0
+                    ? 'Waiting for player votes…'
+                    : `${yes} of ${total} ${total === 1 ? 'player' : 'players'} want another round`;
+            }
+
+            // Players: sync own vote highlight from persisted state.
+            // Covers initial load, reload, and any Firebase re-push.
+            if (!isGM && myUid) {
+                const persisted = parts[myUid]?.playAgainVote || null;
+                myVote = persisted;
+                applyVoteHighlight(persisted);
             }
         });
 
-        function applyVoteHighlight(vote) {
-            refs.voteYes?.classList.toggle('is-voted', vote === 'yes');
-            refs.voteNo?.classList.toggle('is-voted', vote === 'no');
-        }
-
         async function castVote(vote) {
             if (!myUid || myVote === vote) return;
+            // Optimistic: apply immediately for responsiveness before the round-trip
             myVote = vote;
             applyVoteHighlight(vote);
             await update(ref(rtdb, P.participant(gameId, myUid)), { playAgainVote: vote });
+            // Firebase listener will re-confirm from persisted state shortly after
         }
 
         refs.voteYes?.addEventListener('click', () => castVote('yes'));

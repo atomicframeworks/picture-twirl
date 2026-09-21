@@ -1,0 +1,286 @@
+/* src/finaleScreen.css
+   End-game finale screen — four stacked sections that fade in on schedule. */
+
+/* ── Root container ────────────────────────────────────────────────────── */
+.finale-root {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 56px;
+    gap: 20px;
+    background: var(--bg-grad);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ── Shared section shell ──────────────────────────────────────────────── */
+.finale-s {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.55s ease, transform 0.45s ease;
+    /* sections start hidden; JS adds is-visible + removes [hidden] */
+}
+
+.finale-s.is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .finale-s {
+        transition: opacity 0.2s ease;
+        transform: none;
+    }
+}
+
+/* ── Winner section ─────────────────────────────────────────────────────── */
+.finale-s--winner {
+    padding: 36px 24px 28px;
+    background: color-mix(in srgb, var(--finale-hue, var(--brand-1)) 14%, white);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 14px 48px color-mix(in srgb, var(--finale-hue, var(--brand-1)) 28%, transparent);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Soft radial glow behind the icon */
+.finale-glow {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle,
+        color-mix(in srgb, var(--finale-hue, var(--brand-1)) 30%, transparent),
+        transparent 70%
+    );
+    pointer-events: none;
+}
+
+.finale-icon {
+    font-size: clamp(52px, 14vw, 76px);
+    line-height: 1;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,.15));
+    animation: finale-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes finale-pop {
+    from { transform: scale(0.6); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .finale-icon { animation: none; }
+}
+
+.finale-team-name {
+    font-family: var(--font-display);
+    font-size: clamp(26px, 7vw, 40px);
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    line-height: 1.15;
+    margin-top: 4px;
+}
+
+.finale-badge {
+    font-family: var(--font-display);
+    font-size: clamp(18px, 5vw, 26px);
+    font-weight: 700;
+    color: var(--finale-hue, var(--brand-1));
+    letter-spacing: 0.04em;
+}
+
+.finale-badge.is-tie {
+    color: var(--accent-amber);
+}
+
+/* ── Scores section ─────────────────────────────────────────────────────── */
+.finale-s--scores {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px 18px;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.finale-scoreboard {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.finale-score-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 2px 0;
+}
+
+.finale-score-row.is-winner .fsr-name,
+.finale-score-row.is-winner .fsr-val {
+    color: var(--finale-hue, var(--brand-1));
+}
+
+.fsr-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.fsr-val {
+    font-family: var(--font-display);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+}
+
+.finale-tagline {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 2px;
+}
+
+/* ── MVP section ───────────────────────────────────────────────────────── */
+.finale-s--mvp {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 24px 20px 20px;
+    gap: 8px;
+    box-shadow: var(--shadow-sm);
+}
+
+.finale-mvp-trophy {
+    font-size: 34px;
+    line-height: 1;
+}
+
+.finale-mvp-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: -2px;
+}
+
+.finale-mvp-name {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 6.5vw, 36px);
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    line-height: 1.1;
+}
+
+.finale-mvp-stats {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--brand-1);
+    text-align: center;
+}
+
+.finale-mvp-team {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* ── CTA section ───────────────────────────────────────────────────────── */
+.finale-s--cta {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 24px 20px 22px;
+    gap: 16px;
+    box-shadow: var(--shadow-sm);
+}
+
+.finale-cta-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: center;
+}
+
+.finale-play-q {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    text-align: center;
+    margin: 0;
+}
+
+.finale-vote-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    width: 100%;
+}
+
+.finale-vote-btn {
+    flex: 1;
+    max-width: 148px;
+    font-size: 16px;
+    font-family: var(--font-display);
+    border: 2px solid var(--line);
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease,
+                box-shadow 0.18s ease;
+}
+
+/* Selected: solid brand gradient, same as .btn.primary */
+.finale-vote-btn.is-voted {
+    background: var(--grad-brand);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: var(--shadow-brand);
+}
+
+.finale-vote-btn.is-voted:hover {
+    filter: brightness(1.06);
+}
+
+/* Confirmation / pre-vote hint — always present to prevent layout shift */
+.finale-vote-confirm {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    min-height: 1.5em;
+}
+
+/* GM-only vote summary ("Waiting…" / "2 of 2 players…") */
+.finale-gm-summary {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: center;
+}
+
+.finale-gm-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+}
+
+.finale-gm-actions .btn {
+    flex: 1;
+    min-width: 120px;
+}

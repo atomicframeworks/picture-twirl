@@ -59,10 +59,11 @@ export async function renderGameUI(gameId) {
     let serverTimeOffset = 0;     // ms to add to Date.now() to get server time (.info/serverTimeOffset)
     let swirlCtrl = null;
     let lastImageUrl = null;
-    let hasBuzz = false;          // someone is in the buzz queue
-    let firstBuzzerUid = null;    // uid of the first person in the buzz queue
-    let firstBuzzerName = null;   // display name of the first person in the buzz queue
-    let swirlPausedByGM = false;  // GM hit pause (synced via RTDB)
+    let hasBuzz = false;                // someone is in the buzz queue
+    let firstBuzzerUid = null;          // uid of the first person in the buzz queue
+    let firstBuzzerName = null;         // display name of the first person in the buzz queue
+    let meBuzzedThisQuestion = false;   // this player has used their one buzz attempt this question
+    let swirlPausedByGM = false;        // GM hit pause (synced via RTDB)
     let prevScores = null;        // detect score increases → celebrate
     let prevBuzzCount = 0;        // detect new buzzes → buzz sound
     let prevShowAnswer = false;   // detect reveal → chime
@@ -269,11 +270,10 @@ export async function renderGameUI(gameId) {
         if (refs.teamAPlayer) refs.teamAPlayer.textContent = '';
         if (refs.teamBPlayer) refs.teamBPlayer.textContent = '';
 
-        // Players: disable buzz button after they've buzzed
-        if (refs.buzzBtn && !isGM) {
-            const meBuzzed = ordered.some(e => e.uid === myUid);
-            refs.buzzBtn.disabled = meBuzzed;
-            refs.buzzBtn.textContent = meBuzzed ? 'BUZZED' : 'BUZZ IN';
+        // Track this player's per-question buzz attempt and re-render the button.
+        if (!isGM) {
+            meBuzzedThisQuestion = ordered.some(e => e.uid === myUid);
+            updateBuzzButton();
         }
     }));
 
@@ -284,6 +284,7 @@ export async function renderGameUI(gameId) {
         updatePauseButton();
         refreshSwirlLabel();
         updateStatusMessage();
+        updateBuzzButton(); // swirlPaused changing affects eligible-player button state
     }));
 
     // Pause/resume based solely on the shared swirlPaused RTDB flag.
@@ -310,6 +311,27 @@ export async function renderGameUI(gameId) {
         refs.pauseSwirlBtn.dataset.paused = swirlPausedByGM ? 'true' : 'false';
         const label = refs.pauseSwirlBtn.querySelector('.gm-icon-btn__label');
         if (label) label.textContent = swirlPausedByGM ? 'Resume' : 'Pause';
+    }
+
+    // Unified buzz button presenter. Three states:
+    //   • enabled "BUZZ IN"   — eligible player, reveal running
+    //   • disabled "BUZZ IN"  — reveal paused (GM or buzz), player hasn't spent their attempt
+    //   • disabled "BUZZED"   — this player buzzed and reveal is currently paused
+    //   • disabled "BUZZ USED"— this player buzzed and reveal has since resumed
+    // swirlPausedByGM answers "can anyone buzz?" (reveal running vs paused).
+    // meBuzzedThisQuestion answers "has THIS player spent their one attempt?"
+    function updateBuzzButton() {
+        if (!refs.buzzBtn || isGM) return;
+        const active = !!currentQuestion && !currentQuestion.showAnswer;
+        if (!active) return; // visibility is controlled by renderQuestionViewer
+
+        if (meBuzzedThisQuestion) {
+            refs.buzzBtn.disabled = true;
+            refs.buzzBtn.textContent = swirlPausedByGM ? 'BUZZED' : 'BUZZ USED';
+        } else {
+            refs.buzzBtn.disabled = swirlPausedByGM;
+            refs.buzzBtn.textContent = 'BUZZ IN';
+        }
     }
 
     // Progress bar label: reflects actual state (paused / buzzed / revealing).
@@ -505,6 +527,7 @@ export async function renderGameUI(gameId) {
         if (refs.buzzBtn) {
             refs.buzzBtn.hidden = isGM || !active || !!currentQuestion?.showAnswer;
         }
+        if (!isGM && active) updateBuzzButton();
 
         // GM controls: only GM, only while question is active
         if (refs.gmControls) refs.gmControls.hidden = !isGM || !active;
@@ -550,6 +573,7 @@ export async function renderGameUI(gameId) {
         }
 
         if (!active) {
+            meBuzzedThisQuestion = false; // fresh eligibility for the next question
             // Cancel swirl if running
             if (swirlCtrl?.cancel) swirlCtrl.cancel();
             swirlCtrl = null;
@@ -757,6 +781,8 @@ export async function renderGameUI(gameId) {
         track(listen(refs.buzzBtn, 'click', async () => {
             if (isGM) return;
             if (!currentQuestion || currentQuestion.showAnswer) return;
+            if (swirlPausedByGM) return;        // reveal is paused — no buzzing until GM resumes
+            if (meBuzzedThisQuestion) return;    // one buzz per player per question
             try {
                 await enqueueBuzz(gameId);
             } catch (err) {

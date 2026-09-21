@@ -243,11 +243,19 @@ export async function renderGameUI(gameId) {
                 : '';
         }
 
-        // New buzz arrived → buzzer sound (all clients hear it).
-        if (ordered.length > prevBuzzCount) playBuzz();
+        // New buzz arrived → sound + auto-pause reveal for all clients.
+        if (ordered.length > prevBuzzCount) {
+            playBuzz();
+            // GM writes swirlPaused:true so every client pauses via the shared RTDB
+            // listener. This keeps swirlPaused as the single animation-pause flag,
+            // which means GM's Resume button can actually resume even with buzzers waiting.
+            if (isGM && currentQuestion && !currentQuestion.showAnswer && !swirlPausedByGM) {
+                update(ref(rtdb, P.game(gameId)), { swirlPaused: true }).catch(console.error);
+            }
+        }
         prevBuzzCount = ordered.length;
 
-        // A buzz pauses the swirl (for everyone, via the shared queue).
+        // hasBuzz is used for display only (buzzer name, label, status text).
         hasBuzz = ordered.length > 0;
         firstBuzzerUid = ordered.length > 0 ? (ordered[0].uid || null) : null;
         firstBuzzerName = ordered.length > 0
@@ -278,12 +286,15 @@ export async function renderGameUI(gameId) {
         updateStatusMessage();
     }));
 
-    // Pause the local swirl if a buzz is in OR the GM paused; resume otherwise.
+    // Pause/resume based solely on the shared swirlPaused RTDB flag.
+    // hasBuzz is display-only; the GM client writes swirlPaused:true on each new
+    // buzz so every client pauses through the same listener — one source of truth.
+    // This means Pause/Resume always works: Resume writes swirlPaused:false and
+    // the animation actually resumes even if the buzz queue is still non-empty.
     // Never act once the answer is revealed (the swirl is gone by then).
     function applySwirlPause() {
         if (!swirlCtrl || currentQuestion?.showAnswer) return;
-        const shouldPause = hasBuzz || swirlPausedByGM;
-        if (shouldPause) swirlCtrl.pause?.();
+        if (swirlPausedByGM) swirlCtrl.pause?.();
         else swirlCtrl.resume?.();
     }
 

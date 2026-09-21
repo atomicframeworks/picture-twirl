@@ -233,10 +233,11 @@ export async function renderLobby(gameId) {
         // Update instruction message based on role and state
         instr.sync({ counts, parts, myTeam, editing: !!selectedPid });
 
-        // Start readiness (no longer disable the button, just track status)
+        // Start readiness
         const totalPlaying = counts.A + counts.B;
         const totalAll = totalPlaying + counts.none;
         lastCanStart = teamsEnabled ? counts.A >= 1 && counts.B >= 1 && totalPlaying >= 2 : totalAll >= 1;
+        if (isGM && refs.gmStart) refs.gmStart.disabled = !lastCanStart;
 
         // Inline MY join/leave chips
         const showInline = !!teamsEnabled;
@@ -267,7 +268,15 @@ export async function renderLobby(gameId) {
         }
 
         // If not editing a player, refresh status text
-        if (!selectedPid && refs.lobbyStatus) refs.lobbyStatus.textContent = statusText(lastCanStart);
+        if (!selectedPid && refs.lobbyStatus) {
+            if (isGM) {
+                refs.lobbyStatus.textContent = lastCanStart
+                    ? 'Ready to start!'
+                    : 'Add at least 1 player to each team to start.';
+            } else {
+                refs.lobbyStatus.textContent = statusText(lastCanStart);
+            }
+        }
     }));
 
     // Phase: live → dispose lobby listeners, hand off to game UI
@@ -321,10 +330,12 @@ export async function renderLobby(gameId) {
         if (refs.gmStart) {
             track(listen(refs.gmStart, 'click', async () => {
                 if (refs.gmStart.dataset.busy === '1') return;
+                if (!lastCanStart) return;
 
-                // Check for unassigned players
+                // Check for unassigned non-GM players
                 const parts = (await get(ref(rtdb, P.participants(gameId)))).val() || {};
                 const unassigned = Object.keys(parts).filter(pid => {
+                    if (pid === uid) return false; // GM doesn't need a team
                     const team = parts[pid]?.team || TEAM.NONE;
                     return team === TEAM.NONE;
                 });

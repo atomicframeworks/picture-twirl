@@ -34,7 +34,7 @@ export async function renderGameUI(gameId) {
     const root = mountTemplate(app, 'tpl-game');
     const refs = collectRefs(root);
 
-    const { isGM } = getSession();
+    const { isGM, displayName } = getSession();
     const user = getCurrentUser();
     const myUid = user?.uid || null;
 
@@ -60,12 +60,13 @@ export async function renderGameUI(gameId) {
     let swirlCtrl = null;
     let lastImageUrl = null;
     let hasBuzz = false;          // someone is in the buzz queue
+    let firstBuzzerUid = null;    // uid of the first person in the buzz queue
     let firstBuzzerName = null;   // display name of the first person in the buzz queue
     let swirlPausedByGM = false;  // GM hit pause (synced via RTDB)
     let prevScores = null;        // detect score increases → celebrate
     let prevBuzzCount = 0;        // detect new buzzes → buzz sound
     let prevShowAnswer = false;   // detect reveal → chime
-    let compactObserver = null;   // IntersectionObserver for GM compact-header collapse
+    let compactObserver = null;   // cleanup fn for the GM compact-header scroll listener
 
     // Unlock audio on the first user gesture (browsers gate autoplay).
     const unlockOnce = () => unlockAudio();
@@ -80,7 +81,7 @@ export async function renderGameUI(gameId) {
         disposeListeners();
         if (swirlCtrl?.cancel) swirlCtrl.cancel();
         swirlCtrl = null;
-        if (compactObserver) { compactObserver.disconnect(); compactObserver = null; }
+        if (compactObserver) { compactObserver(); compactObserver = null; }
     }
 
     // ─── Tray exit links: wire BEFORE async work so they always attach ─────────
@@ -134,8 +135,8 @@ export async function renderGameUI(gameId) {
 
     track(onValue(ref(rtdb, P.teams(gameId)), (s) => {
         teams = s.val() || teams;
-        const nameA = teams.A?.name || 'Team A';
-        const nameB = teams.B?.name || 'Team B';
+        const nameA = titleCase(teams.A?.name || 'Team A');
+        const nameB = titleCase(teams.B?.name || 'Team B');
         refs.teamAName.textContent = nameA;
         refs.teamBName.textContent = nameB;
         // Keep award button labels in sync with actual team names.
@@ -145,6 +146,7 @@ export async function renderGameUI(gameId) {
         if (labelB) labelB.textContent = nameB;
         if (refs.awardABtn) refs.awardABtn.title = `Award ${nameA}`;
         if (refs.awardBBtn) refs.awardBBtn.title = `Award ${nameB}`;
+        updateIdentityRow();
     }));
 
     track(onValue(ref(rtdb, P.scores(gameId)), (s) => {
@@ -165,6 +167,8 @@ export async function renderGameUI(gameId) {
     track(onValue(ref(rtdb, P.participants(gameId)), (s) => {
         participants = s.val() || {};
         updateTurnGlow();
+        updateIdentityRow();
+        updateYouBadge();
 
         // GM: promote any tile request from the active team into selectedTile.
         // Players can't write selectedTile directly (Firebase rules), so they write
@@ -245,6 +249,7 @@ export async function renderGameUI(gameId) {
 
         // A buzz pauses the swirl (for everyone, via the shared queue).
         hasBuzz = ordered.length > 0;
+        firstBuzzerUid = ordered.length > 0 ? (ordered[0].uid || null) : null;
         firstBuzzerName = ordered.length > 0
             ? (participants?.[ordered[0].uid]?.displayName || null)
             : null;
@@ -252,8 +257,9 @@ export async function renderGameUI(gameId) {
         refreshSwirlLabel();
         updateStatusMessage();
 
-        // Show first buzzer per team in the scoreboard cards (always visible at top).
-        updateBuzzDisplay(ordered);
+        // Clear the scoreboard player slots — buzz state is shown in game-status/swirl label.
+        if (refs.teamAPlayer) refs.teamAPlayer.textContent = '';
+        if (refs.teamBPlayer) refs.teamBPlayer.textContent = '';
 
         // Players: disable buzz button after they've buzzed
         if (refs.buzzBtn && !isGM) {
@@ -299,9 +305,13 @@ export async function renderGameUI(gameId) {
     function refreshSwirlLabel() {
         if (!refs.swirlLabel) return;
         if (hasBuzz) {
-            refs.swirlLabel.textContent = firstBuzzerName
-                ? `Buzzed in — ${firstBuzzerName}`
-                : 'Buzzed in';
+            if (!isGM && firstBuzzerUid === myUid) {
+                refs.swirlLabel.textContent = 'You buzzed first!';
+            } else {
+                refs.swirlLabel.textContent = firstBuzzerName
+                    ? `Buzzed in — ${firstBuzzerName}`
+                    : 'Buzzed in';
+            }
         } else if (swirlPausedByGM) {
             refs.swirlLabel.textContent = 'Paused';
         } else {
@@ -323,7 +333,7 @@ export async function renderGameUI(gameId) {
 
     // ─── Coin flip overlay (shown once when the first turn is assigned) ────────
     function showCoinFlip(team) {
-        const teamName = teams[team]?.name || `Team ${team}`;
+        const teamName = titleCase(teams[team]?.name || `Team ${team}`);
         const overlay = document.createElement('div');
         overlay.className = 'coin-flip-overlay';
         overlay.innerHTML = `
@@ -340,6 +350,14 @@ export async function renderGameUI(gameId) {
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
+
+    // Capitalize the first letter of each word — for team name display only.
+    // Never applied to player names (preserve as entered).
+    function titleCase(str) {
+        if (!str) return str;
+        return str.replace(/\b\w/g, c => c.toUpperCase());
+    }
+
     function updateActiveTurnDisplay() {
         const activeTeam = currentTurn?.team || null;
         refs.teamACard?.classList.toggle('is-active', activeTeam === TEAM.A);
@@ -348,19 +366,38 @@ export async function renderGameUI(gameId) {
         if (refs.teamBPlayer) refs.teamBPlayer.textContent = '';
     }
 
-    // Show the first buzzer from each team in their scoreboard card badge.
-    function updateBuzzDisplay(ordered) {
-        const firstByTeam = {};
-        for (const entry of ordered) {
-            const p = participants?.[entry.uid];
-            if (!p) continue;
-            const t = p.team;
-            if ((t === TEAM.A || t === TEAM.B) && !firstByTeam[t]) {
-                firstByTeam[t] = (p.displayName || 'Player').toUpperCase();
-            }
+    // ─── Identity row: who am I / what role / which team ──────────────────
+    function updateIdentityRow() {
+        if (!refs.identityRow) return;
+        const myTeamKey = !isGM ? (participants[myUid]?.team || null) : null;
+        const icon = isGM
+            ? '👑'
+            : (myTeamKey ? (refs[`team${myTeamKey}Icon`]?.textContent?.trim() || '') : '');
+        // Prefer RTDB participant record (available once listener fires); fall back to session.
+        const name = participants[myUid]?.displayName || displayName || 'Player';
+        const roleLabel = isGM
+            ? 'GM'
+            : (myTeamKey && (myTeamKey === TEAM.A || myTeamKey === TEAM.B)
+                ? titleCase(teams[myTeamKey]?.name || `Team ${myTeamKey}`)
+                : 'No team');
+
+        refs.identityRow.textContent = '';
+        const chip = document.createElement('span');
+        chip.className = 'identity-chip';
+        chip.textContent = `${icon} ${name} · ${roleLabel}`;
+        refs.identityRow.appendChild(chip);
+    }
+
+    // YOU badge: marks the player's own team scorecard (never shown to GM).
+    function updateYouBadge() {
+        if (isGM) {
+            if (refs.teamAYou) refs.teamAYou.hidden = true;
+            if (refs.teamBYou) refs.teamBYou.hidden = true;
+            return;
         }
-        if (refs.teamAPlayer) refs.teamAPlayer.textContent = firstByTeam[TEAM.A] ? `🔔 ${firstByTeam[TEAM.A]}` : '';
-        if (refs.teamBPlayer) refs.teamBPlayer.textContent = firstByTeam[TEAM.B] ? `🔔 ${firstByTeam[TEAM.B]}` : '';
+        const myTeamKey = participants[myUid]?.team || null;
+        if (refs.teamAYou) refs.teamAYou.hidden = myTeamKey !== TEAM.A;
+        if (refs.teamBYou) refs.teamBYou.hidden = myTeamKey !== TEAM.B;
     }
 
     function updateStatusMessage() {
@@ -376,9 +413,18 @@ export async function renderGameUI(gameId) {
                 else                    state = 'Revealing';
                 refs.statusMessage.textContent = `${category} · $${value} — ${state}`;
             } else {
-                refs.statusMessage.textContent = showAnswer
-                    ? `Answer revealed — ${category} for $${value}`
-                    : `${category} for $${value}`;
+                // Player status: normally hidden, but shown in the compact header for context.
+                let playerStatus;
+                if (showAnswer) {
+                    playerStatus = `${category} · $${value} — Revealed`;
+                } else if (hasBuzz) {
+                    playerStatus = firstBuzzerUid === myUid
+                        ? `${category} · $${value} — You buzzed!`
+                        : `${category} · $${value} — Buzzed`;
+                } else {
+                    playerStatus = `${category} · $${value}`;
+                }
+                refs.statusMessage.textContent = playerStatus;
             }
             return;
         }
@@ -392,10 +438,10 @@ export async function renderGameUI(gameId) {
         }
 
         if (currentTurn) {
-            const teamName = teams[currentTurn.team]?.name || `Team ${currentTurn.team}`;
+            const teamName = titleCase(teams[currentTurn.team]?.name || `Team ${currentTurn.team}`);
             const isMyTeamsTurn = !isGM && participants[myUid]?.team === currentTurn.team;
             refs.statusMessage.textContent = isMyTeamsTurn
-                ? `${teamName} — pick a category.`
+                ? `Your team — pick a category!`
                 : `${teamName} is picking a category`;
             return;
         }
@@ -426,13 +472,22 @@ export async function renderGameUI(gameId) {
         refs.okBtn.disabled = !selectedTile;
     }
 
+    // Show/hide game-status correctly for the current client type and compact state.
+    // Players normally have it hidden during questions; compact mode reveals it for context.
+    function syncStatusVisibility() {
+        if (!refs.statusMessage) return;
+        const active = !!currentQuestion;
+        const isCompact = refs.gameTop?.classList.contains('is-compact') || false;
+        refs.statusMessage.hidden = active && !isGM && !isCompact;
+    }
+
     function renderQuestionViewer() {
         const active = !!currentQuestion;
 
         // Toggle board vs viewer
         if (refs.boardWrap) refs.boardWrap.hidden = active;
         if (refs.viewerEl) refs.viewerEl.hidden = !active;
-        if (refs.statusMessage) refs.statusMessage.hidden = active && !isGM;
+        syncStatusVisibility();
         if (refs.okBtn) refs.okBtn.hidden = active || !isGM;
 
         // Buzz button: non-GM, only while question is active and answer not yet shown
@@ -447,19 +502,40 @@ export async function renderGameUI(gameId) {
 
         updateTurnGlow();
 
-        // ── GM compact-header collapse (IntersectionObserver on sentinel) ──────
-        if (active && isGM) {
-            if (!compactObserver && refs.questionSentinel && refs.gameTop && refs.gameMain) {
-                // First time this question becomes active: reset scroll and start observer.
-                if (refs.gameMain) refs.gameMain.scrollTop = 0;
-                compactObserver = new IntersectionObserver((entries) => {
-                    refs.gameTop.classList.toggle('is-compact', !entries[0].isIntersecting);
-                }, { root: refs.gameMain, threshold: 0 });
-                compactObserver.observe(refs.questionSentinel);
+        // ── Compact header collapse — shared by GM and players ─────────────────
+        // scrollTop threshold + hysteresis: stable under header height changes.
+        // Avoids the IntersectionObserver feedback loop where collapsing the
+        // header resizes .game-main, which would flip the sentinel's visibility
+        // and immediately toggle the header back.
+        if (active) {
+            if (!compactObserver && refs.gameTop && refs.gameMain) {
+                refs.gameMain.scrollTop = 0;
+                refs.gameTop.classList.remove('is-compact');
+
+                const COLLAPSE_AT = 64; // px — collapse after scrolling this far down
+                const EXPAND_AT   = 16; // px — expand only when back above this (hysteresis)
+
+                function onCompactScroll() {
+                    const st = refs.gameMain.scrollTop;
+                    const compact = refs.gameTop.classList.contains('is-compact');
+                    if (!compact && st > COLLAPSE_AT) {
+                        refs.gameTop.classList.add('is-compact');
+                        syncStatusVisibility(); // reveal player question context in compact
+                    } else if (compact && st < EXPAND_AT) {
+                        refs.gameTop.classList.remove('is-compact');
+                        syncStatusVisibility(); // re-hide player status when expanded
+                    }
+                }
+
+                refs.gameMain.addEventListener('scroll', onCompactScroll, { passive: true });
+                compactObserver = () => {
+                    refs.gameMain.removeEventListener('scroll', onCompactScroll);
+                    refs.gameTop.classList.remove('is-compact');
+                    syncStatusVisibility(); // restore correct visibility on question end
+                };
             }
         } else {
-            if (compactObserver) { compactObserver.disconnect(); compactObserver = null; }
-            if (refs.gameTop) refs.gameTop.classList.remove('is-compact');
+            if (compactObserver) { compactObserver(); compactObserver = null; }
         }
 
         if (!active) {

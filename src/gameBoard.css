@@ -98,6 +98,49 @@
     font-size: 13px;
 }
 
+/* ─── Player compact header ────────────────────────────
+   Players share the same scrollTop collapse mechanism.
+   The info-band switches to a two-row flex layout:
+     Row 1 — both scorecards (full width)
+     Row 2 — identity chip (left) + question status (right)
+   ────────────────────────────────────────────────────── */
+
+.game-root:not(.is-gm) .game-top.is-compact .game-info-band {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2) var(--space-3);
+}
+
+.game-root:not(.is-gm) .game-top.is-compact .scoreboard {
+    flex: 0 0 100%; /* own row above identity + status */
+}
+
+.game-root:not(.is-gm) .game-top.is-compact .identity-row {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-start; /* left-align the chip */
+}
+
+/* Question context: plain text, no box chrome, right-aligned */
+.game-root:not(.is-gm) .game-top.is-compact .game-status {
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* Sentinel: zero-height, invisible — just a scroll position marker */
 .question-sentinel {
     height: 0;
@@ -691,6 +734,74 @@
 /* ═══════════════════════════════════════ */
 /* Responsive                              */
 /* ═══════════════════════════════════════ */
+/* ═══════════════════════════════════════ */
+/* Identity row                            */
+/* Always visible — lives in .game-info-  */
+/* band so it survives compact-header     */
+/* collapse.                              */
+/* ═══════════════════════════════════════ */
+.identity-row {
+    display: flex;
+    justify-content: center;
+}
+
+.identity-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(124, 58, 237, .08);
+    color: var(--brand-1-ink);
+    padding: 4px 14px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    border: 1px solid rgba(124, 58, 237, .14);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* Compact: just tighten font a touch — no other change needed */
+.game-top.is-compact .identity-chip {
+    font-size: 11px;
+    padding: 3px 10px;
+}
+
+/* ═══════════════════════════════════════ */
+/* YOU badge                               */
+/* Marks the player's own team scorecard. */
+/* Never visible on the GM screen         */
+/* (.is-gm CSS gate).                     */
+/* ═══════════════════════════════════════ */
+.you-badge {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: rgba(255, 255, 255, .28);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    line-height: 1.4;
+}
+
+/* CSS safety net: GM root hides both badges even if JS hasn't run yet */
+.is-gm .you-badge {
+    display: none !important;
+}
+
+/* Compact: tighten size and position to match compact card padding */
+.game-top.is-compact .you-badge {
+    font-size: 8px;
+    padding: 1px 5px;
+    top: 6px;
+    right: 8px;
+}
+
 @media (min-width: 768px) {
     .game-main {
         padding: var(--space-6);

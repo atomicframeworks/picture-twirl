@@ -291,6 +291,7 @@
                 <div class="scoreboard-icon" data-ref="teamAIcon">🐕</div>
                 <div class="scoreboard-info">
                   <div class="scoreboard-name" data-ref="teamAName">Team Puppers</div>
+                  <span class="you-badge" data-ref="teamAYou" hidden>YOU</span>
                   <div class="scoreboard-score" data-ref="teamAScore">0</div>
                 </div>
                 <div class="scoreboard-player" data-ref="teamAPlayer"></div>
@@ -302,12 +303,16 @@
                 <div class="scoreboard-icon" data-ref="teamBIcon">🐈</div>
                 <div class="scoreboard-info">
                   <div class="scoreboard-name" data-ref="teamBName">Team Kat Fever</div>
+                  <span class="you-badge" data-ref="teamBYou" hidden>YOU</span>
                   <div class="scoreboard-score" data-ref="teamBScore">0</div>
                 </div>
                 <div class="scoreboard-player" data-ref="teamBPlayer"></div>
               </div>
             </div>
           </div>
+
+          <!-- Identity row: always visible (even in compact mode) -->
+          <div class="identity-row" data-ref="identityRow" aria-live="polite"></div>
 
           <!-- Status message -->
           <div class="game-status" data-ref="statusMessage">Waiting for the next tile ..</div>

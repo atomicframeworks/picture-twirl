@@ -23,6 +23,7 @@ import { createBoard } from './createBoard.js';
 import { startSwirlAnimation, drawUnswirled } from './swirl.js';
 import { enqueueBuzz, clearBuzzQueue } from './buzz.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
+import { renderFinale } from './renderFinale.js';
 import { initializeStartingTurn, advanceTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
@@ -123,9 +124,14 @@ export async function renderGameUI(gameId) {
         track(listen(refs.gmEndInQuestion, 'click', () => handleEndGame(refs.gmEndInQuestion)));
     }
 
-    // ─── Phase listener: ended → everyone home ─────────────────────────────────
+    // ─── Phase listener: ended → finale ────────────────────────────────────────
     track(onValue(ref(rtdb, P.phase(gameId)), (s) => {
-        if (s.val() === 'ended') exitToHome(disposeAll);
+        if (s.val() === 'ended') {
+            const teamAIcon = refs.teamAIcon?.textContent?.trim() || '🐕';
+            const teamBIcon = refs.teamBIcon?.textContent?.trim() || '🐈';
+            renderFinale(gameId, { teamAIcon, teamBIcon, dispose: disposeAll })
+                .catch(err => console.error('[renderGame] renderFinale failed:', err));
+        }
     }));
 
     // ─── Title, teams, scores, participants ────────────────────────────────────
@@ -820,13 +826,19 @@ export async function renderGameUI(gameId) {
         const points = Number(currentQuestion.value || 0);
         const scorePath = P.score(gameId, teamKey);
         const tilePath = P.boardTile(gameId, currentQuestion.id);
+        const buzzerUid = activeBuzzerUid; // capture before any await
 
-        const scoreSnap = await get(ref(rtdb, scorePath));
+        const [scoreSnap, participantSnap] = await Promise.all([
+            get(ref(rtdb, scorePath)),
+            buzzerUid ? get(ref(rtdb, P.participant(gameId, buzzerUid))) : Promise.resolve(null),
+        ]);
+
         const curScore = scoreSnap.exists() ? Number(scoreSnap.val() || 0) : 0;
+        const pVal = participantSnap?.val() || {};
 
         // Reveal the image + mark resolved, but keep currentQuestion visible so
         // all clients linger on the result. Continue to Board clears it later.
-        await update(ref(rtdb), {
+        const writes = {
             [scorePath]: curScore + points,
             [`${tilePath}/answered`]: true,
             [`${tilePath}/answeredBy`]: teamToAnswer(teamKey),
@@ -834,8 +846,15 @@ export async function renderGameUI(gameId) {
             [`${tilePath}/lastActionAt`]: serverTimestamp(),
             [`${P.currentQuestion(gameId)}/showAnswer`]: true,
             [`${P.currentQuestion(gameId)}/awardedTeam`]: teamKey,
-            [`${P.game(gameId)}/swirlPaused`]: false
-        });
+            [`${P.game(gameId)}/swirlPaused`]: false,
+        };
+
+        if (buzzerUid) {
+            writes[`${P.participant(gameId, buzzerUid)}/pointsEarned`] = Number(pVal.pointsEarned || 0) + points;
+            writes[`${P.participant(gameId, buzzerUid)}/correctAnswers`] = Number(pVal.correctAnswers || 0) + 1;
+        }
+
+        await update(ref(rtdb), writes);
         // Buzz queue and turn advance happen in Continue to Board.
     }
 
@@ -890,5 +909,33 @@ export async function renderGameUI(gameId) {
             }
         });
     }));
+
+    // ─── Dev-only finale shortcut ───────────────────────────────────────────────
+    // Exercises the real RTDB end-game transition so all clients see the full
+    // phase-listener → renderFinale path. Never available in production builds.
+    if (import.meta.env.DEV && isGM) {
+        window.ptDevEndGame = async () => {
+            console.log('[dev] ptDevEndGame: writing phase=ended for game', gameId);
+            try {
+                const { endGame } = await import('./controllerKit.js');
+                await endGame(gameId);
+                console.log('[dev] ptDevEndGame: wrote phase=ended');
+            } catch (err) {
+                console.error('[dev] ptDevEndGame failed:', err);
+            }
+        };
+        window.ptDevSetScores = async (scoreA, scoreB) => {
+            console.log('[dev] ptDevSetScores:', scoreA, scoreB);
+            try {
+                await update(ref(rtdb, P.scores(gameId)), { A: Number(scoreA), B: Number(scoreB) });
+            } catch (err) {
+                console.error('[dev] ptDevSetScores failed:', err);
+            }
+        };
+        console.log(
+            '%c[Picture Twirl Dev] Available helpers:\n  ptDevEndGame()            — trigger End Game via RTDB\n  ptDevSetScores(A, B)      — set team scores',
+            'color:#7C3AED;font-weight:bold'
+        );
+    }
 
 }

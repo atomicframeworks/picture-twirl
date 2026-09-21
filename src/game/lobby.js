@@ -14,6 +14,7 @@ import { attachCopyButton } from '../ui/copyButton.js';
 import { mountTemplate, collectRefs } from '../ui/templates.js';
 import { modal } from '../ui/modal.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
+import { renderFinale } from './renderFinale.js';
 import { ensureParticipant, attachPresence, setTeam } from './participants.js';
 import { createInstructionController } from './lobbyInstructions.js';
 import { TEAM } from '../config.js';
@@ -288,7 +289,8 @@ export async function renderLobby(gameId) {
             disposeAll();
             renderGameUI(gameId);
         } else if (phase === 'ended') {
-            exitToHome(disposeAll);
+            renderFinale(gameId, { dispose: disposeAll })
+                .catch(err => console.error('[lobby] renderFinale failed:', err));
         }
     }));
 

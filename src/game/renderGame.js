@@ -455,16 +455,31 @@ export async function renderGameUI(gameId) {
 
     function updateStatusMessage() {
         if (!refs.statusMessage) return;
-        // Always clear the adjudication class; the GM branch re-adds it when appropriate.
-        refs.statusMessage.classList.remove('is-adjudicating');
+        // Clear rich-state classes up front; branches re-add when appropriate.
+        refs.statusMessage.classList.remove('is-adjudicating', 'is-resolved');
 
         if (currentQuestion) {
             const { category, value, showAnswer } = currentQuestion;
             if (isGM) {
-                // During buzz adjudication: replace single-line status with the rich
-                // buzzer / answer / guidance layout — this is GM-only, stays in the
-                // sticky header, and is immediately visible without scrolling.
-                if (activeBuzzerUid && !showAnswer) {
+                if (showAnswer) {
+                    // Resolved — question over, image and answer are public.
+                    const awardedTeam = currentQuestion.awardedTeam || null;
+                    refs.statusMessage.classList.add('is-resolved');
+                    if (awardedTeam) {
+                        const teamName = titleCase(teams[awardedTeam]?.name || `Team ${awardedTeam}`);
+                        const pts = currentQuestion.value || 0;
+                        refs.statusMessage.innerHTML =
+                            `<div class="gsr-result is-award">${escapeHtml(teamName)} got it! +${pts}</div>` +
+                            `<div class="gsr-answer">Answer: <strong>${escapeHtml(currentQuestion.answer || '')}</strong></div>` +
+                            `<div class="gsr-hint">Continue when everyone is ready.</div>`;
+                    } else {
+                        refs.statusMessage.innerHTML =
+                            `<div class="gsr-result">Revealed</div>` +
+                            `<div class="gsr-answer">Answer: <strong>${escapeHtml(currentQuestion.answer || '')}</strong></div>` +
+                            `<div class="gsr-hint">Continue when everyone is ready.</div>`;
+                    }
+                } else if (activeBuzzerUid) {
+                    // Adjudication — player buzzed, GM decides.
                     const buzzerTeam = participants?.[activeBuzzerUid]?.team || null;
                     const teamName = buzzerTeam
                         ? titleCase(teams[buzzerTeam]?.name || `Team ${buzzerTeam}`)
@@ -478,11 +493,10 @@ export async function renderGameUI(gameId) {
                         `<div class="gsa-answer">Answer: <strong>${escapeHtml(answer)}</strong></div>` +
                         `<div class="gsa-hint">Correct → ${escapeHtml(awardLabel)} &nbsp;·&nbsp; Incorrect → Resume</div>`;
                 } else {
-                    let state;
-                    if (showAnswer)           state = 'Answer revealed';
-                    else if (swirlPausedByGM) state = 'Paused';
-                    else                      state = 'Revealing';
-                    refs.statusMessage.textContent = `${category} · $${value} — ${state}`;
+                    // Normal — reveal running or manually paused.
+                    refs.statusMessage.textContent = swirlPausedByGM
+                        ? `${category} · $${value} — Paused`
+                        : `${category} · $${value} — Revealing`;
                 }
             } else {
                 // Player status: normally hidden, but shown in the compact header for context.
@@ -630,21 +644,30 @@ export async function renderGameUI(gameId) {
                 refs.answerEl.hidden = true;
                 refs.answerEl.textContent = '';
             }
+            if (refs.resolvedInfoEl) refs.resolvedInfoEl.hidden = true;
             return;
         }
 
-        // Reveal chime on the false → true transition.
-        if (currentQuestion.showAnswer && !prevShowAnswer) playReveal();
+        // Reveal chime on the false → true transition, but not when awarding
+        // (the score listener plays playCorrect() + confetti for that case).
+        if (currentQuestion.showAnswer && !prevShowAnswer && !currentQuestion.awardedTeam) playReveal();
         prevShowAnswer = !!currentQuestion.showAnswer;
 
         // Render question metadata
         if (refs.qCategory) refs.qCategory.textContent = currentQuestion.category || '';
         if (refs.qValue) refs.qValue.textContent = `$${currentQuestion.value ?? ''}`;
 
-        // Swirl timer + pause/reveal controls only matter while actively revealing.
-        if (refs.swirlTimer) refs.swirlTimer.hidden = !!currentQuestion.showAnswer;
-        if (refs.pauseSwirlBtn) refs.pauseSwirlBtn.hidden = !!currentQuestion.showAnswer;
-        if (refs.showAnswerBtn) refs.showAnswerBtn.hidden = !!currentQuestion.showAnswer;
+        // Swirl timer + active-play controls disappear once the answer is revealed.
+        const resolved = !!currentQuestion.showAnswer;
+        if (refs.swirlTimer) refs.swirlTimer.hidden = resolved;
+        if (refs.pauseSwirlBtn) refs.pauseSwirlBtn.hidden = resolved;
+        if (refs.showAnswerBtn) refs.showAnswerBtn.hidden = resolved;
+        // Award buttons are also irrelevant after resolution.
+        if (refs.awardABtn) refs.awardABtn.hidden = resolved;
+        if (refs.awardBBtn) refs.awardBBtn.hidden = resolved;
+        // Board-return button becomes "Continue" in the resolved state.
+        const backLabel = refs.backToBoardBtn?.querySelector('.gm-icon-btn__label');
+        if (backLabel) backLabel.textContent = resolved ? 'Continue' : 'Board';
 
         // Load image and (re)start swirl when URL changes
         if (refs.twirlImage && currentQuestion.imageUrl && currentQuestion.imageUrl !== lastImageUrl) {
@@ -669,23 +692,36 @@ export async function renderGameUI(gameId) {
             lastImageUrl = currentQuestion.imageUrl;
         }
 
-        // Answer display
-        if (refs.answerEl) {
-            if (currentQuestion.showAnswer) {
+        // Answer display and resolved-info banner
+        if (currentQuestion.showAnswer) {
+            if (refs.answerEl) {
                 refs.answerEl.textContent = currentQuestion.answer || '';
                 refs.answerEl.hidden = false;
-                // Reveal the clean picture: stop the swirl, drop the controller so
-                // nothing can resume it, then draw the image at full clarity.
-                if (swirlCtrl?.cancel) swirlCtrl.cancel();
-                swirlCtrl = null;
-                unswirlImage();
-                setSwirlProgress(1);
-                // Make sure the reveal is in view (it sits below a tall image).
-                refs.answerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else {
+            }
+            // Stop swirl and draw the clear image at reveal.
+            if (swirlCtrl?.cancel) swirlCtrl.cancel();
+            swirlCtrl = null;
+            unswirlImage();
+            setSwirlProgress(1);
+
+            // Resolved-info banner: show team award credit to all clients.
+            if (refs.resolvedInfoEl) {
+                const awardedTeam = currentQuestion.awardedTeam || null;
+                if (awardedTeam) {
+                    const teamName = titleCase(teams[awardedTeam]?.name || `Team ${awardedTeam}`);
+                    const pts = currentQuestion.value || 0;
+                    refs.resolvedInfoEl.textContent = `${teamName} · +${pts}`;
+                    refs.resolvedInfoEl.hidden = false;
+                } else {
+                    refs.resolvedInfoEl.hidden = true;
+                }
+            }
+        } else {
+            if (refs.answerEl) {
                 refs.answerEl.hidden = true;
                 refs.answerEl.textContent = '';
             }
+            if (refs.resolvedInfoEl) refs.resolvedInfoEl.hidden = true;
         }
     }
 
@@ -779,6 +815,8 @@ export async function renderGameUI(gameId) {
 
     async function awardTeam(teamKey) {
         if (!isGM || !currentQuestion?.id) return;
+        if (currentQuestion.awardedTeam) return; // already awarded — double-click guard
+
         const points = Number(currentQuestion.value || 0);
         const scorePath = P.score(gameId, teamKey);
         const tilePath = P.boardTile(gameId, currentQuestion.id);
@@ -786,19 +824,19 @@ export async function renderGameUI(gameId) {
         const scoreSnap = await get(ref(rtdb, scorePath));
         const curScore = scoreSnap.exists() ? Number(scoreSnap.val() || 0) : 0;
 
+        // Reveal the image + mark resolved, but keep currentQuestion visible so
+        // all clients linger on the result. Continue to Board clears it later.
         await update(ref(rtdb), {
             [scorePath]: curScore + points,
             [`${tilePath}/answered`]: true,
             [`${tilePath}/answeredBy`]: teamToAnswer(teamKey),
             [`${tilePath}/awardedPoints`]: points,
             [`${tilePath}/lastActionAt`]: serverTimestamp(),
-            [P.currentQuestion(gameId)]: null,
-            [`${P.game(gameId)}/swirlStartTime`]: null,
+            [`${P.currentQuestion(gameId)}/showAnswer`]: true,
+            [`${P.currentQuestion(gameId)}/awardedTeam`]: teamKey,
             [`${P.game(gameId)}/swirlPaused`]: false
         });
-
-        await clearBuzzQueue(gameId);
-        await advanceTurn(gameId, teamKey); // winner picks next
+        // Buzz queue and turn advance happen in Continue to Board.
     }
 
     if (refs.awardABtn) track(listen(refs.awardABtn, 'click', () => awardTeam(TEAM.A)));
@@ -807,13 +845,16 @@ export async function renderGameUI(gameId) {
     if (refs.backToBoardBtn) {
         track(listen(refs.backToBoardBtn, 'click', async () => {
             if (!isGM) return;
+            // Read the awarded team before clearing currentQuestion.
+            // awardedTeam present → winner picks next; null → other team picks next.
+            const awardedTeam = currentQuestion?.awardedTeam || null;
             await update(ref(rtdb, P.game(gameId)), {
                 currentQuestion: null,
                 swirlStartTime: null,
                 swirlPaused: false
             });
             await clearBuzzQueue(gameId);
-            await advanceTurn(gameId, null); // no award → other team picks next
+            await advanceTurn(gameId, awardedTeam);
         }));
     }
 

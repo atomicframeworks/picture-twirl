@@ -294,6 +294,63 @@
     font-size: 10px;
 }
 
+/* ─── GM resolved state ─────────────────────────────────────────── */
+.game-root.is-gm .game-status.is-resolved {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.game-root.is-gm .gsr-result {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted); /* manual Reveal */
+}
+
+.game-root.is-gm .gsr-result.is-award {
+    color: var(--success); /* correct answer */
+}
+
+.game-root.is-gm .gsr-answer {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+}
+
+.game-root.is-gm .gsr-hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.game-root.is-gm .game-top.is-compact .game-status.is-resolved {
+    gap: 2px;
+}
+
+.game-root.is-gm .game-top.is-compact .gsr-result {
+    font-size: 11px;
+}
+
+.game-root.is-gm .game-top.is-compact .gsr-answer {
+    font-size: 13px;
+}
+
+.game-root.is-gm .game-top.is-compact .gsr-hint {
+    font-size: 10px;
+}
+
+/* ─── Resolved info banner (all clients, correct-award only) ──────── */
+.resolved-info {
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: clamp(18px, 4.5vw, 22px);
+    font-weight: 700;
+    color: var(--success);
+    padding: var(--space-2) 0;
+}
+
 /* ═══════════════════════════════════════ */
 /* Board Grid                              */
 /* ═══════════════════════════════════════ */

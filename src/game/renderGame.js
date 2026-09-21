@@ -59,9 +59,8 @@ export async function renderGameUI(gameId) {
     let serverTimeOffset = 0;     // ms to add to Date.now() to get server time (.info/serverTimeOffset)
     let swirlCtrl = null;
     let lastImageUrl = null;
-    let hasBuzz = false;                // someone is in the buzz queue
-    let firstBuzzerUid = null;          // uid of the first person in the buzz queue
-    let firstBuzzerName = null;         // display name of the first person in the buzz queue
+    let activeBuzzerUid = null;         // uid of the player currently being adjudicated (cleared on Resume)
+    let activeBuzzerName = null;        // display name of the active adjudication buzzer
     let meBuzzedThisQuestion = false;   // this player has used their one buzz attempt this question
     let swirlPausedByGM = false;        // GM hit pause (synced via RTDB)
     let prevScores = null;        // detect score increases → celebrate
@@ -215,6 +214,7 @@ export async function renderGameUI(gameId) {
         currentQuestion = s.val();
         renderQuestionViewer();
         updateStatusMessage();
+        updateActiveTurnDisplay(); // question start clears border; question end restores turn border
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/swirlStartTime`), (s) => {
@@ -244,31 +244,31 @@ export async function renderGameUI(gameId) {
                 : '';
         }
 
-        // New buzz arrived → sound + auto-pause reveal for all clients.
+        // New buzz arrived — sound, set active adjudication buzzer, auto-pause.
         if (ordered.length > prevBuzzCount) {
             playBuzz();
-            // GM writes swirlPaused:true so every client pauses via the shared RTDB
-            // listener. This keeps swirlPaused as the single animation-pause flag,
-            // which means GM's Resume button can actually resume even with buzzers waiting.
+            // The FIRST new entry of this wave (ordered[prevBuzzCount], FIFO) becomes the
+            // active adjudication buzzer. Guard: don't overwrite an already-active one —
+            // near-simultaneous late entries in the same wave don't change who is being judged.
+            if (!activeBuzzerUid) {
+                const firstNew = ordered[prevBuzzCount];
+                if (firstNew) {
+                    activeBuzzerUid = firstNew.uid || null;
+                    activeBuzzerName = activeBuzzerUid
+                        ? (participants?.[activeBuzzerUid]?.displayName || null)
+                        : null;
+                }
+            }
+            // GM writes swirlPaused:true so every client pauses via the shared RTDB listener.
             if (isGM && currentQuestion && !currentQuestion.showAnswer && !swirlPausedByGM) {
                 update(ref(rtdb, P.game(gameId)), { swirlPaused: true }).catch(console.error);
             }
         }
         prevBuzzCount = ordered.length;
-
-        // hasBuzz is used for display only (buzzer name, label, status text).
-        hasBuzz = ordered.length > 0;
-        firstBuzzerUid = ordered.length > 0 ? (ordered[0].uid || null) : null;
-        firstBuzzerName = ordered.length > 0
-            ? (participants?.[ordered[0].uid]?.displayName || null)
-            : null;
         applySwirlPause();
         refreshSwirlLabel();
         updateStatusMessage();
-
-        // Clear the scoreboard player slots — buzz state is shown in game-status/swirl label.
-        if (refs.teamAPlayer) refs.teamAPlayer.textContent = '';
-        if (refs.teamBPlayer) refs.teamBPlayer.textContent = '';
+        updateActiveTurnDisplay(); // shifts border to buzzer's team on new buzz; clears on queue empty
 
         // Track this player's per-question buzz attempt and re-render the button.
         if (!isGM) {
@@ -280,11 +280,14 @@ export async function renderGameUI(gameId) {
     // ─── Swirl pause (GM-controlled, synced to all clients) ────────────────────
     track(onValue(ref(rtdb, P.swirlPaused(gameId)), (s) => {
         swirlPausedByGM = s.val() === true;
+        // Resume clears the active adjudication buzzer so the next buzz starts a fresh wave.
+        if (!swirlPausedByGM) { activeBuzzerUid = null; activeBuzzerName = null; }
         applySwirlPause();
         updatePauseButton();
         refreshSwirlLabel();
         updateStatusMessage();
-        updateBuzzButton(); // swirlPaused changing affects eligible-player button state
+        updateBuzzButton();
+        updateActiveTurnDisplay(); // Resume clears buzz-adjudication border; manual pause keeps it clear
     }));
 
     // Pause/resume based solely on the shared swirlPaused RTDB flag.
@@ -327,22 +330,24 @@ export async function renderGameUI(gameId) {
 
         if (meBuzzedThisQuestion) {
             refs.buzzBtn.disabled = true;
-            refs.buzzBtn.textContent = swirlPausedByGM ? 'BUZZED' : 'BUZZ USED';
+            // BUZZED = I am the current adjudication subject; BUZZ USED = I spent my attempt but I'm not current.
+            const iAmActive = activeBuzzerUid === myUid && swirlPausedByGM;
+            refs.buzzBtn.textContent = iAmActive ? 'BUZZED' : 'BUZZ USED';
         } else {
             refs.buzzBtn.disabled = swirlPausedByGM;
             refs.buzzBtn.textContent = 'BUZZ IN';
         }
     }
 
-    // Progress bar label: reflects actual state (paused / buzzed / revealing).
+    // Progress bar label: reflects the ACTIVE adjudication state, not the persistent queue history.
     function refreshSwirlLabel() {
         if (!refs.swirlLabel) return;
-        if (hasBuzz) {
-            if (!isGM && firstBuzzerUid === myUid) {
-                refs.swirlLabel.textContent = 'You buzzed first!';
+        if (activeBuzzerUid) {
+            if (!isGM && activeBuzzerUid === myUid) {
+                refs.swirlLabel.textContent = 'You buzzed!';
             } else {
-                refs.swirlLabel.textContent = firstBuzzerName
-                    ? `Buzzed in — ${firstBuzzerName}`
+                refs.swirlLabel.textContent = activeBuzzerName
+                    ? `Buzzed in — ${activeBuzzerName}`
                     : 'Buzzed in';
             }
         } else if (swirlPausedByGM) {
@@ -391,10 +396,25 @@ export async function renderGameUI(gameId) {
         return str.replace(/\b\w/g, c => c.toUpperCase());
     }
 
+    // Orange border = "this team currently has the floor / is performing the exclusive action".
+    // Derived fresh from current state every call — no separate tracking variable needed.
+    //   Board (including tile pre-selected): turn team is choosing → show border
+    //   Buzz adjudication (paused + buzz in queue): buzzer's team holds floor → show border
+    //   Active reveal, manual GM pause, answer shown: no team has exclusive floor → no border
     function updateActiveTurnDisplay() {
-        const activeTeam = currentTurn?.team || null;
-        refs.teamACard?.classList.toggle('is-active', activeTeam === TEAM.A);
-        refs.teamBCard?.classList.toggle('is-active', activeTeam === TEAM.B);
+        let activeActionTeam = null;
+
+        if (!currentQuestion && currentTurn) {
+            // Board: the turn team is choosing the next category.
+            activeActionTeam = currentTurn.team;
+        } else if (currentQuestion && !currentQuestion.showAnswer && activeBuzzerUid && swirlPausedByGM) {
+            // Buzz adjudication: the currently-active buzzer's team holds the floor.
+            activeActionTeam = participants?.[activeBuzzerUid]?.team || null;
+        }
+        // Active reveal, manual GM pause, or answer shown → no border.
+
+        refs.teamACard?.classList.toggle('is-active', activeActionTeam === TEAM.A);
+        refs.teamBCard?.classList.toggle('is-active', activeActionTeam === TEAM.B);
         if (refs.teamAPlayer) refs.teamAPlayer.textContent = '';
         if (refs.teamBPlayer) refs.teamBPlayer.textContent = '';
     }
@@ -441,7 +461,7 @@ export async function renderGameUI(gameId) {
             if (isGM) {
                 let state;
                 if (showAnswer)         state = 'Answer revealed';
-                else if (hasBuzz)       state = firstBuzzerName ? `Buzzed in — ${firstBuzzerName}` : 'Buzzed in';
+                else if (activeBuzzerUid) state = activeBuzzerName ? `Buzzed in — ${activeBuzzerName}` : 'Buzzed in';
                 else if (swirlPausedByGM) state = 'Paused';
                 else                    state = 'Revealing';
                 refs.statusMessage.textContent = `${category} · $${value} — ${state}`;
@@ -450,8 +470,8 @@ export async function renderGameUI(gameId) {
                 let playerStatus;
                 if (showAnswer) {
                     playerStatus = `${category} · $${value} — Revealed`;
-                } else if (hasBuzz) {
-                    playerStatus = firstBuzzerUid === myUid
+                } else if (activeBuzzerUid) {
+                    playerStatus = activeBuzzerUid === myUid
                         ? `${category} · $${value} — You buzzed!`
                         : `${category} · $${value} — Buzzed`;
                 } else {
@@ -574,6 +594,8 @@ export async function renderGameUI(gameId) {
 
         if (!active) {
             meBuzzedThisQuestion = false; // fresh eligibility for the next question
+            activeBuzzerUid = null;       // clear adjudication state
+            activeBuzzerName = null;
             // Cancel swirl if running
             if (swirlCtrl?.cancel) swirlCtrl.cancel();
             swirlCtrl = null;

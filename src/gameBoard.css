@@ -248,6 +248,52 @@
     border: 1px solid var(--line);
 }
 
+/* ─── GM adjudication state ─────────────────────────────────────── */
+/* Applied via JS .is-adjudicating when a player buzzes in.          */
+/* Scoped to .is-gm root so the answer never styles a player card.   */
+.game-root.is-gm .game-status.is-adjudicating {
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.game-root.is-gm .gsa-buzzer {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.game-root.is-gm .gsa-answer {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--success);
+    line-height: 1.2;
+}
+
+.game-root.is-gm .gsa-hint {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+/* Compact header: tighten sizes but keep all three rows visible */
+.game-root.is-gm .game-top.is-compact .game-status.is-adjudicating {
+    gap: 2px;
+}
+
+.game-root.is-gm .game-top.is-compact .gsa-buzzer {
+    font-size: 11px;
+}
+
+.game-root.is-gm .game-top.is-compact .gsa-answer {
+    font-size: 13px;
+}
+
+.game-root.is-gm .game-top.is-compact .gsa-hint {
+    font-size: 10px;
+}
+
 /* ═══════════════════════════════════════ */
 /* Board Grid                              */
 /* ═══════════════════════════════════════ */

@@ -455,16 +455,35 @@ export async function renderGameUI(gameId) {
 
     function updateStatusMessage() {
         if (!refs.statusMessage) return;
+        // Always clear the adjudication class; the GM branch re-adds it when appropriate.
+        refs.statusMessage.classList.remove('is-adjudicating');
 
         if (currentQuestion) {
             const { category, value, showAnswer } = currentQuestion;
             if (isGM) {
-                let state;
-                if (showAnswer)         state = 'Answer revealed';
-                else if (activeBuzzerUid) state = activeBuzzerName ? `Buzzed in — ${activeBuzzerName}` : 'Buzzed in';
-                else if (swirlPausedByGM) state = 'Paused';
-                else                    state = 'Revealing';
-                refs.statusMessage.textContent = `${category} · $${value} — ${state}`;
+                // During buzz adjudication: replace single-line status with the rich
+                // buzzer / answer / guidance layout — this is GM-only, stays in the
+                // sticky header, and is immediately visible without scrolling.
+                if (activeBuzzerUid && !showAnswer) {
+                    const buzzerTeam = participants?.[activeBuzzerUid]?.team || null;
+                    const teamName = buzzerTeam
+                        ? titleCase(teams[buzzerTeam]?.name || `Team ${buzzerTeam}`)
+                        : null;
+                    const who = activeBuzzerName || 'Player';
+                    const answer = currentQuestion.answer || '—';
+                    const awardLabel = teamName ? `Award ${teamName}` : 'Award team';
+                    refs.statusMessage.classList.add('is-adjudicating');
+                    refs.statusMessage.innerHTML =
+                        `<div class="gsa-buzzer">${escapeHtml(who)}${teamName ? ` · ${escapeHtml(teamName)}` : ''} buzzed in</div>` +
+                        `<div class="gsa-answer">Answer: <strong>${escapeHtml(answer)}</strong></div>` +
+                        `<div class="gsa-hint">Correct → ${escapeHtml(awardLabel)} &nbsp;·&nbsp; Incorrect → Resume</div>`;
+                } else {
+                    let state;
+                    if (showAnswer)           state = 'Answer revealed';
+                    else if (swirlPausedByGM) state = 'Paused';
+                    else                      state = 'Revealing';
+                    refs.statusMessage.textContent = `${category} · $${value} — ${state}`;
+                }
             } else {
                 // Player status: normally hidden, but shown in the compact header for context.
                 let playerStatus;

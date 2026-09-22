@@ -261,18 +261,20 @@
 }
 
 .category {
-    background: #3B0764;
-    color: #fff;
-    padding: var(--space-2);
+    /* Static label — no button affordance */
+    color: #3B0764;
+    padding: var(--space-1) var(--space-2);
     font-weight: 700;
-    font-size: clamp(10px, 2.4vw, 14px);
-    line-height: 1.15;
+    font-size: clamp(10px, 2.4vw, 13px);
+    line-height: 1.2;
     text-align: center;
-    border-radius: var(--radius-sm);
     display: flex;
-    align-items: center;
+    align-items: flex-end; /* anchor to tiles below when headers wrap at different heights */
     justify-content: center;
-    min-height: 46px;
+    cursor: default;
+    pointer-events: none;
+    user-select: none;
+    margin-bottom: var(--space-1); /* 4px + existing 6px grid gap = ~10px above first tile row */
 }
 
 .tile {

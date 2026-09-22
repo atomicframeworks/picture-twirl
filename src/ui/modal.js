@@ -2,6 +2,8 @@
 // Promise-based API with queueing, focus-trap, ESC/backdrop dismiss.
 
 const state = { open: null, q: [] };
+let _mid = 0;
+const uid = () => `m${++_mid}`;
 
 function build({ title, body, actions }) {
     const wrap = document.createElement('div');
@@ -25,8 +27,8 @@ function build({ title, body, actions }) {
     p.className = 'pt-m-desc';
     p.textContent = body || '';
 
-    if (title) { h.id = `mt-${crypto.randomUUID()}`; dlg.setAttribute('aria-labelledby', h.id); }
-    if (body) { p.id = `md-${crypto.randomUUID()}`; dlg.setAttribute('aria-describedby', p.id); }
+    if (title) { h.id = `mt-${uid()}`; dlg.setAttribute('aria-labelledby', h.id); }
+    if (body) { p.id = `md-${uid()}`; dlg.setAttribute('aria-describedby', p.id); }
 
     bodyWrap.append(h, p);
 
@@ -48,8 +50,8 @@ function build({ title, body, actions }) {
     dlg.append(bodyWrap, act);
     wrap.append(dlg);
 
-    // Backdrop click dismiss
-    wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) close('dismiss'); });
+    // Backdrop dismiss on click (not mousedown — user can move away before release to cancel)
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) close('dismiss'); });
 
     // Focus trap
     const focusables = () => wrap.querySelectorAll('button,[href],[tabindex]:not([tabindex="-1"])');

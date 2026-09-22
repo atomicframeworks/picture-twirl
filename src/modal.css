@@ -18,6 +18,11 @@
 .pt-modal-backdrop[data-open="true"] {
     opacity: 1;
     pointer-events: auto;
+    cursor: pointer; /* signals backdrop is dismissible */
+}
+
+.pt-modal-backdrop[data-open="true"] .pt-modal {
+    cursor: default;
 }
 
 /* Dialog */

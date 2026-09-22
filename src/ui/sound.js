@@ -57,3 +57,12 @@ export function playCorrect() {
     unlockAudio();
     [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.24, 'triangle', 0.15));
 }
+
+/** Victory fanfare: ascending arpeggio + sustained chord (≈1.8s). */
+export function playVictory() {
+    unlockAudio();
+    // Rising flourish
+    [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.11, 0.35, 'triangle', 0.14));
+    // Sustained major chord landing
+    [523, 659, 784].forEach((f, i) => tone(f, 0.62 + i * 0.03, 1.1, 'sine', 0.10));
+}

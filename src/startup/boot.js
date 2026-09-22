@@ -29,11 +29,15 @@ import {
     waitForAuthReady,
     requireAuth,
     gameExists,
+    rtdb,
 } from '../firebase.js';
+import { ref, get } from 'firebase/database';
+import * as P from '../data/paths.js';
 
 import { predefinedGames } from '../predefinedGames.js';
 import { createGameShell } from '../game/createGame.js';
 import { renderLobby } from '../game/lobby.js';
+import { renderLateJoin } from '../game/renderLateJoin.js';
 import { setSession } from '../session.js';
 
 import { byId, enable, disable, on } from '../ui/dom.js';
@@ -194,7 +198,12 @@ export async function boot() {
             services: {
                 requireAuth,
                 gameExists,
+                getGamePhase: async (id) => {
+                    const snap = await get(ref(rtdb, P.phase(id)));
+                    return snap.val() || null;
+                },
                 renderLobby,
+                renderLateJoin,
                 setSession,
                 showView,
             },

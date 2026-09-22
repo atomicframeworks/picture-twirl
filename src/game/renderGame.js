@@ -13,7 +13,7 @@
 // -----------------------------------------------------------------------------
 
 import { rtdb, getCurrentUser } from '../firebase.js';
-import { ref, onValue, update, get, serverTimestamp } from 'firebase/database';
+import { ref, onValue, update, get, remove, serverTimestamp, onDisconnect as rtdbOnDisconnect } from 'firebase/database';
 import * as P from '../data/paths.js';
 import { getSession } from '../session.js';
 import { on as listen } from '../ui/dom.js';
@@ -69,6 +69,13 @@ export async function renderGameUI(gameId) {
     let prevShowAnswer = false;   // detect reveal → chime
     let compactObserver = null;   // cleanup fn for the GM compact-header scroll listener
 
+    // Cancel any onDisconnect().remove() registered by the lobby so that
+    // a player disconnecting during a live game does NOT lose their participant node
+    // (connection loss ≠ leaving during a live game).
+    if (myUid) {
+        rtdbOnDisconnect(ref(rtdb, P.participant(gameId, myUid))).cancel().catch(() => {});
+    }
+
     // Unlock audio on the first user gesture (browsers gate autoplay).
     const unlockOnce = () => unlockAudio();
     window.addEventListener('pointerdown', unlockOnce, { once: true });
@@ -91,7 +98,7 @@ export async function renderGameUI(gameId) {
 
     if (refs.exitGameBtn) {
         track(listen(refs.exitGameBtn, 'click', async (e) => {
-            e?.preventDefault?.();
+            e.preventDefault();
             if (isGM) return;
             await leaveGame(gameId, { uid: myUid, dispose: disposeAll });
         }));
@@ -115,7 +122,7 @@ export async function renderGameUI(gameId) {
 
     if (refs.gmEndBtn) {
         track(listen(refs.gmEndBtn, 'click', (e) => {
-            e?.preventDefault?.();
+            e.preventDefault();
             handleEndGame(refs.gmEndBtn);
         }));
     }
@@ -171,23 +178,47 @@ export async function renderGameUI(gameId) {
     }));
 
     track(onValue(ref(rtdb, P.participants(gameId)), (s) => {
+        const prev = participants;
         participants = s.val() || {};
         updateTurnGlow();
         updateIdentityRow();
         updateYouBadge();
 
-        // GM: promote any tile request from the active team into selectedTile.
-        // Players can't write selectedTile directly (Firebase rules), so they write
-        // to their own participant node and the GM client picks it up here.
-        if (!isGM || currentQuestion || selectedTile) return;
-        for (const [uid, p] of Object.entries(participants)) {
-            if (p.tileRequest && p.team === currentTurn?.team) {
-                const req = p.tileRequest;
-                update(ref(rtdb), {
-                    [`${P.game(gameId)}/selectedTile`]: { id: req.id, category: req.category, value: req.value },
-                    [`${P.participant(gameId, uid)}/tileRequest`]: null
-                }).catch(err => console.error('Tile request promotion failed:', err));
-                break;
+        if (isGM) {
+            // Detect active players who have disappeared (explicit leave / removal).
+            // Skip on first fire (prev is {}) to avoid false positives.
+            if (Object.keys(prev).length > 0) {
+                for (const [depUid, depP] of Object.entries(prev)) {
+                    if (depP.isGM || depP.status === 'pending') continue;
+                    if (!participants[depUid]) {
+                        showGMLeaveNotice(depP.displayName || 'Player', depP.team);
+                        // If this was the active adjudication buzzer, clear safely
+                        if (depUid === activeBuzzerUid) {
+                            activeBuzzerUid = null;
+                            activeBuzzerName = null;
+                            update(ref(rtdb, P.game(gameId)), { swirlPaused: false }).catch(console.error);
+                            updateStatusMessage();
+                            updateBuzzButton();
+                        }
+                    }
+                }
+            }
+
+            // Show/update the pending-join approval banner
+            updateApprovalBanner();
+
+            // Promote tile requests (only when no active question/tile)
+            if (!currentQuestion && !selectedTile) {
+                for (const [uid, p] of Object.entries(participants)) {
+                    if (p.tileRequest && p.team === currentTurn?.team) {
+                        const req = p.tileRequest;
+                        update(ref(rtdb), {
+                            [`${P.game(gameId)}/selectedTile`]: { id: req.id, category: req.category, value: req.value },
+                            [`${P.participant(gameId, uid)}/tileRequest`]: null
+                        }).catch(err => console.error('Tile request promotion failed:', err));
+                        break;
+                    }
+                }
             }
         }
     }));
@@ -322,6 +353,90 @@ export async function renderGameUI(gameId) {
         if (label) label.textContent = swirlPausedByGM ? 'Resume' : 'Pause';
     }
 
+    // ─── Late-join approval banner (GM only) ────────────────────────────────────
+    let joinApprovalEl = null;
+
+    function getApprovalEl() {
+        if (joinApprovalEl) return joinApprovalEl;
+        joinApprovalEl = document.createElement('div');
+        joinApprovalEl.className = 'join-request-toast';
+        joinApprovalEl.hidden = true;
+        root.appendChild(joinApprovalEl);
+        return joinApprovalEl;
+    }
+
+    async function approveJoiner(pendingUid, team) {
+        const eligibleFromQuestionId = currentQuestion?.id || null;
+        await update(ref(rtdb, P.participant(gameId, pendingUid)), {
+            team,
+            status: 'active',
+            eligibleFromQuestionId,
+        });
+    }
+
+    function updateApprovalBanner() {
+        if (!isGM) return;
+        const pending = Object.entries(participants)
+            .filter(([, p]) => p.status === 'pending')
+            .map(([uid, p]) => ({ uid, name: p.displayName || 'Player' }));
+
+        const el = getApprovalEl();
+
+        if (!pending.length) {
+            el.hidden = true;
+            el.innerHTML = '';
+            return;
+        }
+
+        const { uid: pendingUid, name: pendingName } = pending[0];
+        const teamAName = escapeHtml(teams.A?.name || 'Team A');
+        const teamBName = escapeHtml(teams.B?.name || 'Team B');
+
+        el.hidden = false;
+        el.innerHTML = `
+            <div class="jrt-body">
+                <span class="jrt-text"><strong>${escapeHtml(pendingName)}</strong> wants to join</span>
+                <div class="jrt-actions">
+                    <button class="btn ghost jrt-deny">Deny</button>
+                    <button class="btn ghost jrt-team" data-team="A">${teamAName}</button>
+                    <button class="btn ghost jrt-team" data-team="B">${teamBName}</button>
+                    <button class="btn primary jrt-random">Random</button>
+                </div>
+            </div>`;
+
+        el.querySelector('.jrt-deny').addEventListener('click', () => {
+            remove(ref(rtdb, P.participant(gameId, pendingUid))).catch(console.error);
+        });
+
+        el.querySelectorAll('.jrt-team').forEach(btn => {
+            btn.addEventListener('click', () => approveJoiner(pendingUid, btn.dataset.team).catch(console.error));
+        });
+
+        el.querySelector('.jrt-random').addEventListener('click', () => {
+            let a = 0, b = 0;
+            Object.values(participants).forEach(p => {
+                if (p.status === 'active') {
+                    if (p.team === TEAM.A) a++;
+                    else if (p.team === TEAM.B) b++;
+                }
+            });
+            approveJoiner(pendingUid, a <= b ? TEAM.A : TEAM.B).catch(console.error);
+        });
+    }
+
+    // Small ephemeral toast shown to GM when a player leaves.
+    function showGMLeaveNotice(name, team) {
+        const teamName = team === TEAM.A ? (teams.A?.name || 'Team A')
+            : team === TEAM.B ? (teams.B?.name || 'Team B')
+            : null;
+        const msg = teamName ? `${name} left the game · ${teamName}` : `${name} left the game`;
+        const el = document.createElement('div');
+        el.className = 'game-leave-toast';
+        el.textContent = msg;
+        root.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+    }
+
     // Unified buzz button presenter. Three states:
     //   • enabled "BUZZ IN"   — eligible player, reveal running
     //   • disabled "BUZZ IN"  — reveal paused (GM or buzz), player hasn't spent their attempt
@@ -333,6 +448,16 @@ export async function renderGameUI(gameId) {
         if (!refs.buzzBtn || isGM) return;
         const active = !!currentQuestion && !currentQuestion.showAnswer;
         if (!active) return; // visibility is controlled by renderQuestionViewer
+
+        // Late joiner: ineligible for the question that was active when they joined.
+        const me = participants?.[myUid];
+        const waitingForNext = me?.eligibleFromQuestionId &&
+            me.eligibleFromQuestionId === currentQuestion?.id;
+        if (waitingForNext) {
+            refs.buzzBtn.disabled = true;
+            refs.buzzBtn.textContent = 'NEXT QUESTION';
+            return;
+        }
 
         if (meBuzzedThisQuestion) {
             refs.buzzBtn.disabled = true;

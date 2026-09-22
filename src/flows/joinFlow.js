@@ -21,7 +21,9 @@ import { LIMITS } from '../config.js';
  * @typedef JoinServices
  * @property {Function} requireAuth
  * @property {(gameId: string) => Promise<boolean>} gameExists
+ * @property {(gameId: string) => Promise<string|null>} getGamePhase
  * @property {Function} renderLobby
+ * @property {Function} renderLateJoin
  * @property {Function} setSession
  * @property {Function} showView
  *
@@ -43,7 +45,9 @@ export function initJoinFlow({ services, els }) {
     const {
         requireAuth,
         gameExists,
+        getGamePhase,
         renderLobby,
+        renderLateJoin,
         setSession,
         showView,
     } = services;
@@ -106,7 +110,7 @@ export function initJoinFlow({ services, els }) {
 
     // Form submit handler (Enter key support)
     on(elJoinForm, 'submit', (e) => {
-        e?.preventDefault?.();
+        e.preventDefault();
         if (validateJoinForm() && elConfirmJoin?.dataset?.busy !== '1') {
             elConfirmJoin?.click();
         }
@@ -170,11 +174,25 @@ export function initJoinFlow({ services, els }) {
                 return;
             }
 
+            // Check whether the game is in lobby, live, or ended
+            const phase = getGamePhase ? await getGamePhase(id) : null;
+
+            if (phase === 'ended') {
+                showJoinError('This game has already ended.');
+                validateJoinForm();
+                return;
+            }
+
             // Seed session (non-GM)
             setSession({ gameId: id, isGM: false, displayName: playerName });
 
-            // Enter Lobby
-            await renderLobby(id);
+            if (phase === 'live') {
+                // Game in progress — enter as pending, wait for GM approval
+                await renderLateJoin(id);
+            } else {
+                // Lobby (or phase unknown) — enter lobby normally
+                await renderLobby(id);
+            }
         } catch (err) {
             console.error('Join game failed:', err);
             showJoinError('Could not join. Please verify the code and try again.');

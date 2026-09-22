@@ -57,6 +57,18 @@ export function burstConfetti({ count = 130, originX = 0.5, originY = 0.4 } = {}
     if (!raf) raf = requestAnimationFrame(tick);
 }
 
+/**
+ * Triple-burst celebration for the finale.
+ * @param {number} [originX=0.5] - 0..1 viewport fraction for the main burst
+ */
+export function burstCelebration(originX = 0.5) {
+    if (typeof document === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    burstConfetti({ count: 180, originX, originY: 0.3 });
+    setTimeout(() => burstConfetti({ count: 100, originX: 1 - originX, originY: 0.2 }), 650);
+    setTimeout(() => burstConfetti({ count: 70, originX: 0.5, originY: 0.45 }), 1300);
+}
+
 function tick() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles = particles.filter((p) => p.life > 0 && p.y < canvas.height + 40);

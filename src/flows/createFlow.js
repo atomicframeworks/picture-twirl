@@ -158,7 +158,7 @@ export function initCreateFlow({ services, els }) {
 
     // Step 1: Form submit handler (Enter key support)
     on(createGameForm, 'submit', (e) => {
-        e?.preventDefault?.();
+        e.preventDefault();
         if (!step1Root?.hidden && isStep1Valid()) {
             step1NextBtn?.click();
         }
@@ -167,14 +167,14 @@ export function initCreateFlow({ services, els }) {
     // Step 1: Also listen for Enter key directly on the form
     on(createGameForm, 'keydown', (e) => {
         if (e.key === 'Enter' && !step1Root?.hidden && isStep1Valid()) {
-            e?.preventDefault?.();
+            e.preventDefault();
             step1NextBtn?.click();
         }
     });
 
     // Step 1 Next
     on(step1NextBtn, 'click', async (e) => {
-        e?.preventDefault?.();
+        e.preventDefault();
         if (!isStep1Valid()) return;
 
         const gmDisplayName = (gmNameInput?.value || '').trim().slice(0, LIMITS.DISPLAY_NAME);
@@ -192,14 +192,14 @@ export function initCreateFlow({ services, els }) {
 
     // Step 1 Exit
     on(step1ExitBtn, 'click', (e) => {
-        e?.preventDefault?.();
+        e.preventDefault();
         resetCreate();
         showView('home');
     });
 
     // Step 2 Back
     on(step2BackBtn, 'click', (e) => {
-        e?.preventDefault?.();
+        e.preventDefault();
         gotoStep(1);
         updateStep1NextEnabled();
     });
@@ -207,14 +207,14 @@ export function initCreateFlow({ services, els }) {
     // Step 2: Enter key support
     on(step2Root, 'keydown', (e) => {
         if (e.key === 'Enter' && !step2Root?.hidden && isStep2Valid() && !step2NextBtn?.disabled) {
-            e?.preventDefault?.();
+            e.preventDefault();
             step2NextBtn?.click();
         }
     });
 
     // Step 2 Next (finalize → create → show Game Ready)
     on(step2NextBtn, 'click', async (e) => {
-        e?.preventDefault?.();
+        e.preventDefault();
         if (!isStep2Valid()) return;
 
         try {
@@ -261,7 +261,7 @@ export function initCreateFlow({ services, els }) {
 
     // Game Ready: End game
     on(endGameFromReadyBtn, 'click', async (e) => {
-        e?.preventDefault?.();
+        e.preventDefault();
         if (!currentGameId) return;
 
         const res = await modal.confirm({

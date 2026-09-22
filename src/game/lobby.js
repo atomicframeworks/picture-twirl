@@ -321,7 +321,7 @@ export async function renderLobby(gameId) {
     // Leave Game (non-GM only; link is hidden via CSS for GM)
     if (refs.exitGameBtn) {
         track(listen(refs.exitGameBtn, 'click', async (e) => {
-            e?.preventDefault?.();
+            e.preventDefault();
             await leaveGame(gameId, { uid: getCurrentUser()?.uid || null, dispose: disposeAll });
         }));
     }
@@ -396,7 +396,7 @@ export async function renderLobby(gameId) {
         }
         if (refs.gmEnd) {
             track(listen(refs.gmEnd, 'click', async (e) => {
-                e?.preventDefault?.();
+                e.preventDefault();
 
                 // Prevent double-clicks
                 if (refs.gmEnd.dataset.busy === '1') return;

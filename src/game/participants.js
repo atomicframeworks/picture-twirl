@@ -61,3 +61,51 @@ export function attachPresence(gameId, uid) {
  * @param {string} team  TEAM.A | TEAM.B | TEAM.NONE
  */
 export const setTeam = (gameId, uid, team) => update(ref(rtdb, P.participant(gameId, uid)), { team });
+
+/**
+ * Write a pending join request for the current user (live-game late join).
+ * Creates the participant node with status:'pending' if absent, or updates
+ * an existing node only if it isn't already active (e.g. page reload).
+ * @param {string} gameId
+ * @returns {Promise<string>} uid of the current user
+ */
+export async function writePendingParticipant(gameId) {
+    const user = getCurrentUser(); if (!user) throw new Error('Not signed in');
+    const { displayName } = getSession();
+    const safeName = (displayName || `Player-${user.uid.slice(-4)}`).slice(0, LIMITS.DISPLAY_NAME);
+    const meRef = ref(rtdb, P.participant(gameId, user.uid));
+    const snap = await get(meRef);
+    if (!snap.exists()) {
+        await set(meRef, {
+            displayName: safeName,
+            team: TEAM.NONE,
+            joinedAt: serverTimestamp(),
+            isGM: false,
+            status: 'pending',
+        });
+    } else {
+        const cur = snap.val() || {};
+        if (cur.status !== 'active') {
+            await update(meRef, { displayName: safeName, status: 'pending' });
+        }
+    }
+    return user.uid;
+}
+
+/**
+ * Live-game presence: marks the participant online but does NOT remove the
+ * node on disconnect (connection loss ≠ leaving during a live game).
+ * @param {string} gameId
+ * @param {string} uid
+ * @returns {() => void} unsubscribe
+ */
+export function attachLivePresence(gameId, uid) {
+    const connectedRef = ref(rtdb, '.info/connected');
+    const meRef = ref(rtdb, P.participant(gameId, uid));
+    const off = onValue(connectedRef, (c) => {
+        if (c.val() !== true) return;
+        update(meRef, { online: true, lastSeen: serverTimestamp() }).catch(() => { });
+        onDisconnect(meRef).update({ online: false, lastSeen: serverTimestamp() }).catch(() => { });
+    });
+    return typeof off === 'function' ? off : () => { };
+}

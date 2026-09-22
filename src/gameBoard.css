@@ -41,104 +41,29 @@
     gap: var(--space-4);
     padding: var(--space-4);
     box-shadow: 0 4px 12px rgba(30, 27, 46, .07);
-    transition: gap 0.25s ease, padding 0.25s ease;
 }
 
-/* ─── GM compact header collapse ──────── */
+/* ─── Question-view focused mode (is-in-question on .game-root) ──────── */
+/* Hide header chrome so the image fills the screen. Board view keeps full context. */
 
-/* Collapse the gradient game-header when sentinel exits scroll viewport */
-.game-top > .game-header {
-    overflow: hidden;
-    transition: max-height 0.25s ease, padding-top 0.25s ease, padding-bottom 0.25s ease, opacity 0.2s ease;
-    max-height: 240px;
-}
+.game-root.is-in-question .game-header { display: none; }
+.game-root.is-in-question .scoreboard  { display: none; }
+.game-root.is-in-question .identity-row { display: none; }
 
-.game-top.is-compact > .game-header {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    opacity: 0;
-}
+/* Players: hide info-band entirely in question mode */
+.game-root:not(.is-gm).is-in-question .game-info-band { display: none; }
 
-/* Compact info band */
-.game-top.is-compact .game-info-band {
+/* GM: keep info-band but strip padding/shadow to a minimal bar */
+.game-root.is-gm.is-in-question .game-info-band {
     padding: var(--space-2) var(--space-4);
-    gap: var(--space-2);
-}
-
-/* Compact scorecards: drop emoji icon, tighten padding and type */
-.game-top.is-compact .scoreboard-icon {
-    display: none;
-}
-
-.game-top.is-compact .scoreboard-card {
-    padding: var(--space-2) var(--space-3);
-    transition: padding 0.25s ease;
-}
-
-.game-top.is-compact .scoreboard-name {
-    font-size: 12px;
-}
-
-.game-top.is-compact .scoreboard-score {
-    font-size: 20px;
-    line-height: 1;
-}
-
-.game-top.is-compact .scoreboard-player:not(:empty) {
-    font-size: 10px;
-    padding: 2px 7px;
-    top: 6px;
-    right: 8px;
-}
-
-/* Compact status bar */
-.game-top.is-compact .game-status {
-    padding: var(--space-2) var(--space-3);
-    font-size: 13px;
-}
-
-/* ─── Player compact header ────────────────────────────
-   Players share the same scrollTop collapse mechanism.
-   The info-band switches to a two-row flex layout:
-     Row 1 — both scorecards (full width)
-     Row 2 — identity chip (left) + question status (right)
-   ────────────────────────────────────────────────────── */
-
-.game-root:not(.is-gm) .game-top.is-compact .game-info-band {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-1) var(--space-2);
-    padding: var(--space-2) var(--space-3);
-}
-
-.game-root:not(.is-gm) .game-top.is-compact .scoreboard {
-    flex: 0 0 100%; /* own row above identity + status */
-}
-
-.game-root:not(.is-gm) .game-top.is-compact .identity-row {
-    flex: 1;
-    min-width: 0;
-    justify-content: flex-start; /* left-align the chip */
-}
-
-/* Question context: plain text, no box chrome, right-aligned */
-.game-root:not(.is-gm) .game-top.is-compact .game-status {
-    flex: 1;
-    min-width: 0;
-    text-align: right;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 0;
-    background: transparent;
-    border: none;
+    gap: 0;
     box-shadow: none;
-    border-radius: 0;
-    color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+}
+
+/* Tighten game-main for question view */
+.game-root.is-in-question .game-main {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
 }
 
 /* Sentinel: zero-height, invisible — just a scroll position marker */
@@ -277,23 +202,6 @@
     color: var(--muted);
 }
 
-/* Compact header: tighten sizes but keep all three rows visible */
-.game-root.is-gm .game-top.is-compact .game-status.is-adjudicating {
-    gap: 2px;
-}
-
-.game-root.is-gm .game-top.is-compact .gsa-buzzer {
-    font-size: 11px;
-}
-
-.game-root.is-gm .game-top.is-compact .gsa-answer {
-    font-size: 13px;
-}
-
-.game-root.is-gm .game-top.is-compact .gsa-hint {
-    font-size: 10px;
-}
-
 /* ─── GM resolved state ─────────────────────────────────────────── */
 .game-root.is-gm .game-status.is-resolved {
     text-align: left;
@@ -323,22 +231,6 @@
     font-size: 11px;
     font-weight: 500;
     color: var(--muted);
-}
-
-.game-root.is-gm .game-top.is-compact .game-status.is-resolved {
-    gap: 2px;
-}
-
-.game-root.is-gm .game-top.is-compact .gsr-result {
-    font-size: 11px;
-}
-
-.game-root.is-gm .game-top.is-compact .gsr-answer {
-    font-size: 13px;
-}
-
-.game-root.is-gm .game-top.is-compact .gsr-hint {
-    font-size: 10px;
 }
 
 /* ─── Resolved info banner (all clients, correct-award only) ──────── */
@@ -449,10 +341,11 @@
 /* ═══════════════════════════════════════ */
 .question-viewer {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-2);
     padding: var(--space-2) 0;
 }
 
@@ -486,7 +379,9 @@
 
 .image-wrap {
     position: relative;
-    width: min(92vw, 640px);
+    /* Constrained by viewport width, max-size cap, and viewport height so the
+       image fits within the viewport without requiring scrolling. */
+    width: min(92vw, 640px, 50dvh);
     aspect-ratio: 1 / 1;
     background: #16121f;
     border-radius: var(--radius-lg);
@@ -839,9 +734,6 @@
 /* ═══════════════════════════════════════ */
 /* ═══════════════════════════════════════ */
 /* Identity row                            */
-/* Always visible — lives in .game-info-  */
-/* band so it survives compact-header     */
-/* collapse.                              */
 /* ═══════════════════════════════════════ */
 .identity-row {
     display: flex;
@@ -864,12 +756,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
-}
-
-/* Compact: just tighten font a touch — no other change needed */
-.game-top.is-compact .identity-chip {
-    font-size: 11px;
-    padding: 3px 10px;
 }
 
 /* ═══════════════════════════════════════ */
@@ -895,14 +781,6 @@
 /* CSS safety net: GM root hides both badges even if JS hasn't run yet */
 .is-gm .you-badge {
     display: none !important;
-}
-
-/* Compact: tighten size and position to match compact card padding */
-.game-top.is-compact .you-badge {
-    font-size: 8px;
-    padding: 1px 5px;
-    top: 6px;
-    right: 8px;
 }
 
 @media (min-width: 768px) {

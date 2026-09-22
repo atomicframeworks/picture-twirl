@@ -67,7 +67,6 @@ export async function renderGameUI(gameId) {
     let prevScores = null;        // detect score increases → celebrate
     let prevBuzzCount = 0;        // detect new buzzes → buzz sound
     let prevShowAnswer = false;   // detect reveal → chime
-    let compactObserver = null;   // cleanup fn for the GM compact-header scroll listener
 
     // Cancel any onDisconnect().remove() registered by the lobby so that
     // a player disconnecting during a live game does NOT lose their participant node
@@ -89,7 +88,6 @@ export async function renderGameUI(gameId) {
         disposeListeners();
         if (swirlCtrl?.cancel) swirlCtrl.cancel();
         swirlCtrl = null;
-        if (compactObserver) { compactObserver(); compactObserver = null; }
     }
 
     // ─── Tray exit links: wire BEFORE async work so they always attach ─────────
@@ -689,13 +687,10 @@ export async function renderGameUI(gameId) {
         refs.okBtn.disabled = !selectedTile;
     }
 
-    // Show/hide game-status correctly for the current client type and compact state.
-    // Players normally have it hidden during questions; compact mode reveals it for context.
+    // Hide status message for players during a question (GM always sees it).
     function syncStatusVisibility() {
         if (!refs.statusMessage) return;
-        const active = !!currentQuestion;
-        const isCompact = refs.gameTop?.classList.contains('is-compact') || false;
-        refs.statusMessage.hidden = active && !isGM && !isCompact;
+        refs.statusMessage.hidden = !!currentQuestion && !isGM;
     }
 
     function renderQuestionViewer() {
@@ -720,41 +715,8 @@ export async function renderGameUI(gameId) {
 
         updateTurnGlow();
 
-        // ── Compact header collapse — shared by GM and players ─────────────────
-        // scrollTop threshold + hysteresis: stable under header height changes.
-        // Avoids the IntersectionObserver feedback loop where collapsing the
-        // header resizes .game-main, which would flip the sentinel's visibility
-        // and immediately toggle the header back.
-        if (active) {
-            if (!compactObserver && refs.gameTop && refs.gameMain) {
-                refs.gameMain.scrollTop = 0;
-                refs.gameTop.classList.remove('is-compact');
-
-                const COLLAPSE_AT = 64; // px — collapse after scrolling this far down
-                const EXPAND_AT   = 16; // px — expand only when back above this (hysteresis)
-
-                function onCompactScroll() {
-                    const st = refs.gameMain.scrollTop;
-                    const compact = refs.gameTop.classList.contains('is-compact');
-                    if (!compact && st > COLLAPSE_AT) {
-                        refs.gameTop.classList.add('is-compact');
-                        syncStatusVisibility(); // reveal player question context in compact
-                    } else if (compact && st < EXPAND_AT) {
-                        refs.gameTop.classList.remove('is-compact');
-                        syncStatusVisibility(); // re-hide player status when expanded
-                    }
-                }
-
-                refs.gameMain.addEventListener('scroll', onCompactScroll, { passive: true });
-                compactObserver = () => {
-                    refs.gameMain.removeEventListener('scroll', onCompactScroll);
-                    refs.gameTop.classList.remove('is-compact');
-                    syncStatusVisibility(); // restore correct visibility on question end
-                };
-            }
-        } else {
-            if (compactObserver) { compactObserver(); compactObserver = null; }
-        }
+        // Switch to focused question mode (hides header chrome; see gameBoard.css).
+        root.classList.toggle('is-in-question', active);
 
         if (!active) {
             meBuzzedThisQuestion = false; // fresh eligibility for the next question

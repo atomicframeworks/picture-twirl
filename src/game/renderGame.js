@@ -165,6 +165,7 @@ export async function renderGameUI(gameId) {
         if (refs.awardABtn) refs.awardABtn.title = `Award ${nameA}`;
         if (refs.awardBBtn) refs.awardBBtn.title = `Award ${nameB}`;
         updateIdentityRow();
+        updateStatusMessage(); // re-stamp status after team names arrive from RTDB
     }));
 
     track(onValue(ref(rtdb, P.scores(gameId)), (s) => {

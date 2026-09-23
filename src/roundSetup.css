@@ -1,0 +1,145 @@
+/* src/roundSetup.css
+   Round setup: GM category picker, GM confirm screen, player waiting screen.
+   Uses shared design tokens (tokens.css) and component classes (main.css).
+   The .set-card, .set-ic, .set-title, .set-sub classes come from createGame.css. */
+
+/* ── Root container ── */
+
+.rsetup-root {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--bg-grad);
+    background-attachment: fixed;
+    color: var(--ink);
+}
+
+/* ── GM screens: picker and confirm ── */
+
+.rsetup-screen {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* Gradient header (matches game board header style) */
+.rsetup-header {
+    background: var(--grad-brand);
+    color: #fff;
+    padding: var(--space-6) var(--space-4) var(--space-5);
+    text-align: center;
+}
+
+.rsetup-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(26px, 6vw, 36px);
+    font-weight: 700;
+    line-height: 1.1;
+    color: #fff;
+}
+
+.rsetup-sub {
+    margin: var(--space-2) 0 0;
+    font-size: 15px;
+    color: rgba(255, 255, 255, .8);
+}
+
+/* Scrollable card list area */
+.rsetup-list-wrap {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: var(--space-4);
+}
+
+.rsetup-card-list {
+    width: min(780px, 100%);
+    margin: 0 auto;
+    display: grid;
+    gap: 14px;
+}
+
+/* ── GM confirm screen ── */
+
+.rsetup-confirm-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8) var(--space-4) var(--space-6);
+    text-align: center;
+    gap: var(--space-5);
+}
+
+.rsetup-confirm-icon {
+    font-size: 80px;
+    line-height: 1;
+}
+
+.rsetup-confirm-heading {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(24px, 6vw, 36px);
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.rsetup-confirm-set-name {
+    font-family: var(--font-display);
+    font-size: clamp(20px, 5vw, 28px);
+    font-weight: 600;
+    color: var(--brand-1);
+}
+
+.rsetup-confirm-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 16px;
+}
+
+/* ── Player waiting screen ── */
+
+.rsetup-waiting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8) var(--space-4) var(--space-6);
+    text-align: center;
+    gap: var(--space-5);
+}
+
+.rsetup-waiting-icon {
+    font-size: 72px;
+    line-height: 1;
+    animation: rsetup-pulse 2.4s ease-in-out infinite;
+}
+
+.rsetup-waiting-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(26px, 6vw, 38px);
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.rsetup-waiting-body {
+    margin: 0;
+    color: var(--muted);
+    font-size: 17px;
+    line-height: 1.5;
+    max-width: 28ch;
+}
+
+/* Leaves tray bottom-aligned; the parent .rsetup-root grid row handles it */
+.rsetup-leave-tray {
+    position: sticky;
+    bottom: 0;
+}
+
+@keyframes rsetup-pulse {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.1); }
+}

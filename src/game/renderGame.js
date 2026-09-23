@@ -24,6 +24,7 @@ import { startSwirlAnimation, drawUnswirled } from './swirl.js';
 import { enqueueBuzz, clearBuzzQueue } from './buzz.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
 import { renderFinale } from './renderFinale.js';
+import { renderRoundSetup } from './renderRoundSetup.js';
 import { initializeStartingTurn, advanceTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
@@ -132,13 +133,16 @@ export async function renderGameUI(gameId) {
         track(listen(refs.gmEndInQuestion, 'click', () => handleEndGame(refs.gmEndInQuestion)));
     }
 
-    // ─── Phase listener: ended → finale ────────────────────────────────────────
+    // ─── Phase listener: ended → finale, roundSetup → round picker ────────────
     track(onValue(ref(rtdb, P.phase(gameId)), (s) => {
-        if (s.val() === 'ended') {
+        const ph = s.val();
+        if (ph === 'ended') {
             const teamAIcon = refs.teamAIcon?.textContent?.trim() || '🐕';
             const teamBIcon = refs.teamBIcon?.textContent?.trim() || '🐈';
             renderFinale(gameId, { teamAIcon, teamBIcon, dispose: disposeAll })
                 .catch(err => console.error('[renderGame] renderFinale failed:', err));
+        } else if (ph === 'roundSetup') {
+            renderRoundSetup(gameId, { dispose: disposeAll });
         }
     }));
 

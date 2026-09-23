@@ -15,6 +15,7 @@ import * as P from '../data/paths.js';
 import { createDisposer, exitToHome } from './controllerKit.js';
 import { renderGameUI } from './renderGame.js';
 import { renderFinale } from './renderFinale.js';
+import { renderRoundSetup } from './renderRoundSetup.js';
 import { writePendingParticipant, attachLivePresence } from './participants.js';
 
 export async function renderLateJoin(gameId) {
@@ -59,12 +60,14 @@ export async function renderLateJoin(gameId) {
         }
     }));
 
-    // Watch phase: if game ends while waiting, go to finale
+    // Watch phase: if game ends or goes to round setup, navigate accordingly
     track(onValue(ref(rtdb, P.phase(gameId)), (snap) => {
         const phase = snap.val();
         if (phase === 'ended') {
             renderFinale(gameId, { dispose: disposeAll })
                 .catch(() => exitToHome(disposeAll));
+        } else if (phase === 'roundSetup') {
+            renderRoundSetup(gameId, { dispose: disposeAll });
         }
     }));
 }

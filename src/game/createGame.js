@@ -222,10 +222,4 @@ export async function createGameShell(
 }
 
 
-// -----------------------------------------------------------------------------
-// If you later want to reuse the board materialization elsewhere (e.g. to
-// regenerate a board, clone a game, etc.), you can export the helper:
-//
-// export { buildBoardFromSet };
-//
-// -----------------------------------------------------------------------------
+export { buildBoardFromSet };

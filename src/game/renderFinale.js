@@ -12,8 +12,7 @@ import { collectRefs } from '../ui/templates.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstCelebration } from '../ui/confetti.js';
 import { playVictory } from '../ui/sound.js';
-import { renderLobby } from './lobby.js';
-import { createGameShell } from './createGame.js';
+import { renderRoundSetup } from './renderRoundSetup.js';
 import { TEAM } from '../config.js';
 
 // Phase timings (ms from endedAt server timestamp)
@@ -182,7 +181,8 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
             refs.voteConfirmMsg.textContent = 'You can change your vote.';
         }
 
-        // ── Vote listener ────────────────────────────────────────────────────
+        // ── Phase listener: roundSetup → round setup screen ──────────────────
+        let unsubPhase = null;
         let unsubVotes = null;
         let myVote = null;
 
@@ -211,6 +211,13 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
                     : 'You can change your vote.';
             }
         }
+
+        unsubPhase = onValue(ref(rtdb, P.phase(gameId)), (snap) => {
+            if (snap.val() === 'roundSetup') {
+                cleanup();
+                renderRoundSetup(gameId);
+            }
+        });
 
         unsubVotes = onValue(ref(rtdb, P.participants(gameId)), (snap) => {
             const parts = snap.val() || {};
@@ -257,43 +264,14 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
                 if (refs.playAgainBtn.dataset.busy === '1') return;
                 refs.playAgainBtn.dataset.busy = '1';
                 refs.playAgainBtn.disabled = true;
-                refs.endSessionBtn.disabled = true;
-
+                if (refs.endSessionBtn) refs.endSessionBtn.disabled = true;
                 try {
-                    const newGameId = Math.random().toString(36).substring(2, 8);
-
-                    await createGameShell(newGameId, {
-                        setId: settings.setId,
-                        teamA: teams.A?.name,
-                        teamB: teams.B?.name,
-                        gmName: displayName,
-                        title: gameTitle,
-                        teamsEnabled: settings.teamsEnabled,
-                    });
-
-                    // Pre-populate participants with preserved teams
-                    const writes = {};
-                    for (const [uid, p] of Object.entries(participants)) {
-                        writes[P.participant(newGameId, uid)] = {
-                            displayName: p.displayName || 'Player',
-                            team: p.team || TEAM.NONE,
-                            joinedAt: serverTimestamp(),
-                            isGM: !!p.isGM,
-                        };
-                    }
-                    if (Object.keys(writes).length) await update(ref(rtdb), writes);
-
-                    // Signal all clients (must happen after new game exists)
-                    await update(ref(rtdb, P.state(gameId)), { rematchGameId: newGameId });
-
-                    // GM navigates
-                    cleanup();
-                    setSession({ gameId: newGameId, isGM: true, displayName });
-                    renderLobby(newGameId);
+                    // Write roundSetup phase; phase listener navigates all clients
+                    await update(ref(rtdb, P.state(gameId)), { phase: 'roundSetup' });
                 } catch (err) {
                     console.error('[renderFinale] Play Again failed:', err);
                     refs.playAgainBtn.disabled = false;
-                    refs.endSessionBtn.disabled = false;
+                    if (refs.endSessionBtn) refs.endSessionBtn.disabled = false;
                     refs.playAgainBtn.dataset.busy = '0';
                 }
             });
@@ -308,19 +286,8 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
             });
         }
 
-        // ── Players: watch for rematch ───────────────────────────────────────
-        if (!isGM) {
-            const unsubRematch = onValue(ref(rtdb, `${P.state(gameId)}/rematchGameId`), (snap) => {
-                const newId = snap.val();
-                if (!newId) return;
-                unsubRematch();
-                cleanup();
-                setSession({ gameId: newId, isGM: false, displayName });
-                renderLobby(newId);
-            });
-        }
-
         function cleanup() {
+            if (typeof unsubPhase === 'function') { unsubPhase(); unsubPhase = null; }
             if (typeof unsubVotes === 'function') { unsubVotes(); unsubVotes = null; }
         }
 

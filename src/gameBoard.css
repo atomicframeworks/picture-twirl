@@ -544,8 +544,8 @@
     color: var(--ink);
 }
 
-/* First buzzer gets the spotlight */
-.buzz-entry:first-child {
+/* Active (currently adjudicated) buzzer gets the spotlight */
+.buzz-entry.is-active {
     background: var(--grad-buzz);
     color: #fff;
     border-color: transparent;

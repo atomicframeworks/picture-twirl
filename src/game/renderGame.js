@@ -67,6 +67,7 @@ export async function renderGameUI(gameId) {
     let prevScores = null;        // detect score increases → celebrate
     let prevBuzzCount = 0;        // detect new buzzes → buzz sound
     let prevShowAnswer = false;   // detect reveal → chime
+    let latestBuzzQueue = [];     // mirrors RTDB buzzQueue; re-used when activeBuzzerUid changes
     let boardCompactObserver = null; // cleanup fn for board compact-header scroll listener
 
     // Cancel any onDisconnect().remove() registered by the lobby so that
@@ -266,21 +267,27 @@ export async function renderGameUI(gameId) {
     }));
 
     // ─── Buzz queue ────────────────────────────────────────────────────────────
+    // Renders the buzz-queue pill list.  Must be called any time activeBuzzerUid
+    // changes (new buzz, Resume) so the is-active class tracks the current buzzer,
+    // not the first-child DOM position.
+    function renderBuzzQueue() {
+        if (!refs.buzzQueueEl) return;
+        refs.buzzQueueEl.innerHTML = latestBuzzQueue.length
+            ? latestBuzzQueue.map(e => {
+                const name = participants?.[e.uid]?.displayName || 'Player';
+                const active = activeBuzzerUid && e.uid === activeBuzzerUid;
+                return `<div class="buzz-entry${active ? ' is-active' : ''}">${escapeHtml(name)}</div>`;
+            }).join('')
+            : '';
+    }
+
     track(onValue(ref(rtdb, P.buzzQueue(gameId)), (s) => {
         const obj = s.val() || {};
         const ordered = Object.values(obj)
             .filter(e => e && typeof e.createdAt === 'number')
             .sort((a, b) => a.createdAt - b.createdAt);
 
-        if (refs.buzzQueueEl) {
-            refs.buzzQueueEl.innerHTML = ordered.length
-                ? ordered.map(e => {
-                    const name = participants?.[e.uid]?.displayName || 'Player';
-                    return `<div class="buzz-entry">${escapeHtml(name)}</div>`;
-                }).join('')
-                : '';
-        }
-
+        // Set activeBuzzerUid BEFORE rendering so the correct pill gets is-active.
         // New buzz arrived — sound, set active adjudication buzzer, auto-pause.
         if (ordered.length > prevBuzzCount) {
             playBuzz();
@@ -302,6 +309,8 @@ export async function renderGameUI(gameId) {
             }
         }
         prevBuzzCount = ordered.length;
+        latestBuzzQueue = ordered;
+        renderBuzzQueue();
         applySwirlPause();
         refreshSwirlLabel();
         updateStatusMessage();
@@ -319,6 +328,7 @@ export async function renderGameUI(gameId) {
         swirlPausedByGM = s.val() === true;
         // Resume clears the active adjudication buzzer so the next buzz starts a fresh wave.
         if (!swirlPausedByGM) { activeBuzzerUid = null; activeBuzzerName = null; }
+        renderBuzzQueue(); // re-stamp pills: clears is-active on Resume, no-op otherwise
         applySwirlPause();
         updatePauseButton();
         refreshSwirlLabel();

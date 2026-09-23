@@ -66,6 +66,80 @@
     gap: var(--space-2);
 }
 
+/* ─── Board compact header (scroll-driven, board view only) ────────────
+   .is-board-compact is toggled by JS on .game-main scroll.
+   :not(.is-in-question) ensures the picture view is never affected.    */
+
+/* Smooth collapse of the title/code block */
+.game-root:not(.is-in-question) .game-top > .game-header {
+    overflow: hidden;
+    max-height: 240px;
+    transition: max-height 0.25s ease, padding-top 0.25s ease, padding-bottom 0.25s ease, opacity 0.2s ease;
+}
+
+.game-root.is-board-compact:not(.is-in-question) .game-top > .game-header {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+}
+
+/* Compact info band */
+.game-root.is-board-compact:not(.is-in-question) .game-info-band {
+    padding: var(--space-2) var(--space-4);
+    gap: var(--space-2);
+    box-shadow: none;
+}
+
+/* Drop emoji icon; tighten scorecards */
+.game-root.is-board-compact:not(.is-in-question) .scoreboard-icon {
+    display: none;
+}
+
+.game-root.is-board-compact:not(.is-in-question) .scoreboard-card {
+    padding: var(--space-2) var(--space-3);
+}
+
+.game-root.is-board-compact:not(.is-in-question) .scoreboard-name {
+    font-size: 12px;
+}
+
+.game-root.is-board-compact:not(.is-in-question) .scoreboard-score {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.game-root.is-board-compact:not(.is-in-question) .scoreboard-player:not(:empty) {
+    font-size: 10px;
+    padding: 2px 7px;
+    top: 6px;
+    right: 8px;
+}
+
+/* Compact status and identity */
+.game-root.is-board-compact:not(.is-in-question) .game-status {
+    padding: var(--space-2) var(--space-3);
+    font-size: 13px;
+}
+
+.game-root.is-board-compact:not(.is-in-question) .identity-chip {
+    font-size: 11px;
+    padding: 3px 10px;
+}
+
+.game-root.is-board-compact:not(.is-in-question) .you-badge {
+    font-size: 8px;
+    padding: 1px 5px;
+    top: 6px;
+    right: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .game-root:not(.is-in-question) .game-top > .game-header {
+        transition: none;
+    }
+}
+
 /* Sentinel: zero-height, invisible — just a scroll position marker */
 .question-sentinel {
     height: 0;
@@ -426,18 +500,14 @@
     transition: width .2s linear;
 }
 
-.swirl-timer-label {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: .08em;
+.swirl-status-label {
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .06em;
     text-transform: uppercase;
-    color: var(--brand-1-ink);
-    mix-blend-mode: luminosity;
+    color: var(--ink);
 }
 
 .answer-text {

@@ -321,8 +321,35 @@ button:disabled,
   text-decoration: none;
 }
 
+/* Copyright notice appended to every sticky footer tray — single rule, no HTML changes. */
+.actions-tray::after {
+  content: '\00A9 2026 Luis Ordorica \0026 Kevin McGinty. All rights reserved.';
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  text-align: center;
+  opacity: 0.65;
+  pointer-events: none;
+  user-select: none;
+  margin-top: calc(var(--space-1) * -1); /* tighten the gap slightly vs exit-link */
+}
+
 .actions-tray .exit-link:hover {
   text-decoration: underline;
+}
+
+/* Shared copyright notice — for screens without .actions-tray (e.g. finale). */
+.app-copyright {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  text-align: center;
+  opacity: 0.65;
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  pointer-events: none;
+  user-select: none;
 }
 
 .status-row {

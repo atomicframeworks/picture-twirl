@@ -121,6 +121,8 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
     </div>
   </section>
 
+  <p class="app-copyright">© 2026 Luis Ordorica &amp; Kevin McGinty. All rights reserved.</p>
+
 </div>`;
 
         const root = app.firstElementChild;

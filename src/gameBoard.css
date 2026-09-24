@@ -574,12 +574,13 @@
     color: var(--ink);
 }
 
-/* Active (currently adjudicated) buzzer gets the spotlight */
+/* Active (currently adjudicated) buzzer: informational tint, not gradient.
+   Tint + border = "this player owns the buzz", not "tap this". */
 .buzz-entry.is-active {
-    background: var(--grad-buzz);
-    color: #fff;
-    border-color: transparent;
-    box-shadow: var(--shadow-sm);
+    background: #FDF2F8;
+    color: var(--brand-1-ink);
+    border-color: var(--brand-2);
+    box-shadow: none;
 }
 
 /* The marquee BUZZ button (inside .actions-tray) */

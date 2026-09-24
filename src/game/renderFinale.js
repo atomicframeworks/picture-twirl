@@ -110,6 +110,9 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
     </div>
     <div class="finale-vote-confirm" data-ref="voteConfirmMsg"></div>
 
+    <!-- Player exit — low-emphasis; hidden for GM (GM has End Session) -->
+    <button class="finale-return-home" data-ref="returnHomeBtn">Return home</button>
+
     <!-- GM only: live vote summary + decision buttons -->
     <div class="finale-gm-summary" data-ref="gmVoteSummary"></div>
     <div class="finale-gm-actions" data-ref="gmActions" hidden>
@@ -171,10 +174,11 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
             refs.voteHeading.hidden = true;
             refs.voteRow.hidden = true;
             refs.voteConfirmMsg.hidden = true;
+            refs.returnHomeBtn.hidden = true;  // GM has End Session instead
             refs.gmVoteSummary.textContent = 'Waiting for player votes…';
             refs.gmActions.hidden = false;
         } else {
-            // Players see: vote controls; no GM summary or action buttons
+            // Players see: vote controls + Return home; no GM summary or action buttons
             refs.gmVoteSummary.hidden = true;
             refs.gmActions.hidden = true;
             // Pre-vote confirm line (applyVoteHighlight will keep this in sync)
@@ -206,9 +210,14 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
                 refs.voteNo.textContent = sel ? '✓ No' : 'No';
             }
             if (refs.voteConfirmMsg) {
-                refs.voteConfirmMsg.textContent = vote === 'yes' ? 'Your vote: Yes'
-                    : vote === 'no' ? 'Your vote: No'
-                    : 'You can change your vote.';
+                if (vote === 'yes' || vote === 'no') {
+                    const label = vote === 'yes' ? 'Yes' : 'No';
+                    // Two-line: vote confirmation + waiting cue
+                    refs.voteConfirmMsg.innerHTML =
+                        `Your vote: ${label}<span class="finale-waiting">Waiting for the host…</span>`;
+                } else {
+                    refs.voteConfirmMsg.textContent = 'You can change your vote.';
+                }
             }
         }
 
@@ -257,6 +266,17 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
 
         refs.voteYes?.addEventListener('click', () => castVote('yes'));
         refs.voteNo?.addEventListener('click', () => castVote('no'));
+
+        // ── Player: Return home ──────────────────────────────────────────────
+        // Exits cleanly without retracting the player's submitted vote —
+        // playAgainVote stays in Firebase so the GM tally remains accurate.
+        if (!isGM && refs.returnHomeBtn) {
+            refs.returnHomeBtn.addEventListener('click', () => {
+                cleanup();
+                setSession({ gameId: null, isGM: false });
+                window.location.reload();
+            });
+        }
 
         // ── GM: Play Again ───────────────────────────────────────────────────
         if (isGM && refs.playAgainBtn) {

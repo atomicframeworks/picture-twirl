@@ -59,6 +59,36 @@
     margin: 0;
 }
 
+/* ── In-game late-join waiting panel (inside game-main, replaces board/viewer) */
+.in-game-late-join-wait {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+}
+
+/* ── GM join-confirmation toast (mirrors leave-toast layout, success tint) ── */
+.game-join-toast {
+    position: fixed;
+    top: 72px;
+    right: 16px;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--brand-1);
+    border-radius: var(--radius-md, 10px);
+    box-shadow: var(--shadow-sm);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--brand-1-ink);
+    max-width: 280px;
+    animation: leave-toast-in 0.2s ease, leave-toast-out 0.3s ease 3.7s forwards;
+    pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .game-join-toast { animation: none; }
+}
+
 /* ── GM join-request approval banner ────────────────────────────────────── */
 .join-request-toast {
     position: fixed;

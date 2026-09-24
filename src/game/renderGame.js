@@ -70,6 +70,7 @@ export async function renderGameUI(gameId) {
     let prevShowAnswer = false;   // detect reveal → chime
     let latestBuzzQueue = [];     // mirrors RTDB buzzQueue; re-used when activeBuzzerUid changes
     let boardCompactObserver = null; // cleanup fn for board compact-header scroll listener
+    let lateJoinWaitEl = null;    // waiting card shown to a player deferred to next question
 
     // Cancel any onDisconnect().remove() registered by the lobby so that
     // a player disconnecting during a live game does NOT lose their participant node
@@ -377,6 +378,38 @@ export async function renderGameUI(gameId) {
         if (label) label.textContent = swirlPausedByGM ? 'Resume' : 'Pause';
     }
 
+    // ─── Late-join waiting panel (player only) ───────────────────────────────────
+    // Shown to a player who was accepted during an active question.
+    // Replaces the board and viewer entirely — no image data leaks underneath.
+    function showLateJoinWait() {
+        if (!lateJoinWaitEl) {
+            lateJoinWaitEl = document.createElement('div');
+            lateJoinWaitEl.className = 'in-game-late-join-wait';
+            lateJoinWaitEl.innerHTML =
+                '<div class="late-join-card">' +
+                '<div class="late-join-spinner" aria-hidden="true"></div>' +
+                '<h2 class="late-join-title">You\'re in!</h2>' +
+                '<p class="late-join-body">Joining next question&hellip;<br>' +
+                '<span>The current question is already in progress.</span></p>' +
+                '</div>';
+            refs.gameMain?.appendChild(lateJoinWaitEl);
+        }
+        lateJoinWaitEl.hidden = false;
+    }
+
+    function hideLateJoinWait() {
+        if (lateJoinWaitEl) lateJoinWaitEl.hidden = true;
+    }
+
+    // ─── GM join-confirmation toast ──────────────────────────────────────────────
+    function showGMJoinNotice(msg) {
+        const el = document.createElement('div');
+        el.className = 'game-join-toast';
+        el.textContent = msg;
+        root.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+    }
+
     // ─── Late-join approval banner (GM only) ────────────────────────────────────
     let joinApprovalEl = null;
 
@@ -390,12 +423,19 @@ export async function renderGameUI(gameId) {
     }
 
     async function approveJoiner(pendingUid, team) {
+        const pendingName = participants[pendingUid]?.displayName || 'Player';
         const eligibleFromQuestionId = currentQuestion?.id || null;
         await update(ref(rtdb, P.participant(gameId, pendingUid)), {
             team,
             status: 'active',
             eligibleFromQuestionId,
         });
+        // Show GM feedback; distinguish deferred vs immediate entry.
+        if (eligibleFromQuestionId) {
+            showGMJoinNotice(`${pendingName} added — joins next question`);
+        } else {
+            showGMJoinNotice(`${pendingName} added`);
+        }
     }
 
     function updateApprovalBanner() {
@@ -769,6 +809,42 @@ export async function renderGameUI(gameId) {
 
     function renderQuestionViewer() {
         const active = !!currentQuestion;
+
+        // ── Late-join eligibility gate ────────────────────────────────────────────
+        // eligibleFromQuestionId is written by approveJoiner when the GM accepts a
+        // player while a question is active. It records the question id they are NOT
+        // eligible for. This is persisted in Firebase so a refresh/reconnect during
+        // the same question restores the gate, not the picture view.
+        const me = !isGM ? (participants?.[myUid] ?? null) : null;
+        const waitingForNext = !isGM && !!me?.eligibleFromQuestionId &&
+            me.eligibleFromQuestionId === currentQuestion?.id;
+
+        if (waitingForNext) {
+            // Do not render any part of the question experience. The waiting card
+            // completely replaces both the board and the viewer — no image beneath.
+            if (refs.boardWrap) refs.boardWrap.hidden = true;
+            if (refs.viewerEl) refs.viewerEl.hidden = true;
+            if (refs.buzzBtn) refs.buzzBtn.hidden = true;
+            if (refs.gmControls) refs.gmControls.hidden = true;
+            if (refs.okBtn) refs.okBtn.hidden = true;
+            root.classList.remove('is-in-question');
+            syncStatusVisibility();
+            showLateJoinWait();
+            return;
+        }
+
+        // Not waiting: hide the waiting card (covers the case where a player's
+        // deferred question just ended and they're transitioning to the board).
+        hideLateJoinWait();
+
+        // When the deferred question has ended (board state), clear the flag from
+        // Firebase so it doesn't linger. The ID comparison is the real gate; this
+        // is housekeeping that also prevents a stale flag from ever matching a
+        // future question that happens to reuse the same tile id.
+        if (!active && !isGM && me?.eligibleFromQuestionId) {
+            update(ref(rtdb, P.participant(gameId, myUid)), { eligibleFromQuestionId: null })
+                .catch(console.error);
+        }
 
         // Toggle board vs viewer
         if (refs.boardWrap) refs.boardWrap.hidden = active;

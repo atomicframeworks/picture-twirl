@@ -27,13 +27,29 @@ export function workingSize(imgEl) {
     };
 }
 
-/** Draw the clear image onto the canvas at working resolution (answer reveal). */
+/**
+ * Layout for a square working canvas with the image drawn `contain`-style.
+ * The canvas side equals the long edge of the working size (never exceeds MAX_WORKING_PX).
+ * Letterbox offsets center the image; transparent pixels outside it show the container bg.
+ */
+function containLayout(imgEl) {
+    const { width: iw, height: ih } = workingSize(imgEl);
+    const size = Math.max(iw, ih); // square side = long edge (already ≤ MAX_WORKING_PX)
+    const offsetX = Math.round((size - iw) / 2);
+    const offsetY = Math.round((size - ih) / 2);
+    return { size, drawW: iw, drawH: ih, offsetX, offsetY };
+}
+
+/** Draw the clear image onto a square canvas with contain-style letterboxing (answer reveal). */
 export function drawUnswirled(imgEl, canvasEl) {
     if (!imgEl?.naturalWidth || !canvasEl) return;
-    const { width, height } = workingSize(imgEl);
-    canvasEl.width = width;
-    canvasEl.height = height;
-    canvasEl.getContext('2d')?.drawImage(imgEl, 0, 0, width, height);
+    const { size, drawW, drawH, offsetX, offsetY } = containLayout(imgEl);
+    canvasEl.width = size;
+    canvasEl.height = size;
+    const ctx = canvasEl.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(imgEl, offsetX, offsetY, drawW, drawH);
 }
 
 /**
@@ -48,40 +64,41 @@ export function drawUnswirled(imgEl, canvasEl) {
  * @returns {{pause: Function, resume: Function, cancel: Function, isPaused: Function}} Control object
  */
 export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl = 3.0, elapsedStart = 0, onProgress) {
-    const { width, height } = workingSize(imgEl);
+    const { size, drawW, drawH, offsetX, offsetY } = containLayout(imgEl);
 
     // Sample source pixels offscreen so the visible canvas never flashes the clear image.
+    // Canvas is square (size × size); image is drawn centered with contain-style letterboxing.
     const srcCanvas = document.createElement('canvas');
-    srcCanvas.width = width;
-    srcCanvas.height = height;
+    srcCanvas.width = size;
+    srcCanvas.height = size;
     const srcCtx = srcCanvas.getContext('2d');
-    srcCtx.drawImage(imgEl, 0, 0, width, height);
-    const imageData = srcCtx.getImageData(0, 0, width, height);
+    srcCtx.drawImage(imgEl, offsetX, offsetY, drawW, drawH);
+    const imageData = srcCtx.getImageData(0, 0, size, size);
 
-    canvasEl.width = width;
-    canvasEl.height = height;
+    canvasEl.width = size;
+    canvasEl.height = size;
     const ctx = canvasEl.getContext('2d');
-    const output = ctx.createImageData(width, height); // reused every frame
+    const output = ctx.createImageData(size, size); // reused every frame
 
     // Whole-pixel (RGBA) copies: 4× fewer writes, and PNG transparency is preserved.
     const src32 = new Uint32Array(imageData.data.buffer);
     const out32 = new Uint32Array(output.data.buffer);
 
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const radius = Math.min(width, height) / 2;
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const radius = size / 2;
 
     // Per-pixel geometry is fixed for the whole animation; only the angle changes.
     // The angle depends solely on distance from centre, so quantise distance to
     // whole pixels and look cos/sin up from a small per-frame table instead of
     // calling Math.cos/Math.sin for every pixel.
-    const count = width * height;
+    const count = size * size;
     const dxs = new Float32Array(count);
     const dys = new Float32Array(count);
     const distIdx = new Uint16Array(count);
     let maxDist = 0;
-    for (let y = 0, i = 0; y < height; y++) {
-        for (let x = 0; x < width; x++, i++) {
+    for (let y = 0, i = 0; y < size; y++) {
+        for (let x = 0; x < size; x++, i++) {
             const dx = x - centerX;
             const dy = y - centerY;
             dxs[i] = dx;
@@ -113,8 +130,8 @@ export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl =
             const sx = Math.floor(centerX + dx * c - dy * s);
             const sy = Math.floor(centerY + dx * s + dy * c);
 
-            out32[i] = (sx >= 0 && sx < width && sy >= 0 && sy < height)
-                ? src32[sy * width + sx]
+            out32[i] = (sx >= 0 && sx < size && sy >= 0 && sy < size)
+                ? src32[sy * size + sx]
                 : 0; // transparent — outside the source image
         }
 

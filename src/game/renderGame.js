@@ -29,7 +29,7 @@ import { initializeStartingTurn, advanceTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
 import { playBuzz, playCorrect, playReveal, unlockAudio } from '../ui/sound.js';
-import { TEAM, SWIRL, teamToAnswer } from '../config.js';
+import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer } from '../config.js';
 
 export async function renderGameUI(gameId) {
     const app = document.getElementById('app');
@@ -54,7 +54,7 @@ export async function renderGameUI(gameId) {
     let participants = {};
     let scores = { A: 0, B: 0 };
     let currentTurn = null;       // { team } — which team picks next
-    let turnFirstSeen = false;    // skip coin flip on reconnect/refresh
+    let boardLocked = false;      // true during the starting-team reveal window
     let selectedTile = null;      // { id, category, value } — GM has picked, not yet posted
     let currentQuestion = null;   // { id, category, imageUrl, value, showAnswer }
     let swirlStartTime = null;    // server timestamp (ms) when the current swirl began
@@ -230,18 +230,27 @@ export async function renderGameUI(gameId) {
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/currentTurn`), (s) => {
-        const val = s.val();
-        if (!turnFirstSeen) {
-            // First snapshot on mount — existing state, no animation.
-            turnFirstSeen = true;
-        } else if (!currentTurn && val) {
-            // Null → value: game just started, show coin flip.
-            showCoinFlip(val.team);
-        }
-        currentTurn = val;
+        currentTurn = s.val();
         updateActiveTurnDisplay();
         updateStatusMessage();
         updateTurnGlow();
+    }));
+
+    // ─── Starting-team reveal (synchronized across all clients) ───────────────
+    // startingTeamReveal is written once, atomically with currentTurn, by the GM.
+    // Every client computes the remaining window using the server timestamp so
+    // late joiners see the correct remaining duration rather than the full 3.5s.
+    track(onValue(ref(rtdb, P.startingTeamReveal(gameId)), (s) => {
+        const reveal = s.val();
+        if (!reveal?.revealAt) return;
+
+        const serverNow = Date.now() + serverTimeOffset;
+        const remainingMs = (reveal.revealAt + STARTING_REVEAL.DURATION_MS) - serverNow;
+        if (remainingMs <= 0) return; // window already passed (reconnect / late join)
+
+        boardLocked = true;
+        root.classList.add('is-reveal-locked');
+        showCoinFlip(reveal.team, remainingMs);
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/selectedTile`), (s) => {
@@ -515,8 +524,10 @@ export async function renderGameUI(gameId) {
         }
     }
 
-    // ─── Coin flip overlay (shown once when the first turn is assigned) ────────
-    function showCoinFlip(team) {
+    // ─── Coin flip overlay (synchronized reveal phase) ─────────────────────────
+    // durationMs is the remaining window computed from the shared revealAt timestamp,
+    // so all clients stay in the reveal for the same wall-clock duration.
+    function showCoinFlip(team, durationMs) {
         const teamName = titleCase(teams[team]?.name || `Team ${team}`);
         const overlay = document.createElement('div');
         overlay.className = 'coin-flip-overlay';
@@ -528,9 +539,15 @@ export async function renderGameUI(gameId) {
             </div>`;
         document.body.appendChild(overlay);
         requestAnimationFrame(() => overlay.classList.add('is-visible'));
-        const cleanup = () => { overlay.classList.remove('is-visible'); setTimeout(() => overlay.remove(), 400); };
-        setTimeout(cleanup, 3500);
-        track(() => overlay.remove());
+        const cleanup = () => {
+            overlay.classList.remove('is-visible');
+            setTimeout(() => overlay.remove(), 400);
+            boardLocked = false;
+            root.classList.remove('is-reveal-locked');
+            updateStatusMessage(); // refresh now that the board is open
+        };
+        setTimeout(cleanup, durationMs);
+        track(() => { overlay.classList.remove('is-visible'); overlay.remove(); });
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -897,6 +914,7 @@ export async function renderGameUI(gameId) {
                 if (!isGM && !isMyTeamsTurn) return; // only GM or the active team may pick
                 if (currentQuestion) return;         // question already active
                 if (tileData.answered) return;
+                if (boardLocked) return;             // starting-team reveal in progress
 
                 if (isGM) {
                     // GM can write selectedTile directly.

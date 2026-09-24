@@ -12,6 +12,11 @@ export const SWIRL = {
     STRENGTH: 2.0,         // Swirl intensity
 };
 
+// Starting-team reveal: how long the coin-flip overlay stays visible (all clients)
+export const STARTING_REVEAL = {
+    DURATION_MS: 3500,
+};
+
 // Team identifiers
 export const TEAM = {
     A: 'A',

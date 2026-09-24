@@ -710,6 +710,19 @@
 [data-paused="true"] .icon-play { display: flex; }
 
 /* ═══════════════════════════════════════ */
+/* Starting-team reveal board lock         */
+/* Tiles are non-interactive while the     */
+/* coin-flip overlay is active.            */
+/* ═══════════════════════════════════════ */
+.game-root.is-reveal-locked .board-container {
+    pointer-events: none;
+}
+
+.game-root.is-reveal-locked .tile {
+    cursor: default;
+}
+
+/* ═══════════════════════════════════════ */
 /* Coin flip overlay (game start)          */
 /* ═══════════════════════════════════════ */
 .coin-flip-overlay {

@@ -7,13 +7,15 @@
 // -----------------------------------------------------------------------------
 
 import { rtdb } from '../firebase.js';
-import { ref, get, update } from 'firebase/database';
+import { ref, get, update, serverTimestamp } from 'firebase/database';
 import * as P from '../data/paths.js';
 import { TEAM } from '../config.js';
 
 /**
  * Randomly pick a starting team and write { team } to /currentTurn.
- * No-op if a turn already exists.
+ * Also writes startingTeamReveal so every client can enter the shared
+ * reveal phase and lock the board until it expires.
+ * No-op if a turn already exists (idempotent — safe to call again on reconnect).
  */
 export async function initializeStartingTurn(gameId) {
     const snap = await get(ref(rtdb, `${P.game(gameId)}/currentTurn`));
@@ -21,7 +23,8 @@ export async function initializeStartingTurn(gameId) {
 
     const firstTeam = Math.random() < 0.5 ? TEAM.A : TEAM.B;
     await update(ref(rtdb, P.game(gameId)), {
-        currentTurn: { team: firstTeam }
+        currentTurn: { team: firstTeam },
+        startingTeamReveal: { team: firstTeam, revealAt: serverTimestamp() },
     });
 }
 

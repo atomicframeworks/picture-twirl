@@ -109,6 +109,7 @@ Entry: `main.js` → `startup/boot.js`
   ├─ board/{col-row}: { id, col, row, category, imageUrl, answer, value,
   │                     opened, answered, answeredBy, awardedPoints, locked, lastActionAt }
   ├─ currentTurn: { uid, team }         # display-only "who is up"
+  ├─ startingTeamReveal: { team, revealAt: serverTimestamp }  # written once at game start; drives synchronized coin-flip phase
   ├─ selectedTile: { id, category, value }   # GM picked, not yet posted
   ├─ currentQuestion: { id, category, imageUrl, answer, value, showAnswer }
   ├─ swirlStartTime: serverTimestamp

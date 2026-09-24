@@ -17,3 +17,4 @@ export const buzzQueue = (id) => `games/${id}/buzzQueue`;
 export const settings = (id) => `games/${id}/settings`;
 export const setId = (id) => `games/${id}/settings/setId`;
 export const index = (id) => `gameIndex/${id}`;
+export const startingTeamReveal = (id) => `games/${id}/startingTeamReveal`;

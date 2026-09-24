@@ -3,6 +3,15 @@
    Uses shared components + tokens; adds a little hero polish.
 */
 
+/* Repeating brand pattern behind the home screen only.
+   background-size: 520px keeps individual icons at a comfortable scale across
+   viewport sizes — readable on iPhone, not busy on desktop. */
+#home {
+    background-image: url('/images/home-pattern.png');
+    background-repeat: repeat;
+    background-size: 520px;
+}
+
 #home .card {
     position: relative;
     overflow: hidden;

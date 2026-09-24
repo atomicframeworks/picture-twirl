@@ -31,7 +31,7 @@
   /* ── Lobby pills ─────────────────────────────────────────── */
   --pill: #F1ECFE;
   --pill-ink: #5B21B6;
-  --pill-me: var(--grad-brand);
+  --pill-me: var(--brand-1);
   --pill-me-ink: #fff;
 
   /* ── Typography ──────────────────────────────────────────── */

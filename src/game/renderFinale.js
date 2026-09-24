@@ -267,15 +267,20 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
         refs.voteYes?.addEventListener('click', () => castVote('yes'));
         refs.voteNo?.addEventListener('click', () => castVote('no'));
 
-        // ── Player: Return home ──────────────────────────────────────────────
-        // Exits cleanly without retracting the player's submitted vote —
-        // playAgainVote stays in Firebase so the GM tally remains accurate.
+        // ── Shared exit: return to home screen ──────────────────────────────
+        // Used by both player "Return home" and GM "End Session".
+        // window.location.replace('/') removes the game-code hash so the router
+        // sees '/' and shows the home screen instead of the join-game flow.
+        // playAgainVote is NOT retracted — it persists in Firebase so the GM
+        // tally stays accurate after the player leaves.
+        function returnHome() {
+            cleanup();
+            setSession({ gameId: null, isGM: false });
+            window.location.replace('/');
+        }
+
         if (!isGM && refs.returnHomeBtn) {
-            refs.returnHomeBtn.addEventListener('click', () => {
-                cleanup();
-                setSession({ gameId: null, isGM: false });
-                window.location.reload();
-            });
+            refs.returnHomeBtn.addEventListener('click', returnHome);
         }
 
         // ── GM: Play Again ───────────────────────────────────────────────────
@@ -299,11 +304,7 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
 
         // ── GM: End Session ──────────────────────────────────────────────────
         if (isGM && refs.endSessionBtn) {
-            refs.endSessionBtn.addEventListener('click', () => {
-                cleanup();
-                setSession({ gameId: null, isGM: false });
-                window.location.reload();
-            });
+            refs.endSessionBtn.addEventListener('click', returnHome);
         }
 
         function cleanup() {

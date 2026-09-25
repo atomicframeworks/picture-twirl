@@ -60,10 +60,12 @@ export async function renderLateJoin(gameId) {
         }
     }));
 
-    // Watch phase: if game ends or goes to round setup, navigate accordingly
+    // Watch phase: if game ends or goes to round setup, navigate accordingly.
+    // 'sessionEnded' is treated the same as 'ended': route to renderFinale,
+    // which will immediately show the session-ended card via its phase listener.
     track(onValue(ref(rtdb, P.phase(gameId)), (snap) => {
         const phase = snap.val();
-        if (phase === 'ended') {
+        if (phase === 'ended' || phase === 'sessionEnded') {
             renderFinale(gameId, { dispose: disposeAll })
                 .catch(() => exitToHome(disposeAll));
         } else if (phase === 'roundSetup') {

@@ -177,7 +177,7 @@ export function initJoinFlow({ services, els }) {
             // Check whether the game is in lobby, live, or ended
             const phase = getGamePhase ? await getGamePhase(id) : null;
 
-            if (phase === 'ended') {
+            if (phase === 'ended' || phase === 'sessionEnded') {
                 showJoinError('This game has already ended.');
                 validateJoinForm();
                 return;

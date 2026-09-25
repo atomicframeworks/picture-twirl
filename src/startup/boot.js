@@ -225,6 +225,23 @@ export async function boot() {
         on(joinGameBtn, 'click', () => startJoinFlow());
 
         // -------------------------------------------------------------------------
+        // Post-game navigation intent (set by renderFinale ended-session card)
+        // Read once, clear immediately so a reload/back-nav doesn't re-trigger.
+        // -------------------------------------------------------------------------
+        const homeIntent = (() => {
+            try {
+                const v = sessionStorage.getItem('pictureTwirlOnHomeIntent');
+                if (v) sessionStorage.removeItem('pictureTwirlOnHomeIntent');
+                return v;
+            } catch { return null; }
+        })();
+        if (homeIntent === 'create') {
+            startCreateFlow();
+        } else if (homeIntent === 'join') {
+            startJoinFlow();
+        }
+
+        // -------------------------------------------------------------------------
         // Auto-join if game code is in URL
         // -------------------------------------------------------------------------
         if (gameCodeFromUrl) {

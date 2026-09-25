@@ -192,6 +192,36 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
         let unsubVotes = null;
         let myVote = null;
 
+        // Replaces the CTA section with the "host has left" ended card.
+        // Reuses returnHome() for all three navigation paths.
+        function showSessionEndedCard() {
+            cleanup();
+            const sCta = refs.sCta;
+            if (!sCta) return;
+            sCta.removeAttribute('hidden');
+            sCta.classList.add('is-visible');
+            sCta.innerHTML = `
+                <div class="finale-ended-card">
+                    <div class="finale-ended-icon" aria-hidden="true">🎤</div>
+                    <h2 class="finale-ended-title">The host has left the building!</h2>
+                    <p class="finale-ended-body">This game has ended. Thanks for playing <strong>${escapeHtml(gameTitle)}</strong>!</p>
+                    <div class="finale-ended-actions">
+                        <button class="btn primary finale-ended-start">Start a new game</button>
+                        <button class="btn ghost finale-ended-join">Join another game</button>
+                        <button class="finale-return-home finale-ended-home">Return home</button>
+                    </div>
+                </div>`;
+            sCta.querySelector('.finale-ended-start').addEventListener('click', () => {
+                try { sessionStorage.setItem('pictureTwirlOnHomeIntent', 'create'); } catch {}
+                returnHome();
+            });
+            sCta.querySelector('.finale-ended-join').addEventListener('click', () => {
+                try { sessionStorage.setItem('pictureTwirlOnHomeIntent', 'join'); } catch {}
+                returnHome();
+            });
+            sCta.querySelector('.finale-ended-home').addEventListener('click', returnHome);
+        }
+
         // Applies selected state from a vote value ('yes' | 'no' | null).
         // Derives button text and confirmation message from persisted state so
         // the UI is correct after reload, reconnect, or any Firebase re-push.
@@ -224,9 +254,12 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
         }
 
         unsubPhase = onValue(ref(rtdb, P.phase(gameId)), (snap) => {
-            if (snap.val() === 'roundSetup') {
+            const ph = snap.val();
+            if (ph === 'roundSetup') {
                 cleanup();
                 renderRoundSetup(gameId);
+            } else if (ph === 'sessionEnded' && !isGM) {
+                showSessionEndedCard();
             }
         });
 
@@ -305,8 +338,22 @@ export async function renderFinale(gameId, { teamAIcon = '🐕', teamBIcon = '�
         }
 
         // ── GM: End Session ──────────────────────────────────────────────────
+        // Write phase: 'sessionEnded' first so all connected players see the
+        // ended card. Only navigate home after the write succeeds. On failure,
+        // re-enable the buttons and log the error so players are not stranded.
         if (isGM && refs.endSessionBtn) {
-            refs.endSessionBtn.addEventListener('click', returnHome);
+            refs.endSessionBtn.addEventListener('click', async () => {
+                refs.endSessionBtn.disabled = true;
+                if (refs.playAgainBtn) refs.playAgainBtn.disabled = true;
+                try {
+                    await update(ref(rtdb, P.state(gameId)), { phase: 'sessionEnded' });
+                    returnHome();
+                } catch (err) {
+                    console.error('[renderFinale] End Session write failed:', err);
+                    refs.endSessionBtn.disabled = false;
+                    if (refs.playAgainBtn) refs.playAgainBtn.disabled = false;
+                }
+            });
         }
 
         function cleanup() {

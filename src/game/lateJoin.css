@@ -138,6 +138,10 @@
     padding: 6px 10px;
 }
 
+.jrt-actions .jrt-team {
+    white-space: nowrap;
+}
+
 /* ── GM leave-notification toast ─────────────────────────────────────────── */
 .game-leave-toast {
     position: fixed;

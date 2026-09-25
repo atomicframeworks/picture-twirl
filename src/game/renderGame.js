@@ -411,6 +411,21 @@ export async function renderGameUI(gameId) {
     }
 
     // ─── Late-join approval banner (GM only) ────────────────────────────────────
+
+    // Returns { a, b } counts of non-GM, non-pending players on each team.
+    // Normal participants written by ensureParticipant have no `status` field;
+    // pending late-joiners have status:'pending'. Both cases are handled.
+    function activeTeamCounts() {
+        let a = 0, b = 0;
+        Object.values(participants).forEach(p => {
+            if (!p.isGM && p.status !== 'pending') {
+                if (p.team === TEAM.A) a++;
+                else if (p.team === TEAM.B) b++;
+            }
+        });
+        return { a, b };
+    }
+
     let joinApprovalEl = null;
 
     function getApprovalEl() {
@@ -456,14 +471,18 @@ export async function renderGameUI(gameId) {
         const teamAName = escapeHtml(teams.A?.name || 'Team A');
         const teamBName = escapeHtml(teams.B?.name || 'Team B');
 
+        const { a: countA, b: countB } = activeTeamCounts();
+        const labelA = `Assign to ${teams.A?.name || 'Team A'}, ${countA} player${countA !== 1 ? 's' : ''}`;
+        const labelB = `Assign to ${teams.B?.name || 'Team B'}, ${countB} player${countB !== 1 ? 's' : ''}`;
+
         el.hidden = false;
         el.innerHTML = `
             <div class="jrt-body">
                 <span class="jrt-text"><strong>${escapeHtml(pendingName)}</strong> wants to join</span>
                 <div class="jrt-actions">
                     <button class="btn ghost jrt-deny">Deny</button>
-                    <button class="btn ghost jrt-team" data-team="A">${teamAName}</button>
-                    <button class="btn ghost jrt-team" data-team="B">${teamBName}</button>
+                    <button class="btn ghost jrt-team" data-team="A" aria-label="${escapeHtml(labelA)}">${teamAName} · ${countA}</button>
+                    <button class="btn ghost jrt-team" data-team="B" aria-label="${escapeHtml(labelB)}">${teamBName} · ${countB}</button>
                     <button class="btn primary jrt-random">Random</button>
                 </div>
             </div>`;
@@ -477,13 +496,7 @@ export async function renderGameUI(gameId) {
         });
 
         el.querySelector('.jrt-random').addEventListener('click', () => {
-            let a = 0, b = 0;
-            Object.values(participants).forEach(p => {
-                if (p.status === 'active') {
-                    if (p.team === TEAM.A) a++;
-                    else if (p.team === TEAM.B) b++;
-                }
-            });
+            const { a, b } = activeTeamCounts();
             approveJoiner(pendingUid, a <= b ? TEAM.A : TEAM.B).catch(console.error);
         });
     }

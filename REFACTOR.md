@@ -277,6 +277,9 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-06-14 | 3 (dx) | Add `.env.local.example` | `d2f01c8` |
 | 2026-06-14 | 2.2 (step 2) | Untangle lobby instruction state machine → `lobbyInstructions.js` | `005f65d` |
 | 2026-09-20 | 3 (perf) | Swirl: server-aligned clock (`.info/serverTimeOffset`), capped working resolution, single rAF loop | `0e9020a` |
+| 2026-09-27 | feature | Name suggestions: `names.js` + `prefs.js`, prefilled screen/team names, dice re-roll on team fields | `994c6f5` |
+| 2026-09-27 | feature | Extract `ui/diceButton.js`; dice re-roll on both screen-name fields | `88aaa01` |
+| 2026-09-27 | feature | Prefill + dice re-roll for the game title (`GAME_NAMES`, `pt.prefs.gameName`) | `899917f` |
 
 > Append a row per commit. Keep the newest at the bottom.
 
@@ -284,16 +287,18 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 
 ## 7. Smoke-test checklist (run after structural changes)
 
-The build can't run on native Windows here (Linux rollup binaries from the
-Docker dev container). Run the app via `docker compose up` (or `npm install`
-natively) and walk through:
+`npm run lint` and `npm run build` both run natively on Windows since Phase 2.5
+(`11c161d`). Run the app with `npm run dev` (or `docker compose up`) and walk
+through:
 
-- [ ] **Create:** Home → New Game → fill details → pick a set → "Your game is
-      ready" shows a code → share/copy code works.
+- [ ] **Create:** Home → New Game → all five name fields arrive pre-filled (and
+      remember what you rolled last time) → each 🎲 gives a different name →
+      pick a set → "Your game is ready" shows a code → share/copy code works.
 - [ ] **Lobby (GM):** Go to Lobby → code visible → join self to a team →
       Start Game (with an unassigned player → "assign to random" modal works).
-- [ ] **Join (player):** open `#CODE` URL or enter code → enter lobby → pick a
-      team → "Joined X team" message.
+- [ ] **Join (player):** open `#CODE` URL or enter code → screen name is
+      pre-filled and its 🎲 re-rolls → enter lobby → pick a team → "Joined X
+      team" message.
 - [ ] **Live (GM):** pick a tile → OK → image swirls → Show Answer → Award A/B →
       score updates, tile shows ✔ → Back to Board.
 - [ ] **Buzz (player):** BUZZ IN during a question → swirl pauses → button shows

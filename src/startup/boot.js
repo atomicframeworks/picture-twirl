@@ -75,6 +75,7 @@ export async function boot() {
         // -------------------------
         const createGameForm = byId('createGameForm');
         const gmNameInput = byId('gmName');
+        const gmNameRollBtn = byId('gmNameRollBtn');
         const gameNameInput = byId('gameName');
         const teamANameInput = byId('teamAName');
         const teamBNameInput = byId('teamBName');
@@ -112,6 +113,7 @@ export async function boot() {
         const cancelJoinBtn = byId('cancelJoinBtn');
         const joinGameIdInput = byId('joinGameId');
         const playerNameInput = byId('playerName');
+        const playerNameRollBtn = byId('playerNameRollBtn');
         const joinErrorRow = byId('joinErrorRow');
         const joinErrorText = byId('joinErrorText');
 
@@ -173,6 +175,7 @@ export async function boot() {
                 gameNameInput,
                 teamANameInput,
                 teamBNameInput,
+                gmNameRollBtn,
                 teamARollBtn,
                 teamBRollBtn,
 
@@ -217,6 +220,7 @@ export async function boot() {
                 cancelJoinBtn,
                 joinGameIdInput,
                 playerNameInput,
+                playerNameRollBtn,
                 joinErrorRow,
                 joinErrorText,
             },

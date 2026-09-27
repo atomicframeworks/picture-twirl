@@ -57,9 +57,14 @@ Entry: `main.js` → `startup/boot.js`
 - `resolvePlayerName()` / `resolveTeamNames()` are the stitch point: return the
   remembered value if there is one, otherwise generate **and persist** it — so
   the first suggestion sticks from then on.
-- Both name fields in Create (GM name, Team 1/Team 2) and the Join screen name
-  are prefilled this way, and re-saved whenever the user edits or re-rolls. Those
-  inputs deliberately have **no `placeholder`** — they are never empty.
+- All four name fields — Create (GM screen name, Team 1, Team 2) and the Join
+  screen name — are prefilled this way, and re-saved whenever the user edits or
+  re-rolls. Those inputs deliberately have **no `placeholder`**: they are never
+  empty.
+- Each one carries a 🎲 button wired through `ui/diceButton.js`
+  (`attachDiceButton(btn, onRoll)` — click → spin animation → roll). A roll
+  always differs from the name it replaces, teams never collide, and the result
+  is saved immediately so a good roll survives to the next game.
 
 **Firebase Integration (`firebase.js`)**
 - Config discovery: `window.__FIREBASE_CONFIG__` (priority) or `import.meta.env.VITE_FIREBASE_*`
@@ -241,6 +246,7 @@ src/
 │   └── joinFlow.js           # Join game flow
 ├── ui/
 │   ├── dom.js                # DOM utilities
+│   ├── diceButton.js         # "Roll a new name" button (spin + handler)
 │   ├── views.js              # View controller
 │   ├── templates.js          # Template helpers
 │   └── modal.js              # Modal dialogs

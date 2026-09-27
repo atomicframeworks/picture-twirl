@@ -24,8 +24,9 @@
 
 import { on, enable, disable } from '../ui/dom.js';
 import { flashCheckmark } from '../ui/copyButton.js';
+import { attachDiceButton } from '../ui/diceButton.js';
 import { LIMITS } from '../config.js';
-import { randomTeamName } from '../names.js';
+import { randomPlayerName, randomTeamName } from '../names.js';
 import {
     resolvePlayerName,
     savePlayerName,
@@ -55,6 +56,7 @@ export function initCreateFlow({ services, els }) {
         gameNameInput,
         teamANameInput,
         teamBNameInput,
+        gmNameRollBtn,
         teamARollBtn,
         teamBRollBtn,
 
@@ -125,12 +127,14 @@ export function initCreateFlow({ services, els }) {
         if (teamBNameInput) teamBNameInput.value = teamB;
     }
 
-    /** Spin the dice glyph once (CSS handles prefers-reduced-motion). */
-    function spinDice(btn) {
-        if (!btn) return;
-        btn.classList.remove('is-rolling');
-        void btn.offsetWidth; // restart the animation on rapid re-clicks
-        btn.classList.add('is-rolling');
+    /** Roll a new screen name (never the one already shown) and remember it. */
+    function rollPlayerName() {
+        if (!gmNameInput) return;
+
+        const next = randomPlayerName([gmNameInput.value]).slice(0, LIMITS.DISPLAY_NAME);
+        gmNameInput.value = next;
+        savePlayerName(next);
+        updateStep1NextEnabled();
     }
 
     /**
@@ -146,7 +150,6 @@ export function initCreateFlow({ services, els }) {
         const next = randomTeamName([input.value, other?.value]).slice(0, LIMITS.TEAM_NAME);
         input.value = next;
         saveTeamName(teamKey, next);
-        spinDice(teamKey === 'A' ? teamARollBtn : teamBRollBtn);
         updateStep1NextEnabled();
     }
 
@@ -218,9 +221,10 @@ export function initCreateFlow({ services, els }) {
     on(teamANameInput, 'change', () => saveTeamName('A', teamANameInput?.value || ''));
     on(teamBNameInput, 'change', () => saveTeamName('B', teamBNameInput?.value || ''));
 
-    // Dice: roll a fresh team name
-    on(teamARollBtn, 'click', (e) => { e.preventDefault(); rollTeamName('A'); });
-    on(teamBRollBtn, 'click', (e) => { e.preventDefault(); rollTeamName('B'); });
+    // Dice: roll a fresh name (spin animation handled by the shared helper)
+    attachDiceButton(gmNameRollBtn, rollPlayerName);
+    attachDiceButton(teamARollBtn, () => rollTeamName('A'));
+    attachDiceButton(teamBRollBtn, () => rollTeamName('B'));
 
     // Step 1: Form submit handler (Enter key support)
     on(createGameForm, 'submit', (e) => {

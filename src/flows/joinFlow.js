@@ -15,7 +15,9 @@
 // -----------------------------------------------------------------------------
 
 import { on, enable, disable } from '../ui/dom.js';
+import { attachDiceButton } from '../ui/diceButton.js';
 import { LIMITS } from '../config.js';
+import { randomPlayerName } from '../names.js';
 import { resolvePlayerName, savePlayerName } from '../prefs.js';
 
 /**
@@ -34,6 +36,7 @@ import { resolvePlayerName, savePlayerName } from '../prefs.js';
  * @property {HTMLButtonElement|null} cancelJoinBtn
  * @property {HTMLInputElement|null} joinGameIdInput
  * @property {HTMLInputElement|null} playerNameInput
+ * @property {HTMLButtonElement|null} playerNameRollBtn
  * @property {HTMLElement|null} joinErrorRow
  * @property {HTMLElement|null} joinErrorText
  */
@@ -59,6 +62,7 @@ export function initJoinFlow({ services, els }) {
         cancelJoinBtn,
         joinGameIdInput,
         playerNameInput,
+        playerNameRollBtn,
         joinErrorRow,
         joinErrorText,
     } = els;
@@ -111,6 +115,15 @@ export function initJoinFlow({ services, els }) {
 
     // Remember an edited screen name (change fires on blur / before button clicks)
     on(elPlayerNameInput, 'change', () => savePlayerName(elPlayerNameInput?.value || ''));
+
+    // Dice: roll a new screen name (never the one already shown) and remember it
+    attachDiceButton(playerNameRollBtn, () => {
+        if (!elPlayerNameInput) return;
+        const next = randomPlayerName([elPlayerNameInput.value]).slice(0, LIMITS.DISPLAY_NAME);
+        elPlayerNameInput.value = next;
+        savePlayerName(next);
+        validateJoinForm();
+    });
 
     // Form submit handler (Enter key support)
     on(elJoinForm, 'submit', (e) => {

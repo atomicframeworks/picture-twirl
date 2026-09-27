@@ -53,8 +53,14 @@
           <form id="createGameForm" class="create-form" novalidate>
             <div class="field">
               <label class="field-label" for="gmName">Your Screen Name</label>
-              <input id="gmName" class="input" type="text" autocomplete="name">
-              <div class="field-hint">Visible to all players</div>
+              <div class="input-row">
+                <input id="gmName" class="input" type="text" autocomplete="name">
+                <button type="button" id="gmNameRollBtn" class="btn-dice" title="Roll a new screen name"
+                  aria-label="Roll a new screen name">
+                  <span class="btn-dice-face" aria-hidden="true">🎲</span>
+                </button>
+              </div>
+              <div class="field-hint">Visible to all players · tap the dice for a new one</div>
             </div>
 
             <div class="field">
@@ -83,7 +89,6 @@
                   <span class="btn-dice-face" aria-hidden="true">🎲</span>
                 </button>
               </div>
-              <div class="field-hint">Tap the dice for a fresh name.</div>
             </div>
           </form>
         </div>
@@ -174,7 +179,14 @@
           <!-- Player display name -->
           <div class="field">
             <label for="playerName" class="field-label">Your Screen Name</label>
-            <input id="playerName" type="text" class="input" autocomplete="name">
+            <div class="input-row">
+              <input id="playerName" type="text" class="input" autocomplete="name">
+              <button type="button" id="playerNameRollBtn" class="btn-dice" title="Roll a new screen name"
+                aria-label="Roll a new screen name">
+                <span class="btn-dice-face" aria-hidden="true">🎲</span>
+              </button>
+            </div>
+            <div class="field-hint">Tap the dice for a new one</div>
           </div>
 
           <!-- Actions -->

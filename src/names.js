@@ -103,12 +103,22 @@ function key(value) {
 }
 
 /**
- * Generate a screen name like "Lucky Buzzer 407".
+ * Generate a screen name like "Lucky Buzzer 407". Pass the name currently on
+ * screen as `exclude` so a re-roll always visibly changes something.
+ * @param {Array<string|null|undefined>} [exclude]
  * @returns {string}
  */
-export function randomPlayerName() {
-    const digits = 100 + Math.floor(Math.random() * 900); // always 3 digits
-    return `${pick(PLAYER_ADJECTIVES)} ${pick(PLAYER_NOUNS)} ${digits}`;
+export function randomPlayerName(exclude = []) {
+    const taken = new Set(exclude.map(key).filter(Boolean));
+    let name = '';
+    // 1296 word pairs × 900 numbers — a repeat is vanishingly rare, so a few
+    // tries is plenty; the last one stands either way.
+    for (let i = 0; i < 8; i++) {
+        const digits = 100 + Math.floor(Math.random() * 900); // always 3 digits
+        name = `${pick(PLAYER_ADJECTIVES)} ${pick(PLAYER_NOUNS)} ${digits}`;
+        if (!taken.has(key(name))) break;
+    }
+    return name;
 }
 
 /**

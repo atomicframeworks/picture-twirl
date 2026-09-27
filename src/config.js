@@ -44,9 +44,9 @@ export const DOUBLE_TAKE = {
     },
     // Probability tiers — ordered highest-gap-first; first match wins.
     PROBABILITY: [
-        { minGap: 0.50, p: 1.0 },
-        { minGap: 0.30, p: 1.0 },
-        { minGap: 0.15, p: 1.0 },
-        { minGap: 0,    p: 1.0 },
+    { minGap: 0.50, p: 0.15 },
+    { minGap: 0.30, p: 0.10 },
+    { minGap: 0.15, p: 0.06 },
+    { minGap: 0,    p: 0.03 },
     ],
 };

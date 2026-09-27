@@ -53,7 +53,7 @@
           <form id="createGameForm" class="create-form" novalidate>
             <div class="field">
               <label class="field-label" for="gmName">Your Screen Name</label>
-              <input id="gmName" class="input" type="text" placeholder="e.g., Kevin" autocomplete="name">
+              <input id="gmName" class="input" type="text" autocomplete="name">
               <div class="field-hint">Visible to all players</div>
             </div>
 
@@ -65,12 +65,25 @@
 
             <div class="field">
               <label class="field-label" for="teamAName">Team 1</label>
-              <input id="teamAName" class="input" type="text" placeholder="Team A" />
+              <div class="input-row">
+                <input id="teamAName" class="input" type="text" />
+                <button type="button" id="teamARollBtn" class="btn-dice" title="Roll a new team name"
+                  aria-label="Roll a new name for Team 1">
+                  <span class="btn-dice-face" aria-hidden="true">🎲</span>
+                </button>
+              </div>
             </div>
 
             <div class="field">
               <label class="field-label" for="teamBName">Team 2</label>
-              <input id="teamBName" class="input" type="text" placeholder="Team B" />
+              <div class="input-row">
+                <input id="teamBName" class="input" type="text" />
+                <button type="button" id="teamBRollBtn" class="btn-dice" title="Roll a new team name"
+                  aria-label="Roll a new name for Team 2">
+                  <span class="btn-dice-face" aria-hidden="true">🎲</span>
+                </button>
+              </div>
+              <div class="field-hint">Tap the dice for a fresh name.</div>
             </div>
           </form>
         </div>
@@ -161,7 +174,7 @@
           <!-- Player display name -->
           <div class="field">
             <label for="playerName" class="field-label">Your Screen Name</label>
-            <input id="playerName" type="text" class="input" placeholder="Enter your screen name">
+            <input id="playerName" type="text" class="input" autocomplete="name">
           </div>
 
           <!-- Actions -->

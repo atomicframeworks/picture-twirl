@@ -25,6 +25,13 @@
 import { on, enable, disable } from '../ui/dom.js';
 import { flashCheckmark } from '../ui/copyButton.js';
 import { LIMITS } from '../config.js';
+import { randomTeamName } from '../names.js';
+import {
+    resolvePlayerName,
+    savePlayerName,
+    resolveTeamNames,
+    saveTeamName,
+} from '../prefs.js';
 import { rtdb } from '../firebase.js';
 import { ref, remove } from 'firebase/database';
 import * as P from '../data/paths.js';
@@ -48,6 +55,8 @@ export function initCreateFlow({ services, els }) {
         gameNameInput,
         teamANameInput,
         teamBNameInput,
+        teamARollBtn,
+        teamBRollBtn,
 
         // Step 2 elements
         step1Root,
@@ -101,6 +110,53 @@ export function initCreateFlow({ services, els }) {
         if (step2Root) step2Root.hidden = (step !== 2);
     }
 
+    // ───────────────────────────────────────────────────────────────────────────
+    // Name suggestions (Step 1)
+    // - Screen name + both team names are never blank: remembered from a previous
+    //   game on this device, or freshly generated (and then remembered).
+    // - form.reset() wipes JS-assigned values, so prefill always follows a reset.
+    // ───────────────────────────────────────────────────────────────────────────
+
+    function prefillNames() {
+        if (gmNameInput) gmNameInput.value = resolvePlayerName();
+
+        const [teamA, teamB] = resolveTeamNames();
+        if (teamANameInput) teamANameInput.value = teamA;
+        if (teamBNameInput) teamBNameInput.value = teamB;
+    }
+
+    /** Spin the dice glyph once (CSS handles prefers-reduced-motion). */
+    function spinDice(btn) {
+        if (!btn) return;
+        btn.classList.remove('is-rolling');
+        void btn.offsetWidth; // restart the animation on rapid re-clicks
+        btn.classList.add('is-rolling');
+    }
+
+    /**
+     * Roll a new name for one team: never the name it already shows, never the
+     * other team's name. Remembered immediately so a good roll survives.
+     * @param {'A'|'B'} teamKey
+     */
+    function rollTeamName(teamKey) {
+        const input = teamKey === 'A' ? teamANameInput : teamBNameInput;
+        const other = teamKey === 'A' ? teamBNameInput : teamANameInput;
+        if (!input) return;
+
+        const next = randomTeamName([input.value, other?.value]).slice(0, LIMITS.TEAM_NAME);
+        input.value = next;
+        saveTeamName(teamKey, next);
+        spinDice(teamKey === 'A' ? teamARollBtn : teamBRollBtn);
+        updateStep1NextEnabled();
+    }
+
+    /** Remember whatever the user settled on, so it greets them next time. */
+    function rememberStep1Names() {
+        savePlayerName(gmNameInput?.value || '');
+        saveTeamName('A', teamANameInput?.value || '');
+        saveTeamName('B', teamBNameInput?.value || '');
+    }
+
     function renderSetCards() {
         if (!setListEl) return;
 
@@ -142,6 +198,7 @@ export function initCreateFlow({ services, els }) {
 
     function resetCreate() {
         createGameForm?.reset?.();
+        prefillNames();
         selectedSetId = '';
         updateStep1NextEnabled();
         updateStep2NextEnabled();
@@ -156,6 +213,15 @@ export function initCreateFlow({ services, els }) {
         on(createGameForm, evt, updateStep1NextEnabled, true)
     );
 
+    // Remember edited names on commit (change fires on blur / before button clicks)
+    on(gmNameInput, 'change', () => savePlayerName(gmNameInput?.value || ''));
+    on(teamANameInput, 'change', () => saveTeamName('A', teamANameInput?.value || ''));
+    on(teamBNameInput, 'change', () => saveTeamName('B', teamBNameInput?.value || ''));
+
+    // Dice: roll a fresh team name
+    on(teamARollBtn, 'click', (e) => { e.preventDefault(); rollTeamName('A'); });
+    on(teamBRollBtn, 'click', (e) => { e.preventDefault(); rollTeamName('B'); });
+
     // Step 1: Form submit handler (Enter key support)
     on(createGameForm, 'submit', (e) => {
         e.preventDefault();
@@ -166,6 +232,8 @@ export function initCreateFlow({ services, els }) {
 
     // Step 1: Also listen for Enter key directly on the form
     on(createGameForm, 'keydown', (e) => {
+        // Let Enter activate an in-form button (the dice) instead of advancing.
+        if (e.target?.tagName === 'BUTTON') return;
         if (e.key === 'Enter' && !step1Root?.hidden && isStep1Valid()) {
             e.preventDefault();
             step1NextBtn?.click();
@@ -176,6 +244,8 @@ export function initCreateFlow({ services, els }) {
     on(step1NextBtn, 'click', async (e) => {
         e.preventDefault();
         if (!isStep1Valid()) return;
+
+        rememberStep1Names();
 
         const gmDisplayName = (gmNameInput?.value || '').trim().slice(0, LIMITS.DISPLAY_NAME);
         const gameDisplayName = (gameNameInput?.value || '').trim().slice(0, LIMITS.GAME_TITLE);

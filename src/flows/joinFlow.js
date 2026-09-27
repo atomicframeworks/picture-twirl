@@ -16,6 +16,7 @@
 
 import { on, enable, disable } from '../ui/dom.js';
 import { LIMITS } from '../config.js';
+import { resolvePlayerName, savePlayerName } from '../prefs.js';
 
 /**
  * @typedef JoinServices
@@ -108,6 +109,9 @@ export function initJoinFlow({ services, els }) {
         }, true));
     }
 
+    // Remember an edited screen name (change fires on blur / before button clicks)
+    on(elPlayerNameInput, 'change', () => savePlayerName(elPlayerNameInput?.value || ''));
+
     // Form submit handler (Enter key support)
     on(elJoinForm, 'submit', (e) => {
         e.preventDefault();
@@ -123,6 +127,10 @@ export function initJoinFlow({ services, els }) {
         // Reset the visible form state (works if joinForm is a <form>)
         elJoinForm?.reset?.();
         clearJoinError();
+
+        // Screen name: remembered from a previous game on this device, or a
+        // freshly generated one. reset() wiped it, so this always runs after.
+        if (elPlayerNameInput) elPlayerNameInput.value = resolvePlayerName();
 
         // Pre-fill game code if provided
         if (prefillCode && elJoinGameIdInput) {
@@ -161,6 +169,7 @@ export function initJoinFlow({ services, els }) {
 
             const id = (elJoinGameIdInput?.value || '').trim().toLowerCase();
             const playerName = (elPlayerNameInput?.value || '').trim().slice(0, LIMITS.DISPLAY_NAME);
+            savePlayerName(playerName);
 
             // Guard against double-click
             if (elConfirmJoin?.dataset?.busy === '1') return;

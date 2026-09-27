@@ -45,6 +45,22 @@ Entry: `main.js` → `startup/boot.js`
 - Observable pattern: `setSession()`, `getSession()`, `onSessionChange()`
 - Cross-tab sync via storage events
 
+**Device Preferences (`prefs.js`) + Name Suggestions (`names.js`)**
+- `names.js`: pure content + generators. `randomPlayerName()` builds
+  `<Adjective> <Noun> <3 digits>` ("Lucky Buzzer 407"); `randomTeamName(exclude)`
+  picks from a hand-written list of game-show tropes and puns, skipping any name
+  passed in `exclude` (so a re-roll always changes, and the two teams never match).
+- `prefs.js`: durable **localStorage** prefs — the counterpart to `session.js`
+  (ephemeral sessionStorage). Keys: `pt.prefs.playerName`,
+  `pt.prefs.teamName.A|B`. All access is try/catch-wrapped; private mode simply
+  means "nothing remembered".
+- `resolvePlayerName()` / `resolveTeamNames()` are the stitch point: return the
+  remembered value if there is one, otherwise generate **and persist** it — so
+  the first suggestion sticks from then on.
+- Both name fields in Create (GM name, Team 1/Team 2) and the Join screen name
+  are prefilled this way, and re-saved whenever the user edits or re-rolls. Those
+  inputs deliberately have **no `placeholder`** — they are never empty.
+
 **Firebase Integration (`firebase.js`)**
 - Config discovery: `window.__FIREBASE_CONFIG__` (priority) or `import.meta.env.VITE_FIREBASE_*`
 - Anonymous auth automatically enforced via `requireAuth()`
@@ -214,7 +230,9 @@ src/
 ├── main.js                    # Entry point
 ├── config.js                  # App-level constants
 ├── firebase.js                # Firebase bootstrap + auth
-├── session.js                 # Client-side session state
+├── session.js                 # Client-side session state (sessionStorage)
+├── prefs.js                   # Durable device prefs (localStorage): remembered names
+├── names.js                   # Random player/team name generators (game-show puns)
 ├── predefinedGames.js         # Game content definitions
 ├── startup/
 │   └── boot.js               # App initialization
@@ -246,6 +264,12 @@ scripts/
 1. Add entry to `predefinedGames.js` with id, title, categories, board
 2. Place images in `/public/images/`
 3. Board structure: 5 columns (categories) × 5 rows; values computed as `(row+1)*100` → $100–$500
+
+**Adding / Editing Name Suggestions**
+1. Screen-name words → `PLAYER_ADJECTIVES` / `PLAYER_NOUNS` in `names.js`
+2. Team names → `TEAM_NAMES` in `names.js` (keep each under
+   `LIMITS.TEAM_NAME` = 40 chars)
+3. No wiring needed — `prefs.js` and both flows read the lists at call time
 
 **Modifying Game State**
 - Host-only writes are direct `update()`/`set()` calls in `lobby.js` / `renderGame.js`,

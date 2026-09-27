@@ -78,6 +78,8 @@ export async function boot() {
         const gameNameInput = byId('gameName');
         const teamANameInput = byId('teamAName');
         const teamBNameInput = byId('teamBName');
+        const teamARollBtn = byId('teamARollBtn');
+        const teamBRollBtn = byId('teamBRollBtn');
 
         // -------------------------
         // Create flow (Step 2 — set selection)
@@ -171,6 +173,8 @@ export async function boot() {
                 gameNameInput,
                 teamANameInput,
                 teamBNameInput,
+                teamARollBtn,
+                teamBRollBtn,
 
                 // Step 2 (set selection)
                 step1Root,

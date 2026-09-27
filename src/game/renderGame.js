@@ -29,7 +29,7 @@ import { initializeStartingTurn, advanceTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
 import { playBuzz, playCorrect, playReveal, unlockAudio } from '../ui/sound.js';
-import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer } from '../config.js';
+import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer, DOUBLE_TAKE } from '../config.js';
 
 export async function renderGameUI(gameId) {
     const app = document.getElementById('app');
@@ -71,6 +71,8 @@ export async function renderGameUI(gameId) {
     let latestBuzzQueue = [];     // mirrors RTDB buzzQueue; re-used when activeBuzzerUid changes
     let boardCompactObserver = null; // cleanup fn for board compact-header scroll listener
     let lateJoinWaitEl = null;    // waiting card shown to a player deferred to next question
+    let boardCache = {};          // mirror of board tiles for Double Take eligibility checks
+    let doubleTakeBannerEl = null; // injected banner element for Double Take visual
 
     // Cancel any onDisconnect().remove() registered by the lobby so that
     // a player disconnecting during a live game does NOT lose their participant node
@@ -605,6 +607,13 @@ export async function renderGameUI(gameId) {
 
     // ─── Helpers ───────────────────────────────────────────────────────────────
 
+    // Returns the point value a question is actually worth, accounting for Double Take.
+    // Use this at every display site instead of reading currentQuestion.value directly.
+    function effectiveQuestionValue(cq) {
+        const base = Number(cq?.value || 0);
+        return cq?.doubleTake ? base * 2 : base;
+    }
+
     // Capitalize the first letter of each word — for team name display only.
     // Never applied to player names (preserve as entered).
     function titleCase(str) {
@@ -675,7 +684,8 @@ export async function renderGameUI(gameId) {
         refs.statusMessage.classList.remove('is-adjudicating', 'is-resolved');
 
         if (currentQuestion) {
-            const { category, value, showAnswer } = currentQuestion;
+            const { category, showAnswer } = currentQuestion;
+            const effValue = effectiveQuestionValue(currentQuestion);
             if (isGM) {
                 if (showAnswer) {
                     // Resolved — question over, image and answer are public.
@@ -683,9 +693,8 @@ export async function renderGameUI(gameId) {
                     refs.statusMessage.classList.add('is-resolved');
                     if (awardedTeam) {
                         const teamName = titleCase(teams[awardedTeam]?.name || `Team ${awardedTeam}`);
-                        const pts = currentQuestion.value || 0;
                         refs.statusMessage.innerHTML =
-                            `<div class="gsr-result is-award">${escapeHtml(teamName)} got it! +${pts}</div>` +
+                            `<div class="gsr-result is-award">${escapeHtml(teamName)} got it! +${effValue}</div>` +
                             `<div class="gsr-answer">Answer: <strong>${escapeHtml(currentQuestion.answer || '')}</strong></div>` +
                             `<div class="gsr-hint">Continue when everyone is ready.</div>`;
                     } else {
@@ -711,20 +720,20 @@ export async function renderGameUI(gameId) {
                 } else {
                     // Normal — reveal running or manually paused.
                     refs.statusMessage.textContent = swirlPausedByGM
-                        ? `${category} · $${value} — Paused`
-                        : `${category} · $${value} — Revealing`;
+                        ? `${category} · $${effValue} — Paused`
+                        : `${category} · $${effValue} — Revealing`;
                 }
             } else {
                 // Player status: normally hidden, but shown in the compact header for context.
                 let playerStatus;
                 if (showAnswer) {
-                    playerStatus = `${category} · $${value} — Revealed`;
+                    playerStatus = `${category} · $${effValue} — Revealed`;
                 } else if (activeBuzzerUid) {
                     playerStatus = activeBuzzerUid === myUid
-                        ? `${category} · $${value} — You buzzed!`
-                        : `${category} · $${value} — Buzzed`;
+                        ? `${category} · $${effValue} — You buzzed!`
+                        : `${category} · $${effValue} — Buzzed`;
                 } else {
-                    playerStatus = `${category} · $${value}`;
+                    playerStatus = `${category} · $${effValue}`;
                 }
                 refs.statusMessage.textContent = playerStatus;
             }
@@ -822,6 +831,32 @@ export async function renderGameUI(gameId) {
 
     function renderQuestionViewer() {
         const active = !!currentQuestion;
+
+        // ── Double Take banner ───────────────────────────────────────────────────
+        // Created once and inserted after .question-meta; updated on every call.
+        if (!doubleTakeBannerEl && refs.viewerEl) {
+            doubleTakeBannerEl = document.createElement('div');
+            doubleTakeBannerEl.className = 'double-take-banner';
+            doubleTakeBannerEl.hidden = true;
+            const metaEl = refs.viewerEl.querySelector('.question-meta');
+            if (metaEl) metaEl.after(doubleTakeBannerEl);
+            else refs.viewerEl.prepend(doubleTakeBannerEl);
+        }
+        // Show banner only while the question is active (not yet revealed).
+        const showDTBanner = active && !!currentQuestion?.doubleTake && !currentQuestion?.showAnswer;
+        if (doubleTakeBannerEl) {
+            doubleTakeBannerEl.hidden = !showDTBanner;
+            if (showDTBanner) {
+                const base = currentQuestion.value || 0;
+                doubleTakeBannerEl.innerHTML =
+                    `<span class="dt-label">✦ DOUBLE TAKE! ✦</span>` +
+                    `<div class="dt-value">` +
+                        `<span class="dt-base">$${base}</span>` +
+                        `<span class="dt-arrow">→</span>` +
+                        `<span class="dt-effective">$${base * 2}</span>` +
+                    `</div>`;
+            }
+        }
 
         // ── Late-join eligibility gate ────────────────────────────────────────────
         // eligibleFromQuestionId is written by approveJoiner when the GM accepts a
@@ -976,7 +1011,7 @@ export async function renderGameUI(gameId) {
                 const awardedTeam = currentQuestion.awardedTeam || null;
                 if (awardedTeam) {
                     const teamName = titleCase(teams[awardedTeam]?.name || `Team ${awardedTeam}`);
-                    const pts = currentQuestion.value || 0;
+                    const pts = effectiveQuestionValue(currentQuestion);
                     refs.resolvedInfoEl.textContent = `${teamName} · +${pts}`;
                     refs.resolvedInfoEl.hidden = false;
                 } else {
@@ -1026,6 +1061,54 @@ export async function renderGameUI(gameId) {
         refs.boardEl.textContent = 'Error rendering board.';
     }
 
+    // ─── Double Take — eligibility and roll (GM-only, fires once per OK press) ──
+    // All eligibility is derived from boardCache, which mirrors the live board listener.
+    // Math.random() is called exactly once, synchronously, before any Firebase write.
+    // Players never roll; listener callbacks never roll; reconnect reads the persisted flag.
+
+    function computeGapPercent() {
+        const leader = Math.max(scores.A, scores.B);
+        if (leader === 0) return 0; // 0-0 → no gap → lowest probability tier
+        return (leader - Math.min(scores.A, scores.B)) / leader;
+    }
+
+    function selectDoubleTakeProbability(gapPercent) {
+        for (const tier of DOUBLE_TAKE.PROBABILITY) {
+            if (gapPercent >= tier.minGap) return tier.p;
+        }
+        return DOUBLE_TAKE.PROBABILITY[DOUBLE_TAKE.PROBABILITY.length - 1].p;
+    }
+
+    function isDoubleTakeEligible() {
+        // Only answered tiles with a resolved numeric lastActionAt are included.
+        const answeredTiles = Object.values(boardCache).filter(
+            t => t.answered === true && typeof t.lastActionAt === 'number'
+        );
+
+        if (answeredTiles.length < DOUBLE_TAKE.ELIGIBILITY.MIN_COMPLETED) return false;
+
+        const dtTiles = answeredTiles.filter(t => t.doubleTake === true);
+        if (dtTiles.length >= DOUBLE_TAKE.ELIGIBILITY.MAX_PER_GAME) return false;
+
+        if (dtTiles.length > 0) {
+            const sorted = answeredTiles.slice().sort((a, b) => a.lastActionAt - b.lastActionAt);
+            const lastDTIdx = sorted.findLastIndex(t => t.doubleTake === true);
+            const questionsSinceLast = sorted.length - 1 - lastDTIdx;
+            if (questionsSinceLast < DOUBLE_TAKE.ELIGIBILITY.COOLDOWN_QUESTIONS) return false;
+        }
+
+        // Both scores must be available (local scores object is set by the listener).
+        if (typeof scores.A !== 'number' || typeof scores.B !== 'number') return false;
+
+        return true;
+    }
+
+    function rollDoubleTake() {
+        if (!isDoubleTakeEligible()) return false;
+        const p = selectDoubleTakeProbability(computeGapPercent());
+        return Math.random() < p;
+    }
+
     // ─── OK button (GM confirms a selected tile → posts question) ──────────────
     track(listen(refs.okBtn, 'click', async () => {
         if (!isGM) return;
@@ -1039,15 +1122,22 @@ export async function renderGameUI(gameId) {
             const tile = tileSnap.val();
             if (!tile) throw new Error('Tile not found');
 
+            // Perform ONE authoritative Double Take roll before writing anything.
+            // boardCache is current (same snapshot the board listener last delivered).
+            const isDoubleTake = rollDoubleTake();
+
+            const questionPayload = {
+                id: tile.id,
+                category: tile.category,
+                imageUrl: tile.imageUrl,
+                answer: tile.answer,
+                value: Number(tile.value || 0), // always the base tile value — never mutated
+                showAnswer: false,
+            };
+            if (isDoubleTake) questionPayload.doubleTake = true;
+
             await update(ref(rtdb, P.game(gameId)), {
-                currentQuestion: {
-                    id: tile.id,
-                    category: tile.category,
-                    imageUrl: tile.imageUrl,
-                    answer: tile.answer,
-                    value: Number(tile.value || 0),
-                    showAnswer: false
-                },
+                currentQuestion: questionPayload,
                 swirlStartTime: serverTimestamp(),
                 swirlPaused: false,
                 selectedTile: null
@@ -1085,7 +1175,9 @@ export async function renderGameUI(gameId) {
         if (!isGM || !currentQuestion?.id) return;
         if (currentQuestion.awardedTeam) return; // already awarded — double-click guard
 
-        const points = Number(currentQuestion.value || 0);
+        // Double Take doubles the awarded points; base tile value is never mutated.
+        const basePoints = Number(currentQuestion.value || 0);
+        const points = currentQuestion.doubleTake ? basePoints * 2 : basePoints;
         const scorePath = P.score(gameId, teamKey);
         const tilePath = P.boardTile(gameId, currentQuestion.id);
         const buzzerUid = activeBuzzerUid; // capture before any await
@@ -1110,6 +1202,12 @@ export async function renderGameUI(gameId) {
             [`${P.currentQuestion(gameId)}/awardedTeam`]: teamKey,
             [`${P.game(gameId)}/swirlPaused`]: false,
         };
+
+        // Persist the Double Take marker on the answered tile so eligibility
+        // history can be derived from the board without extra counters.
+        if (currentQuestion.doubleTake) {
+            writes[`${tilePath}/doubleTake`] = true;
+        }
 
         if (buzzerUid) {
             writes[`${P.participant(gameId, buzzerUid)}/pointsEarned`] = Number(pVal.pointsEarned || 0) + points;
@@ -1156,6 +1254,7 @@ export async function renderGameUI(gameId) {
 
     // ─── Reflect answered/opened state on board tiles ──────────────────────────
     track(onValue(ref(rtdb, P.board(gameId)), (snap) => {
+        boardCache = snap.val() || {};   // keep mirror in sync for Double Take eligibility
         snap.forEach((child) => {
             const tile = child.val();
             if (!tile?.id) return;

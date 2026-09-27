@@ -911,3 +911,73 @@
         font-size: 40px;
     }
 }
+
+/* ═══════════════════════════════════════ */
+/* Double Take banner                      */
+/* Shown between .question-meta and the   */
+/* image during an active Double Take      */
+/* question. Hidden when resolved.         */
+/* ═══════════════════════════════════════ */
+.double-take-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px var(--space-4);
+    background: #FFF8EE;
+    border: 1.5px solid #F59E0B;
+    border-radius: 11px;
+    box-shadow: 0 2px 12px rgba(245, 158, 11, 0.18);
+    width: min(92vw, 640px);
+    text-align: center;
+    cursor: default;
+    pointer-events: none;
+    animation: dt-appear 280ms ease-out both;
+}
+
+.dt-label {
+    font-family: var(--font-display);
+    font-size: clamp(18px, 5vw, 24px);
+    font-weight: 700;
+    color: #B45309;
+    letter-spacing: .06em;
+    line-height: 1.1;
+}
+
+.dt-value {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-family: var(--font-display);
+}
+
+.dt-base {
+    font-size: clamp(13px, 3vw, 16px);
+    font-weight: 500;
+    color: #92400E;
+    opacity: 0.7;
+}
+
+.dt-arrow {
+    font-size: clamp(14px, 3.5vw, 18px);
+    font-weight: 600;
+    color: #92400E;
+    opacity: 0.85;
+}
+
+.dt-effective {
+    font-size: clamp(20px, 5.5vw, 28px);
+    font-weight: 800;
+    color: #92400E;
+    letter-spacing: .01em;
+    line-height: 1;
+}
+
+@keyframes dt-appear {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .double-take-banner { animation: none; }
+}

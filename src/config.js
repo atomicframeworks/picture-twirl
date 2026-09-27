@@ -34,3 +34,19 @@ export const TEAM_ANSWER = {
 export function teamToAnswer(teamKey) {
     return teamKey === TEAM.A ? TEAM_ANSWER.A : TEAM_ANSWER.B;
 }
+
+// Double Take — random bonus mechanic
+export const DOUBLE_TAKE = {
+    ELIGIBILITY: {
+        MIN_COMPLETED: 4,       // questions completed before Double Take is eligible
+        MAX_PER_GAME:  2,       // maximum Double Takes per board
+        COOLDOWN_QUESTIONS: 3,  // minimum questions between Double Takes
+    },
+    // Probability tiers — ordered highest-gap-first; first match wins.
+    PROBABILITY: [
+        { minGap: 0.50, p: 1.0 },
+        { minGap: 0.30, p: 1.0 },
+        { minGap: 0.15, p: 1.0 },
+        { minGap: 0,    p: 1.0 },
+    ],
+};

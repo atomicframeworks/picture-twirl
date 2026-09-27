@@ -4,7 +4,8 @@
 // -----------------------------------------------------------------------------
 // Purpose
 // - Remember the names a person actually liked, across sessions and reloads:
-//   their screen name and the last two team names they typed or rolled.
+//   their screen name, the game title, and the last two team names they typed
+//   or rolled.
 //
 // Design
 // - localStorage (durable, per-device) — the deliberate counterpart to
@@ -17,9 +18,10 @@
 // -----------------------------------------------------------------------------
 
 import { LIMITS } from './config.js';
-import { randomPlayerName, randomTeamName } from './names.js';
+import { randomGameName, randomPlayerName, randomTeamName } from './names.js';
 
 const KEY_PLAYER_NAME = 'pt.prefs.playerName';
+const KEY_GAME_NAME = 'pt.prefs.gameName';
 const KEY_TEAM_NAME = { A: 'pt.prefs.teamName.A', B: 'pt.prefs.teamName.B' };
 
 /** Read a string from localStorage, or '' if unavailable/empty. */
@@ -73,6 +75,30 @@ export function resolvePlayerName() {
 
     const generated = clean(randomPlayerName(), LIMITS.DISPLAY_NAME);
     savePlayerName(generated);
+    return generated;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Game title (the name of tonight's game — a recurring host tends to reuse it)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** @returns {string} the remembered game title, or '' if none. */
+export function loadGameName() {
+    return clean(read(KEY_GAME_NAME), LIMITS.GAME_TITLE);
+}
+
+/** Remember a game title (blank clears it). @param {string} name */
+export function saveGameName(name) {
+    write(KEY_GAME_NAME, clean(name, LIMITS.GAME_TITLE));
+}
+
+/** Remembered game title, else a generated one (which is then remembered). */
+export function resolveGameName() {
+    const stored = loadGameName();
+    if (stored) return stored;
+
+    const generated = clean(randomGameName(), LIMITS.GAME_TITLE);
+    saveGameName(generated);
     return generated;
 }
 

@@ -7,11 +7,13 @@
 //   e.g. "Lucky Buzzer 407".
 // - Suggest a team name from a hand-written list of game-show tropes and puns,
 //   e.g. "Sultans of Swirl".
+// - Suggest a game (night) title in the same voice, e.g. "Focus Pocus".
 //
 // Design
 // - Pure content + pure functions. No DOM, no storage, no Firebase.
 // - Persistence (remember what the user liked) lives in prefs.js.
-// - Keep every entry inside LIMITS.DISPLAY_NAME / LIMITS.TEAM_NAME (40 chars).
+// - Keep every entry inside LIMITS.DISPLAY_NAME / LIMITS.TEAM_NAME (40 chars)
+//   and LIMITS.GAME_TITLE (60).
 // -----------------------------------------------------------------------------
 
 /** Adjectives for generated screen names. Game-show energy, kid-safe. */
@@ -92,6 +94,50 @@ export const TEAM_NAMES = [
     'Optical Illusionists',
 ];
 
+/** Ready-made game-night titles: same voice as the team names, one per night. */
+export const GAME_NAMES = [
+    'Friday Funnies',
+    'Swirl Night Live',
+    'Twirl of Fortune',
+    'Focus Pocus',
+    'Name That Blur',
+    'Now You See It',
+    'The Big Reveal',
+    'The Big Blur',
+    'Picture This',
+    'Twirls Just Want to Have Fun',
+    'Blur Night Out',
+    'The Swirl Series',
+    'The Whirl Cup',
+    'Family Blurd',
+    'Guess Who’s Twirling',
+    'The Great Guess-Off',
+    'Swirl Power Hour',
+    'Eyes on the Prize',
+    'Rounds of Applause',
+    'The Unswirling',
+    'Twirlpool',
+    'Twirlmania',
+    'Blur-day Party',
+    'Squint & Shout',
+    'Squint Night',
+    'Hazy Days',
+    'Fuzzy Friday',
+    'The Fuzz Buzz',
+    'Blurry Business',
+    'Blurred Vision Night',
+    'Pixel Panic',
+    'Spin to Win Night',
+    'Spin Cycle Sunday',
+    'Game Night Gone Swirl',
+    'Clearly Confused',
+    'Couch Contestants',
+    'Snack & Guess',
+    'Guess Fest',
+    'Vision Quest',
+    'Unswirl Yourself',
+];
+
 /** Random element of a non-empty array. */
 function pick(list) {
     return list[Math.floor(Math.random() * list.length)];
@@ -131,4 +177,16 @@ export function randomTeamName(exclude = []) {
     const taken = new Set(exclude.map(key).filter(Boolean));
     const pool = TEAM_NAMES.filter(n => !taken.has(key(n)));
     return pick(pool.length ? pool : TEAM_NAMES);
+}
+
+/**
+ * Pick a game-night title, avoiding the one currently shown so a re-roll always
+ * changes something.
+ * @param {Array<string|null|undefined>} [exclude]
+ * @returns {string}
+ */
+export function randomGameName(exclude = []) {
+    const taken = new Set(exclude.map(key).filter(Boolean));
+    const pool = GAME_NAMES.filter(n => !taken.has(key(n)));
+    return pick(pool.length ? pool : GAME_NAMES);
 }

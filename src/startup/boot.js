@@ -77,6 +77,7 @@ export async function boot() {
         const gmNameInput = byId('gmName');
         const gmNameRollBtn = byId('gmNameRollBtn');
         const gameNameInput = byId('gameName');
+        const gameNameRollBtn = byId('gameNameRollBtn');
         const teamANameInput = byId('teamAName');
         const teamBNameInput = byId('teamBName');
         const teamARollBtn = byId('teamARollBtn');
@@ -176,6 +177,7 @@ export async function boot() {
                 teamANameInput,
                 teamBNameInput,
                 gmNameRollBtn,
+                gameNameRollBtn,
                 teamARollBtn,
                 teamBRollBtn,
 

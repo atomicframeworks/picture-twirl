@@ -26,10 +26,12 @@ import { on, enable, disable } from '../ui/dom.js';
 import { flashCheckmark } from '../ui/copyButton.js';
 import { attachDiceButton } from '../ui/diceButton.js';
 import { LIMITS } from '../config.js';
-import { randomPlayerName, randomTeamName } from '../names.js';
+import { randomGameName, randomPlayerName, randomTeamName } from '../names.js';
 import {
     resolvePlayerName,
     savePlayerName,
+    resolveGameName,
+    saveGameName,
     resolveTeamNames,
     saveTeamName,
 } from '../prefs.js';
@@ -57,6 +59,7 @@ export function initCreateFlow({ services, els }) {
         teamANameInput,
         teamBNameInput,
         gmNameRollBtn,
+        gameNameRollBtn,
         teamARollBtn,
         teamBRollBtn,
 
@@ -114,13 +117,14 @@ export function initCreateFlow({ services, els }) {
 
     // ───────────────────────────────────────────────────────────────────────────
     // Name suggestions (Step 1)
-    // - Screen name + both team names are never blank: remembered from a previous
-    //   game on this device, or freshly generated (and then remembered).
+    // - Every name field is never blank: remembered from a previous game on this
+    //   device, or freshly generated (and then remembered).
     // - form.reset() wipes JS-assigned values, so prefill always follows a reset.
     // ───────────────────────────────────────────────────────────────────────────
 
     function prefillNames() {
         if (gmNameInput) gmNameInput.value = resolvePlayerName();
+        if (gameNameInput) gameNameInput.value = resolveGameName();
 
         const [teamA, teamB] = resolveTeamNames();
         if (teamANameInput) teamANameInput.value = teamA;
@@ -134,6 +138,16 @@ export function initCreateFlow({ services, els }) {
         const next = randomPlayerName([gmNameInput.value]).slice(0, LIMITS.DISPLAY_NAME);
         gmNameInput.value = next;
         savePlayerName(next);
+        updateStep1NextEnabled();
+    }
+
+    /** Roll a new game title (never the one already shown) and remember it. */
+    function rollGameName() {
+        if (!gameNameInput) return;
+
+        const next = randomGameName([gameNameInput.value]).slice(0, LIMITS.GAME_TITLE);
+        gameNameInput.value = next;
+        saveGameName(next);
         updateStep1NextEnabled();
     }
 
@@ -156,6 +170,7 @@ export function initCreateFlow({ services, els }) {
     /** Remember whatever the user settled on, so it greets them next time. */
     function rememberStep1Names() {
         savePlayerName(gmNameInput?.value || '');
+        saveGameName(gameNameInput?.value || '');
         saveTeamName('A', teamANameInput?.value || '');
         saveTeamName('B', teamBNameInput?.value || '');
     }
@@ -218,11 +233,13 @@ export function initCreateFlow({ services, els }) {
 
     // Remember edited names on commit (change fires on blur / before button clicks)
     on(gmNameInput, 'change', () => savePlayerName(gmNameInput?.value || ''));
+    on(gameNameInput, 'change', () => saveGameName(gameNameInput?.value || ''));
     on(teamANameInput, 'change', () => saveTeamName('A', teamANameInput?.value || ''));
     on(teamBNameInput, 'change', () => saveTeamName('B', teamBNameInput?.value || ''));
 
     // Dice: roll a fresh name (spin animation handled by the shared helper)
     attachDiceButton(gmNameRollBtn, rollPlayerName);
+    attachDiceButton(gameNameRollBtn, rollGameName);
     attachDiceButton(teamARollBtn, () => rollTeamName('A'));
     attachDiceButton(teamBRollBtn, () => rollTeamName('B'));
 

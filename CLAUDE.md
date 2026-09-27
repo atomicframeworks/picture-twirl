@@ -47,20 +47,21 @@ Entry: `main.js` → `startup/boot.js`
 
 **Device Preferences (`prefs.js`) + Name Suggestions (`names.js`)**
 - `names.js`: pure content + generators. `randomPlayerName()` builds
-  `<Adjective> <Noun> <3 digits>` ("Lucky Buzzer 407"); `randomTeamName(exclude)`
-  picks from a hand-written list of game-show tropes and puns, skipping any name
-  passed in `exclude` (so a re-roll always changes, and the two teams never match).
+  `<Adjective> <Noun> <3 digits>` ("Lucky Buzzer 407"); `randomTeamName()` and
+  `randomGameName()` pick from hand-written lists of game-show tropes and puns
+  ("Sultans of Swirl", "Focus Pocus"). All three take an `exclude` list, so a
+  re-roll always changes and the two teams never match.
 - `prefs.js`: durable **localStorage** prefs — the counterpart to `session.js`
-  (ephemeral sessionStorage). Keys: `pt.prefs.playerName`,
+  (ephemeral sessionStorage). Keys: `pt.prefs.playerName`, `pt.prefs.gameName`,
   `pt.prefs.teamName.A|B`. All access is try/catch-wrapped; private mode simply
   means "nothing remembered".
-- `resolvePlayerName()` / `resolveTeamNames()` are the stitch point: return the
-  remembered value if there is one, otherwise generate **and persist** it — so
-  the first suggestion sticks from then on.
-- All four name fields — Create (GM screen name, Team 1, Team 2) and the Join
-  screen name — are prefilled this way, and re-saved whenever the user edits or
-  re-rolls. Those inputs deliberately have **no `placeholder`**: they are never
-  empty.
+- `resolvePlayerName()` / `resolveGameName()` / `resolveTeamNames()` are the
+  stitch point: return the remembered value if there is one, otherwise generate
+  **and persist** it — so the first suggestion sticks from then on.
+- Every name field — Create (GM screen name, Game Name, Team 1, Team 2) and the
+  Join screen name — is prefilled this way, and re-saved whenever the user edits
+  or re-rolls. Those inputs deliberately have **no `placeholder`**: they are
+  never empty, so Create step 1 is valid the moment it opens.
 - Each one carries a 🎲 button wired through `ui/diceButton.js`
   (`attachDiceButton(btn, onRoll)` — click → spin animation → roll). A roll
   always differs from the name it replaces, teams never collide, and the result
@@ -237,7 +238,7 @@ src/
 ├── firebase.js                # Firebase bootstrap + auth
 ├── session.js                 # Client-side session state (sessionStorage)
 ├── prefs.js                   # Durable device prefs (localStorage): remembered names
-├── names.js                   # Random player/team name generators (game-show puns)
+├── names.js                   # Random player/game/team name generators (puns)
 ├── predefinedGames.js         # Game content definitions
 ├── startup/
 │   └── boot.js               # App initialization
@@ -273,9 +274,9 @@ scripts/
 
 **Adding / Editing Name Suggestions**
 1. Screen-name words → `PLAYER_ADJECTIVES` / `PLAYER_NOUNS` in `names.js`
-2. Team names → `TEAM_NAMES` in `names.js` (keep each under
-   `LIMITS.TEAM_NAME` = 40 chars)
-3. No wiring needed — `prefs.js` and both flows read the lists at call time
+2. Team names → `TEAM_NAMES` (keep each under `LIMITS.TEAM_NAME` = 40 chars)
+3. Game titles → `GAME_NAMES` (under `LIMITS.GAME_TITLE` = 60 chars)
+4. No wiring needed — `prefs.js` and both flows read the lists at call time
 
 **Modifying Game State**
 - Host-only writes are direct `update()`/`set()` calls in `lobby.js` / `renderGame.js`,

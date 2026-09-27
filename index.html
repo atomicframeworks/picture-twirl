@@ -65,7 +65,13 @@
 
             <div class="field">
               <label class="field-label" for="gameName">Game Name</label>
-              <input id="gameName" class="input" type="text" placeholder="e.g., Friday Funnies">
+              <div class="input-row">
+                <input id="gameName" class="input" type="text">
+                <button type="button" id="gameNameRollBtn" class="btn-dice" title="Roll a new game name"
+                  aria-label="Roll a new game name">
+                  <span class="btn-dice-face" aria-hidden="true">🎲</span>
+                </button>
+              </div>
               <div class="field-hint">Displayed in the player lobby</div>
             </div>
 

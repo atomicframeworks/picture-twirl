@@ -694,6 +694,14 @@
     background: #F0FFFE;
 }
 
+/* Team-name labels: allow wrapping to ~2 lines */
+.gm-icon-btn.is-team-a .gm-icon-btn__label,
+.gm-icon-btn.is-team-b .gm-icon-btn__label {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    min-height: 2.4em;
+}
+
 /* End Game: danger */
 .gm-icon-btn.is-danger .gm-icon-btn__icon {
     background: rgba(239, 68, 68, .1);
@@ -702,6 +710,10 @@
 .gm-icon-btn.is-danger:hover {
     border-color: var(--danger);
     background: #FEF2F2;
+}
+.gm-icon-btn.is-danger .gm-icon-btn__label {
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 /* Pause/Play SVG swap via data-paused attribute on the button */

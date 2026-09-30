@@ -73,6 +73,7 @@ export async function renderGameUI(gameId) {
     let lateJoinWaitEl = null;    // waiting card shown to a player deferred to next question
     let boardCache = {};          // mirror of board tiles for Double Take eligibility checks
     let doubleTakeBannerEl = null; // injected banner element for Double Take visual
+    let prevDoubleTakeId = null;  // last Double Take question id that played its ding — prevents replay on rerenders
 
     // Cancel any onDisconnect().remove() registered by the lobby so that
     // a player disconnecting during a live game does NOT lose their participant node
@@ -855,6 +856,10 @@ export async function renderGameUI(gameId) {
                         `<span class="dt-arrow">→</span>` +
                         `<span class="dt-effective">$${base * 2}</span>` +
                     `</div>`;
+                if (currentQuestion.id !== prevDoubleTakeId) {
+                    prevDoubleTakeId = currentQuestion.id;
+                    new Audio('/sounds/warm_rich_synth_double_ding.wav').play().catch(() => {});
+                }
             }
         }
 

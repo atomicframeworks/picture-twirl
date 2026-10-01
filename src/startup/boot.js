@@ -42,6 +42,7 @@ import { setSession } from '../session.js';
 
 import { byId, enable, disable, on } from '../ui/dom.js';
 import { createViewController } from '../ui/views.js';
+import { openHowToPlay } from '../ui/howToPlay.js';
 
 import { initCreateFlow } from '../flows/createFlow.js';
 import { initJoinFlow } from '../flows/joinFlow.js';
@@ -69,6 +70,7 @@ export async function boot() {
         const startingOptions = byId('startingOptions');
         const newGameBtn = byId('newGameBtn');
         const joinGameBtn = byId('joinGameBtn');
+        const howToPlayBtn = byId('howToPlayBtn');
 
         // -------------------------
         // Create flow (Step 1 — details)
@@ -233,6 +235,11 @@ export async function boot() {
         // -------------------------------------------------------------------------
         on(newGameBtn, 'click', startCreateFlow);
         on(joinGameBtn, 'click', () => startJoinFlow());
+        on(howToPlayBtn, 'click', () => openHowToPlay({
+            context: 'home',
+            onStartNewGame: startCreateFlow,
+            onJoinGame: () => startJoinFlow(),
+        }));
 
         // -------------------------------------------------------------------------
         // Post-game navigation intent (set by renderFinale ended-session card)

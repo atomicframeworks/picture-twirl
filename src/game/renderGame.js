@@ -29,6 +29,7 @@ import { initializeStartingTurn, advanceTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
 import { playBuzz, playCorrect, playReveal, unlockAudio } from '../ui/sound.js';
+import { openHowToPlay } from '../ui/howToPlay.js';
 import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer, DOUBLE_TAKE } from '../config.js';
 
 export async function renderGameUI(gameId) {
@@ -89,6 +90,9 @@ export async function renderGameUI(gameId) {
 
     // ─── Copy code ─────────────────────────────────────────────────────────────
     track(attachCopyButton(refs.copyCodeBtn, () => gameId.toUpperCase()));
+
+    // ─── How to Play ───────────────────────────────────────────────────────────
+    track(listen(refs.helpBtn, 'click', () => openHowToPlay({ context: 'game' })));
 
     // Clean up all RTDB listeners + swirl (defined early so handlers can reference it)
     function disposeAll() {

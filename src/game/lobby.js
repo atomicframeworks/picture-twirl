@@ -11,6 +11,7 @@ import { getSession } from '../session.js';
 import { renderGameUI } from './renderGame.js';
 import { on as listen } from '../ui/dom.js';
 import { attachCopyButton } from '../ui/copyButton.js';
+import { openHowToPlay } from '../ui/howToPlay.js';
 import { mountTemplate, collectRefs } from '../ui/templates.js';
 import { modal } from '../ui/modal.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
@@ -40,6 +41,9 @@ export async function renderLobby(gameId) {
 
     // Copy code button handler
     track(attachCopyButton(refs.copyCodeBtn, () => gameId.toUpperCase()));
+
+    // How to Play
+    track(listen(refs.helpBtn, 'click', () => openHowToPlay({ context: 'game' })));
 
     // Keep main scroll clear of tray
     function syncTrayHeight() {

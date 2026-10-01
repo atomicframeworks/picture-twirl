@@ -1,0 +1,795 @@
+<title>Picture Twirl Palette</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+
+<style>
+/* ── Tokens ──────────────────────────────────────────────────── */
+:root {
+  --bg:       #F6F4FF;
+  --surface:  #FFFFFF;
+  --ink:      #1E1B2E;
+  --muted:    #6B7280;
+  --line:     #ECE9F5;
+  --brand:    #7C3AED;
+  --brand-ink:#6D28D9;
+  --pill:     #F1ECFE;
+  --tier-c-bg:#EDE9FD; --tier-c-ink:#5B21B6;
+  --tier-s-bg:#E0F2FE; --tier-s-ink:#0369A1;
+  --tier-o-bg:#F3F4F6; --tier-o-ink:#6B7280;
+  --radius:   10px;
+  --shadow:   0 2px 8px rgba(30,27,46,.08);
+  --grad-brand: linear-gradient(135deg,#7C3AED 0%,#EC4899 100%);
+  font-size: 15px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:       #13101F;
+    --surface:  #1E1B2E;
+    --ink:      #EDE9FD;
+    --muted:    #9B94B5;
+    --line:     #2D2847;
+    --pill:     #2A2244;
+    --tier-c-bg:#2A1F5A; --tier-c-ink:#C4B5FD;
+    --tier-s-bg:#0C2A42; --tier-s-ink:#7DD3FC;
+    --tier-o-bg:#232132; --tier-o-ink:#9B94B5;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:       #13101F;
+  --surface:  #1E1B2E;
+  --ink:      #EDE9FD;
+  --muted:    #9B94B5;
+  --line:     #2D2847;
+  --pill:     #2A2244;
+  --tier-c-bg:#2A1F5A; --tier-c-ink:#C4B5FD;
+  --tier-s-bg:#0C2A42; --tier-s-ink:#7DD3FC;
+  --tier-o-bg:#232132; --tier-o-ink:#9B94B5;
+}
+
+/* ── Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Poppins', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+.page-header {
+  background: var(--grad-brand);
+  color: #fff;
+  padding: 36px 24px 32px;
+  text-align: center;
+}
+.page-header h1 {
+  font-family: 'Fredoka', sans-serif;
+  font-size: clamp(28px,6vw,44px);
+  font-weight: 700;
+  letter-spacing: .01em;
+  line-height: 1.1;
+  text-wrap: balance;
+  margin-bottom: 6px;
+}
+.page-header p {
+  font-size: 14px;
+  opacity: .85;
+  font-weight: 500;
+}
+
+/* ── Jump nav ─────────────────────────────────────────────────────── */
+.jump-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 0 16px;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  box-shadow: var(--shadow);
+}
+.jump-nav::-webkit-scrollbar { display: none; }
+.jump-nav a {
+  display: inline-block;
+  padding: 12px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.jump-nav a:hover { color: var(--brand); border-bottom-color: var(--brand); }
+
+/* ── Content wrapper ──────────────────────────────────────────────── */
+.content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 16px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* ── Tier legend ──────────────────────────────────────────────────── */
+.tier-legend {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: center;
+  font-size: 12px;
+}
+.tier-legend-label { font-weight: 700; color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; margin-right: 4px; }
+.tier { display: inline-flex; align-items: center; gap: 5px; }
+.tier-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.tier-dot.core { background: var(--brand); }
+.tier-dot.supporting { background: #0369A1; }
+.tier-dot.incidental { background: var(--muted); }
+
+/* ── Section ──────────────────────────────────────────────────────── */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+.section-head h2 {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.section-head p {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── Color rows ────────────────────────────────────────────────────── */
+.color-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.color-row {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 0;
+  overflow: hidden;
+  transition: box-shadow .12s;
+}
+.color-row:hover { box-shadow: var(--shadow); }
+
+.swatch {
+  width: 56px;
+  align-self: stretch;
+  min-height: 64px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--line);
+}
+.swatch.needs-border { border-right: 1px solid var(--line); outline: 1px solid rgba(0,0,0,.08); outline-offset: -1px; }
+
+.color-info {
+  padding: 10px 14px;
+  min-width: 0;
+}
+.color-name {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.color-usage {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.color-data {
+  padding: 10px 16px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.hex-val {
+  font-family: ui-monospace,'SF Mono',Menlo,Monaco,monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  color: var(--ink);
+  background: var(--pill);
+  padding: 2px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: border-color .1s, background .1s;
+  user-select: none;
+  white-space: nowrap;
+}
+.hex-val:hover { border-color: var(--brand); }
+.hex-val.copied { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+.rgb-val, .token-val {
+  font-family: ui-monospace,'SF Mono',Menlo,Monaco,monospace;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.token-val { color: var(--brand-ink); font-weight: 600; }
+
+/* tier badge */
+.tier-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  line-height: 1.6;
+}
+.tier-badge.core       { background: var(--tier-c-bg); color: var(--tier-c-ink); }
+.tier-badge.supporting { background: var(--tier-s-bg); color: var(--tier-s-ink); }
+
+/* ── Gradient rows ─────────────────────────────────────────────────── */
+.gradient-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+.gradient-row {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  overflow: hidden;
+}
+.gradient-swatch {
+  align-self: stretch;
+  min-height: 56px;
+  border-right: 1px solid var(--line);
+}
+.gradient-info { padding: 10px 14px; }
+.gradient-name { font-weight: 600; font-size: 14px; }
+.gradient-stops { font-family: ui-monospace,'SF Mono',Menlo,Monaco,monospace; font-size: 11px; color: var(--muted); margin-top: 3px; }
+.gradient-usage { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* ── Note boxes ───────────────────────────────────────────────────── */
+.note-box {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+.note-box h3 {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.note-box ul {
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.note-box li { font-size: 13px; color: var(--ink); line-height: 1.5; }
+.note-box li .mono { font-family: ui-monospace,'SF Mono',Menlo,Monaco,monospace; font-size: 12px; background: var(--pill); padding: 1px 5px; border-radius: 4px; }
+.note-box.warning { border-color: #F59E0B; }
+.note-box.warning h3 { color: #92400E; }
+
+/* ── Recommended palette ──────────────────────────────────────────── */
+.figma-palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+.figma-chip {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  cursor: pointer;
+  transition: box-shadow .12s, transform .1s;
+}
+.figma-chip:hover { box-shadow: 0 4px 12px rgba(30,27,46,.12); transform: translateY(-1px); }
+.figma-swatch {
+  height: 72px;
+}
+.figma-info {
+  padding: 8px 10px 10px;
+}
+.figma-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.figma-hex {
+  font-family: ui-monospace,'SF Mono',Menlo,Monaco,monospace;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.figma-chip.copied .figma-hex { color: #065F46; font-weight: 600; }
+
+/* ── Group label ──────────────────────────────────────────────────── */
+.palette-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 16px 0 6px;
+}
+.palette-group-label:first-child { margin-top: 0; }
+
+/* ── One-offs ─────────────────────────────────────────────────────── */
+.oneoff-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.oneoff-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.oneoff-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,.08);
+}
+.oneoff-info { display: flex; flex-direction: column; }
+.oneoff-hex { font-family: ui-monospace,'SF Mono',Menlo,Monaco,monospace; font-size: 11px; color: var(--muted); }
+.oneoff-where { font-size: 11px; color: var(--muted); }
+
+/* ── Copy toast ──────────────────────────────────────────────────────── */
+#copy-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: #1E1B2E;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 99px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s, transform .15s;
+  white-space: nowrap;
+  z-index: 1000;
+}
+#copy-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 540px) {
+  .color-row { grid-template-columns: 48px 1fr; }
+  .color-data { display: none; }
+  .color-row:active .color-data { display: flex; }
+  .figma-palette-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+}
+</style>
+
+<header class="page-header">
+  <h1>Picture Twirl Color Palette</h1>
+  <p>Derived from the live codebase — tokens.css + all component stylesheets</p>
+</header>
+
+<nav class="jump-nav">
+  <a href="#brand">Brand</a>
+  <a href="#accent">Accent</a>
+  <a href="#surfaces">Surfaces</a>
+  <a href="#text">Text</a>
+  <a href="#status">Status</a>
+  <a href="#notes">Notes</a>
+  <a href="#figma">Figma Palette</a>
+</nav>
+
+<div class="content">
+
+  <!-- Tier legend -->
+  <div class="tier-legend">
+    <span class="tier-legend-label">Tiers</span>
+    <span class="tier"><span class="tier-dot core"></span> <strong>Core</strong> — intentional brand color; use freely on new screens</span>
+    <span class="tier"><span class="tier-dot supporting"></span> <strong>Supporting</strong> — exists in the app but context-specific; use with care</span>
+    <span class="tier"><span class="tier-dot incidental"></span> <strong>Incidental</strong> — one-off or legacy; don't add to Figma</span>
+  </div>
+
+  <!-- Brand / Primary -->
+  <section id="brand">
+    <div class="section-head">
+      <h2>Brand / Primary</h2>
+      <p>The Picture Twirl visual identity</p>
+    </div>
+    <div class="color-grid" id="brand-grid"></div>
+
+    <div class="gradient-grid" id="gradient-grid"></div>
+  </section>
+
+  <!-- Accent / Gameplay -->
+  <section id="accent">
+    <div class="section-head">
+      <h2>Accent / Gameplay</h2>
+      <p>Team colors, Double Take, scoring highlights</p>
+    </div>
+    <div class="color-grid" id="accent-grid"></div>
+  </section>
+
+  <!-- Neutrals / Surfaces -->
+  <section id="surfaces">
+    <div class="section-head">
+      <h2>Neutrals / Surfaces</h2>
+      <p>Backgrounds, cards, tile states, borders</p>
+    </div>
+    <div class="color-grid" id="surfaces-grid"></div>
+  </section>
+
+  <!-- Text -->
+  <section id="text">
+    <div class="section-head">
+      <h2>Text</h2>
+      <p>Typography roles from primary to disabled</p>
+    </div>
+    <div class="color-grid" id="text-grid"></div>
+  </section>
+
+  <!-- Status / Semantic -->
+  <section id="status">
+    <div class="section-head">
+      <h2>Status / Semantic</h2>
+      <p>Feedback and interactive state colors</p>
+    </div>
+    <div class="color-grid" id="status-grid"></div>
+  </section>
+
+  <!-- Notes -->
+  <section id="notes">
+    <div class="section-head">
+      <h2>Notes for Figma</h2>
+      <p>Near-duplicates, fragmented tokens, and one-offs</p>
+    </div>
+
+    <div class="note-box warning" style="margin-bottom:12px">
+      <h3>Near-duplicates — don't flatten</h3>
+      <ul>
+        <li><strong>Three violet text values:</strong> <span class="mono">--brand-1</span> <span class="mono">#7C3AED</span> for icon fills and interactive tints, <span class="mono">--brand-1-ink</span> <span class="mono">#6D28D9</span> for violet text on white surfaces, and <span class="mono">--pill-ink</span> <span class="mono">#5B21B6</span> for text inside the lavender pill chips. They're intentionally distinct — mapping them to one value in Figma will break contrast in pill labels.</li>
+        <li><strong>Lavender Tint <span class="mono">#F1ECFE</span> (= <span class="mono">--pill</span>) is hardcoded in 6+ component rules</strong> without referencing the token — values match, so you can safely unify to one Figma style. Worth flagging as a codebase cleanup.</li>
+        <li><strong>Team B has two colors:</strong> <span class="mono">#06B6D4</span> (cyan = identity color, the <span class="mono">--accent-cyan</span> token) and <span class="mono">#3B82F6</span> (blue = scoreboard gradient endpoint only). In Figma, Team B's identity color is cyan. Blue is gradient-only.</li>
+        <li><strong>Amber appears in three intensities:</strong> <span class="mono">#F59E0B</span> (--accent-amber, selected tile/Double Take border), <span class="mono">#B45309</span> (Double Take label), <span class="mono">#92400E</span> (Double Take values). All three are meaningfully different — keep separate.</li>
+      </ul>
+    </div>
+
+    <div class="note-box">
+      <h3>One-off / incidental — don't add to Figma</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">These appear in the CSS but are legacy, single-use, or accessibility-only. Not part of the brand system.</p>
+      <div class="oneoff-grid" id="oneoff-grid"></div>
+    </div>
+  </section>
+
+  <!-- Recommended Figma Palette -->
+  <section id="figma">
+    <div class="section-head">
+      <h2>Recommended Figma Palette</h2>
+      <p>All you need for designing a How to Play screen — click any chip to copy the hex</p>
+    </div>
+
+    <div id="figma-palette"></div>
+  </section>
+
+</div>
+
+<div id="copy-toast">Copied!</div>
+
+<script>
+// ── Data ───────────────────────────────────────────────────────────────────
+
+const BRAND = [
+  { hex:'#7C3AED', rgb:'rgb(124,58,237)',  name:'Picture Twirl Violet', token:'--brand-1',     tier:'core',       usage:'Primary actions, tiles, CTA buttons, swirl timer fill, identity chip, brand gradient start' },
+  { hex:'#EC4899', rgb:'rgb(236,72,153)',  name:'Brand Pink',           token:'--brand-2',     tier:'core',       usage:'Brand gradient end, buzz button gradient end, active buzzer pill border' },
+  { hex:'#6D28D9', rgb:'rgb(109,40,217)', name:'Violet Ink',           token:'--brand-1-ink', tier:'core',       usage:'Violet text on white: category chips, answer text label, secondary button text, copy buttons' },
+  { hex:'#3B0764', rgb:'rgb(59,7,100)',   name:'Deep Purple',          token:null,            tier:'core',       usage:'Category column header text, section header backgrounds (lobby, round setup screens)' },
+];
+
+const GRADIENTS = [
+  { name:'Brand Gradient', stops:'#7C3AED → #EC4899', dir:'135deg', gradient:'linear-gradient(135deg,#7C3AED,#EC4899)', usage:'Tiles, primary CTA buttons, game header, lobby header, coin-flip text, background gradient' },
+  { name:'Buzz Gradient',  stops:'#F59E0B → #EC4899', dir:'135deg', gradient:'linear-gradient(135deg,#F59E0B,#EC4899)', usage:'Buzz In player button (pulsing marquee during active question)' },
+  { name:'Page Gradient',  stops:'#F5F3FF → #FDF2F8', dir:'160deg', gradient:'linear-gradient(160deg,#F5F3FF,#FDF2F8)', usage:'App page background (--bg-grad) — subtle lavender-to-pink wash behind all screens' },
+  { name:'Team A Scoreboard', stops:'#7C3AED → #A855F7', dir:'135deg', gradient:'linear-gradient(135deg,#7C3AED,#A855F7)', usage:'Team A score panel in the game header' },
+  { name:'Team B Scoreboard', stops:'#06B6D4 → #3B82F6', dir:'135deg', gradient:'linear-gradient(135deg,#06B6D4,#3B82F6)', usage:'Team B score panel in the game header' },
+];
+
+const ACCENT = [
+  { hex:'#06B6D4', rgb:'rgb(6,182,212)',   name:'Team Cyan',      token:'--accent-cyan',   tier:'core',       usage:'Team B identity color: scoreboard gradient start, icon background tint, hover border' },
+  { hex:'#A855F7', rgb:'rgb(168,85,247)',  name:'Violet Light',   token:null,              tier:'supporting', usage:'Team A scoreboard gradient end, Award A button hover border — gradient use only, not an identity color' },
+  { hex:'#3B82F6', rgb:'rgb(59,130,246)', name:'Team B Blue',    token:null,              tier:'supporting', usage:'Team B scoreboard gradient end — gradient endpoint only; cyan (#06B6D4) is the Team B identity color' },
+  { hex:'#F59E0B', rgb:'rgb(245,158,11)', name:'Amber',          token:'--accent-amber',  tier:'core',       usage:'Selected tile outline/glow, Double Take banner border, buzz gradient start, active-team turn ring' },
+  { hex:'#B45309', rgb:'rgb(180,83,9)',   name:'Amber Dark',     token:null,              tier:'supporting', usage:'Double Take announcement label text ("✦ DOUBLE TAKE! ✦")' },
+  { hex:'#92400E', rgb:'rgb(146,64,14)',  name:'Amber Deeper',   token:null,              tier:'supporting', usage:'Double Take value text: base amount, arrow, and effective amount spans' },
+  { hex:'#84CC16', rgb:'rgb(132,204,22)', name:'Lime',           token:'--accent-lime',   tier:'supporting', usage:'Defined in tokens.css; not visibly used in any current component CSS rules' },
+];
+
+const SURFACES = [
+  { hex:'#F6F4FF', rgb:'rgb(246,244,255)', name:'Page Background',  token:'--bg',      tier:'core',       usage:'Main app page background (solid fallback)', light:true },
+  { hex:'#FFFFFF', rgb:'rgb(255,255,255)', name:'Surface White',    token:'--surface', tier:'core',       usage:'Cards, panels, modals, inputs, GM toolbar buttons, game code card', light:true },
+  { hex:'#F1ECFE', rgb:'rgb(241,236,254)', name:'Lavender Tint',   token:'--pill',    tier:'core',       usage:'Lobby player pills, question category/value chips, answer text background, swirl timer track — same value hardcoded in 6+ places' , light:true},
+  { hex:'#ECE9F5', rgb:'rgb(236,233,245)', name:'Border',          token:'--line',    tier:'core',       usage:'All structural borders and dividers throughout the app', light:true },
+  { hex:'#FFF8EE', rgb:'rgb(255,248,238)', name:'Warm Cream',      token:null,        tier:'supporting', usage:'Double Take announcement banner background (pairs with --accent-amber border)', light:true },
+  { hex:'#E9E4F7', rgb:'rgb(233,228,247)', name:'Opened Tile',    token:null,        tier:'supporting', usage:'Board tile background while a question is currently active and being played', light:true },
+  { hex:'#EDEAF4', rgb:'rgb(237,234,244)', name:'Answered Tile',  token:null,        tier:'supporting', usage:'Board tile background once a question has been fully answered and finalized', light:true },
+  { hex:'#F0EEF6', rgb:'rgb(240,238,246)', name:'Disabled Tile',  token:null,        tier:'supporting', usage:'Board tile background in locked or disabled state', light:true },
+];
+
+const TEXT = [
+  { hex:'#1E1B2E', rgb:'rgb(30,27,46)',    name:'Primary Text',     token:'--ink',      tier:'core',       usage:'All primary body text, labels, headings, button labels, modal titles' },
+  { hex:'#6B7280', rgb:'rgb(107,114,128)', name:'Muted Text',       token:'--muted',    tier:'core',       usage:'Secondary text, field hints, captions, GM toolbar sub-labels, copyright' },
+  { hex:'#5B21B6', rgb:'rgb(91,33,182)',   name:'Pill Ink',         token:'--pill-ink', tier:'core',       usage:'Text inside lavender lobby player pill chips — darker than --brand-1-ink for contrast on --pill background' },
+  { hex:'#B6AECF', rgb:'rgb(182,174,207)', name:'Muted Lavender',  token:null,         tier:'supporting', usage:'Value text on answered board tiles' },
+  { hex:'#A6A1B8', rgb:'rgb(166,161,184)', name:'Placeholder',     token:null,         tier:'supporting', usage:'Input field placeholder text' },
+  { hex:'#CFC9DD', rgb:'rgb(207,201,221)', name:'Disabled Text',   token:null,         tier:'supporting', usage:'Value text on locked/disabled board tiles' },
+];
+
+const STATUS = [
+  { hex:'#EF4444', rgb:'rgb(239,68,68)',  name:'Danger Red',         token:'--danger',  tier:'core',       usage:'End Game button, destructive modal confirm, error input borders, error messages, exit links' },
+  { hex:'#16A34A', rgb:'rgb(22,163,74)',  name:'Success Green',      token:'--success', tier:'core',       usage:'Correct answer label in GM adjudication view, awarded score result highlight' },
+  { hex:'#C9C2D8', rgb:'rgb(201,194,216)', name:'Disabled Interactive', token:null,    tier:'supporting', usage:'Disabled buzz button background (after player has already buzzed this question)' },
+];
+
+const ONEOFFS = [
+  { hex:'#333333', where:'lobby.css — instruction text (legacy)' },
+  { hex:'#666666', where:'lobby.css — team count color (legacy)' },
+  { hex:'#fafafa', where:'lobby.css — instruction background (generic off-white)' },
+  { hex:'#e8f5e9', where:'lobby.css — success instruction flash background (transient)' },
+  { hex:'#2e7d32', where:'lobby.css — success instruction flash text (transient)' },
+  { hex:'#f1f1f1', where:'lobby.css — header divider (one-off)' },
+  { hex:'#e1e1e1', where:'lobby.css — pill border (one-off)' },
+  { hex:'#000000', where:'gameReady.css — monospace game code display (single use)' },
+  { hex:'#3b82f6', where:'modal.css — keyboard focus ring only (accessibility)' },
+  { hex:'rgba(17,24,39,.55)', where:'modal.css — modal backdrop overlay' },
+];
+
+const FIGMA_GROUPS = [
+  {
+    label:'Core Brand',
+    colors:[
+      { hex:'#7C3AED', name:'Violet' },
+      { hex:'#EC4899', name:'Brand Pink' },
+      { hex:'#6D28D9', name:'Violet Ink' },
+      { hex:'#3B0764', name:'Deep Purple' },
+    ]
+  },
+  {
+    label:'Gameplay Accents',
+    colors:[
+      { hex:'#06B6D4', name:'Team Cyan' },
+      { hex:'#F59E0B', name:'Amber' },
+      { hex:'#B45309', name:'Amber Dark' },
+    ]
+  },
+  {
+    label:'Surfaces',
+    colors:[
+      { hex:'#F6F4FF', name:'Page Background', light:true },
+      { hex:'#FFFFFF', name:'Surface White', light:true },
+      { hex:'#F1ECFE', name:'Lavender Tint', light:true },
+      { hex:'#ECE9F5', name:'Border', light:true },
+      { hex:'#FFF8EE', name:'Warm Cream', light:true },
+    ]
+  },
+  {
+    label:'Text',
+    colors:[
+      { hex:'#1E1B2E', name:'Primary Text' },
+      { hex:'#6B7280', name:'Muted Text' },
+      { hex:'#5B21B6', name:'Pill Ink' },
+    ]
+  },
+  {
+    label:'Status',
+    colors:[
+      { hex:'#EF4444', name:'Danger Red' },
+      { hex:'#16A34A', name:'Success Green' },
+    ]
+  },
+];
+
+// ── Render helpers ──────────────────────────────────────────────────────────
+
+function showToast(text) {
+  const t = document.getElementById('copy-toast');
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+function copyText(text) {
+  navigator.clipboard?.writeText(text).catch(() => {});
+}
+
+function renderColorRow(c) {
+  const row = document.createElement('div');
+  row.className = 'color-row';
+
+  const sw = document.createElement('div');
+  sw.className = 'swatch' + (c.light ? ' needs-border' : '');
+  sw.style.background = c.hex;
+
+  const info = document.createElement('div');
+  info.className = 'color-info';
+
+  const nameEl = document.createElement('div');
+  nameEl.className = 'color-name';
+  nameEl.textContent = c.name;
+  if (c.tier === 'core')       nameEl.insertAdjacentHTML('beforeend', '<span class="tier-badge core">Core</span>');
+  if (c.tier === 'supporting') nameEl.insertAdjacentHTML('beforeend', '<span class="tier-badge supporting">Supporting</span>');
+
+  const usageEl = document.createElement('div');
+  usageEl.className = 'color-usage';
+  usageEl.textContent = c.usage;
+
+  info.append(nameEl, usageEl);
+
+  const data = document.createElement('div');
+  data.className = 'color-data';
+
+  const hexEl = document.createElement('div');
+  hexEl.className = 'hex-val';
+  hexEl.textContent = c.hex;
+  hexEl.title = 'Click to copy';
+  hexEl.addEventListener('click', () => {
+    copyText(c.hex);
+    hexEl.classList.add('copied');
+    hexEl.textContent = 'Copied!';
+    setTimeout(() => { hexEl.classList.remove('copied'); hexEl.textContent = c.hex; }, 1400);
+    showToast(c.hex + ' copied');
+  });
+
+  const rgbEl = document.createElement('div');
+  rgbEl.className = 'rgb-val';
+  rgbEl.textContent = c.rgb;
+
+  data.append(hexEl, rgbEl);
+
+  if (c.token) {
+    const tokEl = document.createElement('div');
+    tokEl.className = 'token-val';
+    tokEl.textContent = c.token;
+    data.append(tokEl);
+  }
+
+  row.append(sw, info, data);
+  return row;
+}
+
+function renderGradientRow(g) {
+  const row = document.createElement('div');
+  row.className = 'gradient-row';
+
+  const sw = document.createElement('div');
+  sw.className = 'gradient-swatch';
+  sw.style.background = g.gradient;
+
+  const info = document.createElement('div');
+  info.className = 'gradient-info';
+  info.innerHTML = `
+    <div class="gradient-name">${g.name}</div>
+    <div class="gradient-stops">${g.stops} · ${g.dir}</div>
+    <div class="gradient-usage">${g.usage}</div>
+  `;
+
+  row.append(sw, info);
+  return row;
+}
+
+function renderSection(containerId, colors) {
+  const el = document.getElementById(containerId);
+  colors.forEach(c => el.appendChild(renderColorRow(c)));
+}
+
+function renderOneoffs() {
+  const el = document.getElementById('oneoff-grid');
+  ONEOFFS.forEach(o => {
+    const chip = document.createElement('div');
+    chip.className = 'oneoff-chip';
+    const sw = document.createElement('div');
+    sw.className = 'oneoff-swatch';
+    sw.style.background = o.hex;
+    const info = document.createElement('div');
+    info.className = 'oneoff-info';
+    info.innerHTML = `<span class="oneoff-hex">${o.hex}</span><span class="oneoff-where">${o.where}</span>`;
+    chip.append(sw, info);
+    el.appendChild(chip);
+  });
+}
+
+function renderFigmaPalette() {
+  const container = document.getElementById('figma-palette');
+  FIGMA_GROUPS.forEach(group => {
+    const label = document.createElement('div');
+    label.className = 'palette-group-label';
+    label.textContent = group.label;
+    container.appendChild(label);
+
+    const grid = document.createElement('div');
+    grid.className = 'figma-palette-grid';
+
+    group.colors.forEach(c => {
+      const chip = document.createElement('div');
+      chip.className = 'figma-chip';
+
+      const sw = document.createElement('div');
+      sw.className = 'figma-swatch';
+      sw.style.background = c.hex;
+      if (c.light) sw.style.borderBottom = '1px solid rgba(0,0,0,.06)';
+
+      const info = document.createElement('div');
+      info.className = 'figma-info';
+      info.innerHTML = `<div class="figma-name">${c.name}</div><div class="figma-hex">${c.hex}</div>`;
+
+      chip.append(sw, info);
+      chip.addEventListener('click', () => {
+        copyText(c.hex);
+        const hexEl = info.querySelector('.figma-hex');
+        chip.classList.add('copied');
+        hexEl.textContent = 'Copied!';
+        setTimeout(() => { chip.classList.remove('copied'); hexEl.textContent = c.hex; }, 1400);
+        showToast(c.name + '  ' + c.hex);
+      });
+      grid.appendChild(chip);
+    });
+
+    container.appendChild(grid);
+  });
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────
+
+renderSection('brand-grid', BRAND);
+const gradGrid = document.getElementById('gradient-grid');
+GRADIENTS.forEach(g => gradGrid.appendChild(renderGradientRow(g)));
+
+renderSection('accent-grid', ACCENT);
+renderSection('surfaces-grid', SURFACES);
+renderSection('text-grid', TEXT);
+renderSection('status-grid', STATUS);
+renderOneoffs();
+renderFigmaPalette();
+</script>

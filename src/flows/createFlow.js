@@ -374,34 +374,25 @@ export function initCreateFlow({ services, els }) {
         }
     });
 
-    // Game Ready: Share code
+    // Game Ready: Copy invite link
     on(shareCodeBtn, 'click', async () => {
         if (!currentGameId) return;
 
-        const gameDisplayName = (gameNameInput?.value || '').trim() || 'Picture Twirl';
-        const shareData = {
-            title: gameDisplayName,
-            text: `Join my Picture Twirl game! Use code: ${currentGameId.toUpperCase()}`,
-        };
+        const inviteUrl = `${window.location.origin}/#${currentGameId.toUpperCase()}`;
 
-        // Try native share API first (mobile)
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-                return;
-            } catch (err) {
-                if (err.name !== 'AbortError') console.warn('Share failed:', err);
-                // Fall through to clipboard
-            }
-        }
-
-        // Fallback: copy to clipboard
         try {
-            await navigator.clipboard.writeText(currentGameId.toUpperCase());
+            await navigator.clipboard.writeText(inviteUrl);
             flashCheckmark(shareCodeBtn);
+            // Brief text confirmation in the nearby instruction paragraph
+            const instrEl = shareCodeBtn.closest('main')?.querySelector('.ready-instruction');
+            if (instrEl) {
+                const original = instrEl.textContent;
+                instrEl.textContent = '✓ Invite link copied';
+                setTimeout(() => { instrEl.textContent = original; }, 2000);
+            }
         } catch (err) {
             console.error('Clipboard failed:', err);
-            alert(`Game code: ${currentGameId.toUpperCase()}\n\nCopy this code to share with players.`);
+            alert(`Invite link:\n${inviteUrl}`);
         }
     });
 

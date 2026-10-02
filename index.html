@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="/src/roundSetup.css">
   <link rel="stylesheet" href="/src/game/lateJoin.css">
   <link rel="stylesheet" href="/src/howToPlay.css">
+  <link rel="stylesheet" href="/src/gmTour.css">
 </head>
 
 <body>
@@ -213,7 +214,7 @@
       <!-- Sticky header with game title -->
       <header class="game-header">
         <h1 class="game-header-title" data-ref="titleEl">Friday Funnies</h1>
-        <div class="game-code-row">
+        <div class="game-code-row" data-tour="game-code">
           <span class="game-code-label">Game Code:</span>
           <code class="game-code-value" data-ref="codeEl">2KVMR</code>
           <button class="icon-btn" data-ref="copyCodeBtn" type="button" title="Copy game code">
@@ -247,7 +248,7 @@
       </section>
 
       <!-- Teams -->
-      <main class="lobby-main">
+      <main class="lobby-main" data-ref="lobbyMain">
         <div class="teams-grid">
           <section class="team-card" data-team="A">
             <div class="team-head">
@@ -291,7 +292,7 @@
         </div>
 
         <div class="actions-row" data-ref="gmActions">
-          <button class="btn primary" data-ref="gmStart">Start Game</button>
+          <button class="btn primary" data-ref="gmStart" data-tour="start-game">Start Game</button>
         </div>
         <hr data-ref="footerSeparator" />
         <a href="#" class="exit-link" data-ref="exitGameBtn">Leave game</a>

@@ -12,6 +12,8 @@ import { renderGameUI } from './renderGame.js';
 import { on as listen } from '../ui/dom.js';
 import { attachCopyButton } from '../ui/copyButton.js';
 import { openHowToPlay } from '../ui/howToPlay.js';
+import { openGMTour } from '../ui/gmTour.js';
+import { shouldShowLobbyTour, markLobbyComplete, dismissGMOnboarding } from './gmOnboarding.js';
 import { mountTemplate, collectRefs } from '../ui/templates.js';
 import { modal } from '../ui/modal.js';
 import { createDisposer, exitToHome, leaveGame, confirmEndGame, endGame } from './controllerKit.js';
@@ -121,6 +123,7 @@ export async function renderLobby(gameId) {
     let selectedPid = null;
     let selectedName = '';
     let participantsCache = {}; // pid -> {team, displayName,...}
+    let tourTriggered = false;
 
     function updateInstruction(message, isSuccess = false) {
         const instructionEl = root.querySelector('.lobby-instruction');
@@ -281,6 +284,22 @@ export async function renderLobby(gameId) {
             } else {
                 refs.lobbyStatus.textContent = statusText(lastCanStart);
             }
+        }
+
+        // GM Quick Start tour (auto-shows once to first-time GMs)
+        if (isGM && !tourTriggered && shouldShowLobbyTour()) {
+            tourTriggered = true;
+            setTimeout(() => {
+                const steps = buildLobbySteps();
+                if (!steps.length) return;
+                const closeTour = openGMTour({
+                    steps,
+                    scrollContainer: refs.lobbyMain || root.querySelector('.lobby-main'),
+                    onComplete: markLobbyComplete,
+                    onSkip: dismissGMOnboarding,
+                });
+                if (typeof closeTour === 'function') track(closeTour);
+            }, 400);
         }
     }));
 
@@ -446,5 +465,55 @@ export async function renderLobby(gameId) {
             }
         }));
         if (refs.cancelEdit) track(listen(refs.cancelEdit, 'click', clearPlayerActions));
+    }
+
+    // ── GM tour step builder ─────────────────────────────────────────────────
+    function buildLobbySteps() {
+        const steps = [];
+
+        const gameCodeTarget = root.querySelector('[data-tour="game-code"]');
+        steps.push({
+            targetEl: gameCodeTarget,
+            title: 'Invite your players',
+            body: 'Share the game code so everyone can join.',
+        });
+
+        const unassignedEl = root.querySelector('.unassigned-section');
+        const teamCards    = Array.from(root.querySelectorAll('.team-card'));
+        steps.push({
+            spotlightTargets: [unassignedEl, ...teamCards].filter(Boolean),
+            anchorEl: unassignedEl,
+            title: 'Get your teams ready',
+            body: 'Players can choose a team, or you can assign them. You can join a team too!',
+        });
+
+        const validPill = findFirstNonGmPill();
+        if (validPill) {
+            steps.push({
+                targetEl: validPill,
+                title: 'Manage players',
+                body: "Tap a player's name to assign them, switch teams, or remove them from the game.",
+                caution: 'Careful: Kick Player removes them immediately.',
+                isPillStep: true,
+                gmUid: uid,
+            });
+        }
+
+        const startTarget = root.querySelector('[data-tour="start-game"]');
+        steps.push({
+            targetEl: startTarget,
+            title: 'Ready to start',
+            body: 'Once each team has at least one player, you\'re ready to go.',
+        });
+
+        return steps;
+    }
+
+    function findFirstNonGmPill() {
+        const pills = root.querySelectorAll('.pill.is-clickable[data-pid]');
+        for (const pill of pills) {
+            if (pill.getAttribute('data-pid') !== uid) return pill;
+        }
+        return null;
     }
 }

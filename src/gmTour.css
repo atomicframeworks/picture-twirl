@@ -1,0 +1,177 @@
+/* ─── GM Tour spotlight overlay ─────────────────────────────────────────────── */
+
+.gmt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9100;
+    pointer-events: all;
+    background: transparent;
+}
+
+.gmt-scrim {
+    /* SVG scrim — fills overlay via position:absolute;inset:0 set inline.
+       Multiple spotlight holes are cut via an SVG mask. */
+    display: block;
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* ─── Card ─────────────────────────────────────────────────────────────────── */
+
+.gmt-card {
+    position: fixed;
+    z-index: 9101;
+    width: min(340px, calc(100vw - 32px));
+    background: var(--surface, #fff);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 24px rgba(30, 27, 46, 0.18);
+    /* Fade-in on first appearance; no scale or translate */
+    transition: opacity 130ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gmt-card { transition: none; }
+}
+
+/* ─── Card header: chip + skip ──────────────────────────────────────────────── */
+
+.gmt-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.gmt-step-chip {
+    display: inline-block;
+    font-family: var(--font-display, 'Fredoka', sans-serif);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand-1, #7C3AED);
+    background: var(--pill, #F1ECFE);
+    border-radius: 100px;
+    padding: 2px 10px;
+    letter-spacing: .02em;
+}
+
+.gmt-skip-header {
+    background: none;
+    border: none;
+    padding: 2px 4px;
+    color: var(--muted, #6B7280);
+    font-family: var(--font-body, 'Poppins', sans-serif);
+    font-size: 12px;
+    font-weight: 400;
+    cursor: pointer;
+    line-height: 1.2;
+    white-space: nowrap;
+    border-radius: 3px;
+}
+
+.gmt-skip-header:hover { text-decoration: underline; }
+.gmt-skip-header:focus-visible { outline: 2px solid var(--brand-1, #7C3AED); outline-offset: 2px; }
+
+/* ─── Card content ──────────────────────────────────────────────────────────── */
+
+.gmt-title {
+    font-family: var(--font-display, 'Fredoka', sans-serif);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink, #1E1B2E);
+    line-height: 1.2;
+    margin: 0 0 8px;
+}
+
+.gmt-body {
+    font-family: var(--font-body, 'Poppins', sans-serif);
+    font-size: 14px;
+    color: var(--muted, #6B7280);
+    line-height: 1.55;
+    margin: 0;
+}
+
+.gmt-caution {
+    font-family: var(--font-body, 'Poppins', sans-serif);
+    font-size: 13px;
+    color: #B45309;
+    background: #FFFBEB;
+    border-left: 3px solid #F59E0B;
+    border-radius: 0 6px 6px 0;
+    padding: 6px 10px;
+    margin-top: 10px;
+    line-height: 1.4;
+}
+
+/* ─── Nav: Back (left) + Next/Got it! (right) ──────────────────────────────── */
+
+.gmt-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.gmt-btn {
+    flex: 0 0 auto;
+    min-width: 80px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--font-display, 'Fredoka', sans-serif);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.1;
+    transition: opacity 120ms, transform 100ms;
+    white-space: nowrap;
+}
+
+.gmt-btn:active { transform: scale(0.97); }
+.gmt-btn:focus-visible { outline: 2px solid var(--brand-1, #7C3AED); outline-offset: 2px; }
+
+.gmt-btn.is-primary {
+    background: var(--grad-brand, linear-gradient(135deg, #7C3AED, #EC4899));
+    color: #fff;
+}
+
+.gmt-btn.is-ghost {
+    background: transparent;
+    color: var(--muted, #6B7280);
+    border: 1.5px solid var(--line, #ECE9F5);
+}
+
+/* ─── Caret ─────────────────────────────────────────────────────────────────── */
+
+.gmt-caret {
+    position: absolute;
+    width: 16px;
+    height: 9px;
+    background: var(--surface, #fff);
+    pointer-events: none;
+}
+
+.gmt-caret[data-dir="down"] {
+    /* Triangle pointing downward toward spotlight below */
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.gmt-caret[data-dir="up"] {
+    /* Triangle pointing upward toward spotlight above */
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* ─── Accessible live region ────────────────────────────────────────────────── */
+
+.gmt-announce {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

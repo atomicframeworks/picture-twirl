@@ -253,6 +253,20 @@
     display: none;
 }
 
+/* Join Random Team — lavender fill so it reads as a button on the white tray */
+[data-ref="joinRandom"] {
+    background: var(--pill, #F1ECFE);
+    color: var(--pill-ink, #5B21B6);
+    border-color: rgba(124, 58, 237, 0.22);
+    box-shadow: none;
+}
+
+[data-ref="joinRandom"]:hover {
+    background: #E9E0FD;
+    box-shadow: none;
+    filter: none;
+}
+
 /* Motion-reduction (prefers-reduced-motion users) */
 @media (prefers-reduced-motion: reduce) {
     .lobby-root .btn {

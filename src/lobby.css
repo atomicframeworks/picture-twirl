@@ -202,7 +202,30 @@
 }
 
 .team-head .team-act .pill {
+    /* Ghost-button treatment — clearly an action, not a membership pill */
     cursor: pointer;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--brand-1, #7C3AED);
+    border: 1.5px solid var(--brand-1, #7C3AED);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 5px 11px;
+    transition: background 120ms ease, box-shadow 120ms ease;
+    min-height: 34px; /* comfortable touch target */
+}
+
+.team-head .team-act .pill:hover {
+    background: rgba(124, 58, 237, 0.07);
+}
+
+.team-head .team-act .pill:active {
+    background: rgba(124, 58, 237, 0.14);
+}
+
+.team-head .team-act .pill:focus-visible {
+    outline: 2px solid var(--brand-1, #7C3AED);
+    outline-offset: 2px;
 }
 
 

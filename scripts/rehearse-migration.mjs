@@ -116,7 +116,7 @@ const checks = `Check its work (in ${lu}):
   npm run migrate:code -- --check                    # no Firebase left
   git diff origin/main -- worker/rooms/roomCore.js   # reaction / reactionAt allowed for players
   npm test && npm run test:e2e
-Expected: firebase.js + predefinedGames.js stay deleted; isSignedIn() → getCurrentUser();
+Expected: firebase.js + predefinedGames.js stay deleted; isSignedIn() ported (getCurrentUser() or src/realtime/client.js);
 a room rule + unit test for the new fields; the Britney edit raised as a question; nothing pushed.`;
 
 if (!o.run) {

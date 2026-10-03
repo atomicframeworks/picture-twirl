@@ -14,7 +14,7 @@
 // no static assets (the tests don't need them), throwaway secrets, and short
 // room timers (ROOM_GRACE_MS) so disconnect tests don't wait 30 s.
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTestHarness } from 'wrangler';
@@ -36,6 +36,7 @@ export async function startRealtime({ vars = {} } = {}) {
     cfg.d1_databases = (cfg.d1_databases || []).map(d => ({ ...d, migrations_dir: path.join(ROOT, d.migrations_dir) }));
     cfg.vars = { SESSION_SECRET: 'test-session-secret', ROOM_GRACE_MS: '400', ...vars };
 
+    mkdirSync(path.join(ROOT, '.wrangler'), { recursive: true });      // absent on a fresh checkout
     const dir = mkdtempSync(path.join(ROOT, '.wrangler', 'realtime-'));
     const configPath = path.join(dir, 'wrangler.json');
     writeFileSync(configPath, JSON.stringify(cfg, null, 2));

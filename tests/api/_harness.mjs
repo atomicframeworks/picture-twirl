@@ -10,7 +10,7 @@
 // Dropbox-ignored), so files never see each other's data.
 
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -26,6 +26,8 @@ const configPath = path.join(root, 'wrangler.jsonc');
 const wranglerBin = path.join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
 
 export async function startTestEnv() {
+    // .wrangler/ doesn't exist yet on a fresh checkout (found by the M5 rehearsal).
+    await mkdir(path.join(root, '.wrangler'), { recursive: true });
     const stateDir = await mkdtemp(path.join(root, '.wrangler', 'test-state-'));
 
     // Apply the real migrations to this state folder (same command as predev).

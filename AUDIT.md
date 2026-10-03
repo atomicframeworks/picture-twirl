@@ -28,6 +28,18 @@
 > `rihanna.jpg` is now ~100 kB). **L9** (unescaped set titles) fixed in
 > `ui/boardPicker.js`. Findings otherwise unchanged; see PROPOSAL.md for M4 (which
 > addresses M3/M4/M7/M15/H6/L15).
+>
+> **Status note 2026-10-03 (branch `cloudflare`, Cloudflare M4 — live games on
+> GameRoom Durable Objects, Firebase removed):** **H6 fixed** (awards are atomic
+> `increment()`s with a busy guard; Back-to-board has a busy guard), **M3 fixed**
+> (no `/gameIndex`; the Ready-screen delete removes the whole room; idle rooms
+> delete themselves after 24 h), **M4 fixed** (codes are reserved server-side from
+> a 31-character alphabet, checked free, 6 characters, `crypto` randomness), **M7
+> fixed** (players' sockets never carry answers or upcoming pictures before the
+> reveal — tested on the wire), **M8 fixed** (a game is created in one write),
+> **M15 fixed** (the browser identity proves host-ness; rejoining by code gives
+> the GM seat back), **L15 fixed** (the rules are code: `worker/rooms/roomCore.js`,
+> unit-tested). M5 (swirl clock) stays fixed — the room clock replaces Firebase's.
 
 ---
 

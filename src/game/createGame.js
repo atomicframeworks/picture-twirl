@@ -1,9 +1,10 @@
 // src/game/createGame.js
 //
-// Creates a new game shell, upserts the host into /participants,
-// writes a public existence flag at /gameIndex/{gameId}, and
-// (optionally) materializes the chosen Board's published snapshot
-// (fetched from /api/boards/:id — see data/boardsApi.js).
+// Creates a new game in ONE write: the game node, the host's participant row
+// and (optionally) the chosen Board's published snapshot (fetched from
+// /api/boards/:id — see data/boardsApi.js), materialized as live tiles.
+// The game lives in its GameRoom (worker/rooms/); the room exists exactly
+// when this node does, so there's no separate public index any more.
 //
 // -----------------------------------------------------------------------------
 // Data written (simplified):
@@ -13,19 +14,16 @@
 //     state: { phase: 'lobby' },
 //     teams: { A: {name}, B: {name} },
 //     scores: { A:0, B:0 }
-// - /gameIndex/{id}: true     (public, read-only for players)
 // - /games/{id}/participants/{uid}:
 //     displayName, team, joinedAt (joinedAt set only once)
 // - /games/{id}/board/{tileId}:
 //     id, col, row, category, imageUrl, answer, value,
 //     opened, answered, answeredBy, awardedPoints, locked, lastActionAt
-// - /games/{id}/buzzing: { queue: null, active: null }
 //
-// Rules expectation (high-level):
-// - Only host (auth.uid == games/{id}.hostUid) can write /games/{id} and /gameIndex/{id}.
-// - joinedAt is immutable after first write.
-// - Players can read /games/{id}/board and push to /games/{id}/buzzing/queue,
-//   but only the host adjudicates /board/* state and /buzzing/active.
+// Rules (worker/rooms/roomCore.js): only the creator may create a game in an
+// empty room, and becomes its host (hostUid); the host may write anything;
+// players only their own participant row and their buzzes. Players never
+// receive answers or upcoming pictures (board/*/answer, board/*/imageUrl).
 //
 // Notes:
 // - Boards come from the API as snapshots; data/boardsApi.js toBoardSet()
@@ -34,8 +32,8 @@
 //
 // -----------------------------------------------------------------------------
 
-import { rtdb, getCurrentUser } from '../firebase.js';
-import { ref, set, update, serverTimestamp, get } from 'firebase/database';
+import { rtdb, getCurrentUser } from '../realtime/client.js';
+import { ref, set, serverTimestamp } from '../realtime/db.js';
 import { getBoard, toBoardSet } from '../data/boardsApi.js';
 import { LIMITS, TEAM } from '../config.js';
 import * as P from '../data/paths.js';
@@ -192,7 +190,6 @@ export async function createGameShell(
     const teamsOn = !!teamsEnabled;
 
     const now = serverTimestamp();
-    const rootRef = ref(rtdb);
 
     // Fetch the board BEFORE writing anything, so a network/API failure can't
     // leave a half-created game behind.
@@ -208,30 +205,14 @@ export async function createGameShell(
         state: { phase: 'lobby' },
         teams: { A: { name: safeTeamA }, B: { name: safeTeamB } },
         scores: { A: 0, B: 0 },
+        participants: { [uid]: { displayName: safeGM, team: TEAM.NONE, joinedAt: now, isGM: true } },
+        ...(materializeBoard ? { board } : {}),
     };
 
-    // --- 1) Write parent node and index (no child paths in the same update)
-    // Use set() for the parent and update() for the index; order is fine.
-    await set(ref(rtdb, `games/${gameId}`), gameData);
-    await update(rootRef, { [`gameIndex/${gameId}`]: true });
-
-    // --- 2) Optionally materialize board + buzzing in a separate update
-    if (materializeBoard) {
-        await update(rootRef, {
-            [`games/${gameId}/board`]: board,
-            // Optional: create an empty container so UI sees the node (not required)
-            // [`games/${gameId}/buzzQueue`]: null,
-        });
-    }
-
-    // --- 3) Upsert host participant (preserve joinedAt)
-    const meRef = ref(rtdb, P.participant(gameId, uid));
-    const existing = await get(meRef);
-    if (!existing.exists()) {
-        await set(meRef, { displayName: safeGM, team: TEAM.NONE, joinedAt: now });
-    } else {
-        await update(meRef, { displayName: safeGM, team: TEAM.NONE });
-    }
+    // ONE write creates the whole game, so a failure can't leave half a game
+    // behind (AUDIT M8). The room accepts it only if it's empty and the code
+    // was reserved for us (or not at all).
+    await set(ref(rtdb, P.game(gameId)), gameData);
 }
 
 

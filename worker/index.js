@@ -7,7 +7,8 @@
 // for the paths listed in wrangler.jsonc `assets.run_worker_first`:
 // /api/* and /media/*.
 //
-// Bindings (wrangler.jsonc): DB (D1), MEDIA (R2), ASSETS (static files).
+// Bindings (wrangler.jsonc): DB (D1), MEDIA (R2), ASSETS (static files),
+// ROOMS (Durable Objects: one GameRoom per live game — worker/rooms/).
 // Secrets (.dev.vars locally): ADMIN_PASSWORD, SESSION_SECRET, IMPORT_TOKEN.
 // Routes live in worker/routes/*; shared rules in src/shared/*.
 // -----------------------------------------------------------------------------
@@ -16,6 +17,10 @@ import { createRouter, errorResponse, HttpError, json, notFound } from './lib/ht
 import { registerPublicRoutes } from './routes/public.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerImportRoutes } from './routes/import.js';
+import { registerRoomRoutes } from './routes/rooms.js';
+
+// Durable Object classes must be exported from the Worker's main module.
+export { GameRoom } from './rooms/GameRoom.js';
 
 const router = createRouter();
 
@@ -28,6 +33,7 @@ router.get('/api/health', async ({ env }) => {
 registerPublicRoutes(router);
 registerAdminRoutes(router);
 registerImportRoutes(router);
+registerRoomRoutes(router);
 
 export default {
     async fetch(request, env, ctx) {

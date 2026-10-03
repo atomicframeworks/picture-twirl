@@ -10,8 +10,8 @@
 //   live     → renderGameUI (round started)
 //   ended    → renderFinale (GM went Back)
 
-import { rtdb, getCurrentUser } from '../firebase.js';
-import { ref, onValue, update, get, serverTimestamp } from 'firebase/database';
+import { rtdb, getCurrentUser } from '../realtime/client.js';
+import { ref, onValue, update, get, serverTimestamp } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { getSession } from '../session.js';
 import { loadBoardForGame } from './createGame.js';

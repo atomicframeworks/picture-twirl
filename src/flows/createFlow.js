@@ -37,8 +37,8 @@ import {
     resolveTeamNames,
     saveTeamName,
 } from '../prefs.js';
-import { rtdb } from '../firebase.js';
-import { ref, remove } from 'firebase/database';
+import { rtdb } from '../realtime/client.js';
+import { ref, remove } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { modal } from '../ui/modal.js';
 
@@ -50,6 +50,7 @@ export function initCreateFlow({ services, els }) {
         setSession,
         showView,
         generateGameId,
+        reserveGameCode,   // the real, collision-free code (server-side, AUDIT M4)
     } = services;
 
     const {
@@ -275,6 +276,13 @@ export function initCreateFlow({ services, els }) {
 
         try {
             await requireAuth(); // ensure auth.uid exists
+
+            // The server hands out a code no live game is using (replaces the
+            // placeholder from startCreateFlow; a collision used to overwrite a game).
+            if (reserveGameCode) {
+                currentGameId = await reserveGameCode();
+                setSession({ gameId: currentGameId, isGM: true });
+            }
 
             const gmDisplayName = (gmNameInput?.value || '').trim().slice(0, LIMITS.DISPLAY_NAME);
             const gameDisplayName = (gameNameInput?.value || '').trim().slice(0, LIMITS.GAME_TITLE);

@@ -32,5 +32,14 @@
         { "binding": "MEDIA", "bucket_name": "picture-twirl-media" }
     ],
 
+    // Live games: one GameRoom Durable Object per game code (worker/rooms/).
+    // SQLite-backed (the only kind on the Free plan), WebSocket Hibernation.
+    "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }]
+    },
+    "migrations": [
+        { "tag": "v1", "new_sqlite_classes": ["GameRoom"] }
+    ],
+
     "observability": { "enabled": true }
 }

@@ -12,8 +12,8 @@
 // when isGM is true on this client.
 // -----------------------------------------------------------------------------
 
-import { rtdb, getCurrentUser } from '../firebase.js';
-import { ref, onValue, update, get, remove, serverTimestamp, onDisconnect as rtdbOnDisconnect } from 'firebase/database';
+import { rtdb, getCurrentUser } from '../realtime/client.js';
+import { ref, onValue, update, get, remove, serverTimestamp, increment, onDisconnect as rtdbOnDisconnect } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { getSession } from '../session.js';
 import { on as listen } from '../ui/dom.js';
@@ -1180,29 +1180,26 @@ export async function renderGameUI(gameId) {
         }));
     }
 
+    let awardBusy = false;
     async function awardTeam(teamKey) {
         if (!isGM || !currentQuestion?.id) return;
         if (currentQuestion.awardedTeam) return; // already awarded — double-click guard
+        if (awardBusy) return;                   // a second tap before the first one lands (AUDIT H6)
+        awardBusy = true;
 
         // Double Take doubles the awarded points; base tile value is never mutated.
         const basePoints = Number(currentQuestion.value || 0);
         const points = currentQuestion.doubleTake ? basePoints * 2 : basePoints;
         const scorePath = P.score(gameId, teamKey);
         const tilePath = P.boardTile(gameId, currentQuestion.id);
-        const buzzerUid = activeBuzzerUid; // capture before any await
-
-        const [scoreSnap, participantSnap] = await Promise.all([
-            get(ref(rtdb, scorePath)),
-            buzzerUid ? get(ref(rtdb, P.participant(gameId, buzzerUid))) : Promise.resolve(null),
-        ]);
-
-        const curScore = scoreSnap.exists() ? Number(scoreSnap.val() || 0) : 0;
-        const pVal = participantSnap?.val() || {};
+        const buzzerUid = activeBuzzerUid && participants[activeBuzzerUid] ? activeBuzzerUid : null; // capture before any await
 
         // Reveal the image + mark resolved, but keep currentQuestion visible so
         // all clients linger on the result. Continue to Board clears it later.
+        // Scores and player stats are increments the game room applies atomically
+        // (no read-then-write, so nothing is ever counted twice or lost — AUDIT H6).
         const writes = {
-            [scorePath]: curScore + points,
+            [scorePath]: increment(points),
             [`${tilePath}/answered`]: true,
             [`${tilePath}/answeredBy`]: teamToAnswer(teamKey),
             [`${tilePath}/awardedPoints`]: points,
@@ -1219,11 +1216,15 @@ export async function renderGameUI(gameId) {
         }
 
         if (buzzerUid) {
-            writes[`${P.participant(gameId, buzzerUid)}/pointsEarned`] = Number(pVal.pointsEarned || 0) + points;
-            writes[`${P.participant(gameId, buzzerUid)}/correctAnswers`] = Number(pVal.correctAnswers || 0) + 1;
+            writes[`${P.participant(gameId, buzzerUid)}/pointsEarned`] = increment(points);
+            writes[`${P.participant(gameId, buzzerUid)}/correctAnswers`] = increment(1);
         }
 
-        await update(ref(rtdb), writes);
+        try {
+            await update(ref(rtdb), writes);
+        } finally {
+            awardBusy = false;
+        }
         // Buzz queue and turn advance happen in Continue to Board.
     }
 
@@ -1231,18 +1232,24 @@ export async function renderGameUI(gameId) {
     if (refs.awardBBtn) track(listen(refs.awardBBtn, 'click', () => awardTeam(TEAM.B)));
 
     if (refs.backToBoardBtn) {
+        let backBusy = false;
         track(listen(refs.backToBoardBtn, 'click', async () => {
-            if (!isGM) return;
-            // Read the awarded team before clearing currentQuestion.
-            // awardedTeam present → winner picks next; null → other team picks next.
-            const awardedTeam = currentQuestion?.awardedTeam || null;
-            await update(ref(rtdb, P.game(gameId)), {
-                currentQuestion: null,
-                swirlStartTime: null,
-                swirlPaused: false
-            });
-            await clearBuzzQueue(gameId);
-            await advanceTurn(gameId, awardedTeam);
+            if (!isGM || backBusy || !currentQuestion) return;   // a double tap must not flip the turn twice (AUDIT H6)
+            backBusy = true;
+            try {
+                // Read the awarded team before clearing currentQuestion.
+                // awardedTeam present → winner picks next; null → other team picks next.
+                const awardedTeam = currentQuestion?.awardedTeam || null;
+                await update(ref(rtdb, P.game(gameId)), {
+                    currentQuestion: null,
+                    swirlStartTime: null,
+                    swirlPaused: false
+                });
+                await clearBuzzQueue(gameId);
+                await advanceTurn(gameId, awardedTeam);
+            } finally {
+                backBusy = false;
+            }
         }));
     }
 

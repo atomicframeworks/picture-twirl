@@ -18,8 +18,8 @@
 // - “Opened” tiles keep their $ value but add .opened class
 // -----------------------------------------------------------------------------
 
-import { rtdb } from '../firebase.js';
-import { ref, get } from 'firebase/database';
+import { rtdb } from '../realtime/client.js';
+import { ref, get } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 
 /**

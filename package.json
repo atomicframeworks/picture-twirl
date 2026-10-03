@@ -16,14 +16,17 @@
     "db:setup:local": "npm run db:migrate:local && npm run db:seed:local",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:seed:local": "node scripts/seed-local.mjs",
+    "migrate:code": "node scripts/migrate-code.mjs",
+    "measure:realtime": "node scripts/measure-realtime.mjs",
     "content:sheet": "node tools/content/cli.mjs sheet",
     "content:discover": "node tools/content/cli.mjs discover",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "pretest": "node scripts/ensure-setup.mjs",
-    "test": "npm run lint && npm run test:unit && npm run test:api",
+    "test": "npm run lint && npm run test:unit && npm run test:api && npm run test:realtime",
     "test:unit": "node --test \"tests/unit/*.test.mjs\"",
     "test:api": "node --test --test-concurrency=1 \"tests/api/*.test.mjs\"",
+    "test:realtime": "node --test --test-timeout=30000 --test-concurrency=1 \"tests/realtime/*.test.mjs\"",
     "test:all": "npm test && npm run test:e2e",
     "pretest:e2e": "node scripts/ensure-setup.mjs --e2e",
     "test:e2e": "playwright test",
@@ -43,7 +46,6 @@
   "dependencies": {
     "emoji-picker-element": "^1.29.1",
     "emoji-picker-element-data": "^1.8.0",
-    "firebase": "^11.10.0",
     "sortablejs": "^1.15.7"
   }
 }

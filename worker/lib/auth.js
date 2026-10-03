@@ -14,7 +14,7 @@
 // -----------------------------------------------------------------------------
 
 import { HttpError } from './http.js';
-import { now } from './db.js';
+import { newId, now } from './db.js';
 
 export const SESSION_COOKIE = 'pt_admin';
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -138,4 +138,36 @@ export async function requireAdmin(request, env) {
     const session = await verifySession(env, readCookie(request, SESSION_COOKIE));
     if (!session) throw new HttpError(401, 'signed_out', 'Please sign in.');
     return session;
+}
+
+// ── Player identity (the live game, PROPOSAL.md §8.4) ───────────────────────
+// Anonymous players get a uid plus a token signed with SESSION_SECRET (kept
+// apart from admin sessions by its prefix). The browser keeps it in
+// localStorage; it is the only proof of being that uid. (Participant uids are
+// visible to everyone in a room, so a bare uid would be easy to impersonate.)
+
+const PLAYER_PREFIX = 'pt-player-v1:';
+const PLAYER_UID_RE = /^p_[0-9a-z]{16}$/;
+
+/** Live games need SESSION_SECRET (players' tokens are signed with it). */
+export const gameConfigured = (env) => !!env.SESSION_SECRET;
+
+async function signPlayer(env, uid) {
+    const key = await hmacKey(env.SESSION_SECRET);
+    const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(PLAYER_PREFIX + uid)));
+    return `${uid}.${b64url(sig)}`;
+}
+
+/** A new anonymous player: { uid, token }. */
+export async function issuePlayer(env) {
+    const uid = newId('p');
+    return { uid, token: await signPlayer(env, uid) };
+}
+
+/** The uid a player token proves, or null. */
+export async function verifyPlayer(env, token) {
+    if (!gameConfigured(env) || typeof token !== 'string' || token.length > 200) return null;
+    const uid = token.slice(0, token.lastIndexOf('.'));
+    if (!PLAYER_UID_RE.test(uid)) return null;
+    return (await safeEqual(token, await signPlayer(env, uid))) ? uid : null;
 }

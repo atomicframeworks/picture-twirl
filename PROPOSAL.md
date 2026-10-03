@@ -745,6 +745,38 @@ of these.
    `src/firebase.js`, the `firebase` package and its env vars are deleted
    **before** the merge. Lu gets one system, not two.
 
+**As built (M4, 2026-10-03)** — code: `src/realtime/` (client), `worker/rooms/`
+(GameRoom + rules), `worker/routes/rooms.js`; details in CLAUDE.md → "Realtime"
+and "Live games: GameRoom".
+- **No dev flag to point the shim back at Firebase** (step 1's optional
+  side-by-side): the automated suites compare behavior instead, and Firebase was
+  deleted in the same milestone (step 6).
+- **The tree is unchanged** (`games/<code>/…`), so the game's data paths and
+  logic stayed; 13 game files changed only their import lines — done by the
+  codemod `npm run migrate:code` that Lu's merge will use (§9.3). `gameIndex` is
+  gone: a game exists when its room has a tree (`GET /api/rooms/:code`).
+- **Identity:** `POST /api/player` → `{ uid, token }`, HMAC-signed with
+  `SESSION_SECRET` (prefix-separated from admin sessions), kept in localStorage.
+  Bad tokens on the socket close with 4401 → the client gets a new identity.
+- **Disconnects:** clean closes (tab closed, `bye` on pagehide) run a page's
+  disconnect actions at once — the lobby still drops a leaving player
+  immediately; dropped connections get a 30 s grace period, cancelled if the
+  same page (per-page id) reconnects. Writes carry a per-page sequence number:
+  re-sent after a reconnect, they're applied once.
+- **Tightened as planned (step 5):** players' rows have a field whitelist (no
+  `isGM`, points or self-approval; teams only in the lobby; late join = pending),
+  one buzz per open question, answers + upcoming pictures withheld from players
+  until the reveal (M7), awards via atomic `increment()` + busy guards (H6),
+  server-allocated codes (M4), game creation in one write (M8), host rejoin by
+  identity (M15), idle rooms delete themselves after 24 h (M3).
+- **M4 notes — measured round trips** (`npm run measure:realtime -- --n 300`,
+  local workerd on the dev Mac, 2026-10-03): ping median 0.3 ms (p95 0.6);
+  write confirmed median 0.8 ms (p95 1.9); another player has the change median
+  0.7 ms (p95 1.7). That's the room's own cost; real games add the network to
+  the nearest Cloudflare location and on to the room's (same-region parties:
+  tens of ms). Re-measure against staging/production at cutover with
+  `--url`, and in browsers with `PictureTwirl.realtime.stats()`.
+
 **Effort:** the largest milestone. Because it lives on the branch, it never
 interrupts Lu's work. The only shared touchpoint is the import lines, handled
 by the codemod (§9.3).
@@ -810,7 +842,7 @@ switches to the new account.
 | **M1** | Platform: D1 schema, `/media`, public boards API, seed *Pop Culture Icons*, create flow + Play Again read the API, "Board" wording | Full game playable (still on Firebase) with boards from the API. **Done 2026-10-03:** `npm test` (lint, 23 unit, 13 API) + 10/10 e2e green | M |
 | **M2** | Admin (§5): login, dashboard, table, new board, editor, images + provenance, publish snapshots, audit | Create → edit → publish a board in the local admin; it shows up in the game. **Done 2026-10-03:** 42 unit + 28 API + 16 e2e green; guide in ADMIN.md | L |
 | **M3** | Content tools (§7): import API, `content:sheet`, `content:discover`, ~~`content:verify`~~ (deferred, §7.3 as built), project skill | Spreadsheet boards sitting in the local admin as ✨ To review; then (requested 2026-10-03) **first real discovery runs** for new board / category / picture ideas, also landing as To review. **Done 2026-10-03:** spreadsheet → 7 boards, 159/175 tiles with free pictures (16 empty: small/local musicians with no free photos); discovery → 4 boards (Passport Party, Creature Feature, Science Fair Frenzy, Rocky Mountain High), 100/100. All 11 sit in the local admin as ✨ To review. 59 unit + 34 API + 16 e2e green | L |
-| **M4** | Realtime (§8.4): shim, GameRoom, identity, rules; Firebase deleted | e2e (GM + player contexts) and multi-device play pass with no Firebase anywhere | XL |
+| **M4** | Realtime (§8.4): shim, GameRoom, identity, rules; Firebase deleted | e2e (GM + player contexts) and multi-device play pass with no Firebase anywhere. **Done 2026-10-03 (automated):** Firebase SDK + `src/firebase.js` deleted; 79 unit + 35 API + 20 realtime + 22 e2e green, incl. the acceptance specs (Wi-Fi drop → rejoin, same buzz order + swirl on every screen, host rejoin, no answers before reveal). **Still open: your two- and five-device play-through** (`npm run share`, phones) | XL |
 | **M5** | Handoff (§9.3): MIGRATION.md, CLAUDE.md banner + rewrite, README/COMMANDS/REFACTOR updates, codemod, lint guard, rehearsal | A fresh clone and a simulated "Lu branch" both migrate cleanly by following the doc cold | M |
 
 **Staying in sync:** merge `main` into `cloudflare` at least weekly and before

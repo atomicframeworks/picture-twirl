@@ -8,8 +8,8 @@
 ## TL;DR
 
 ```bash
-npm test             # lint + unit + API (no browser, ~10 s) — run before every commit
-npm run test:e2e     # browser flows in Chromium (~35 s, needs .env.local for Firebase)
+npm test             # lint + unit + API + realtime (no browser, ~25 s) — run before every commit
+npm run test:e2e     # browser flows in Chromium (~1 min, fully local — no accounts needed)
 npm run test:all     # both
 ```
 
@@ -23,8 +23,33 @@ downloads Playwright's Chromium (~90 MB, outside the repo) on first use.
 |---|---|---|---|---|
 | **Lint** | `npm run lint` | ESLint | 2 s | Undefined names, unused code. Must be **0 errors** (warnings are tolerated, but don't add new ones) |
 | **Unit** | `npm run test:unit` | `node --test` | 1 s | Pure logic: board shape + snapshot (`src/shared/boards.js`), license rules (`src/shared/rights.js`), the Worker router, snapshot → live board (`toBoardSet` + `buildBoardFromSet`), the content tools' plan/license/spreadsheet logic |
-| **API** | `npm run test:api` | `node --test` + real local D1/R2 | 5 s | The real Worker (`worker/index.js`) answering real requests against a throwaway database: routes, status codes, cache headers, media privacy, uniqueness, rights, revisions, audit log |
-| **E2E** | `npm run test:e2e` | Playwright + Chromium (Pixel 7 emulation; admin at desktop size) | ~55 s | Whole flows in a browser: create → pick a board → lobby → join → start → swirl → buzz → award → reveal; board picker states; GM tour; the admin end to end; component gallery |
+| **API** | `npm run test:api` | `node --test` + real local D1/R2 | 12 s | The real Worker (`worker/index.js`) answering real requests against a throwaway database: routes, status codes, cache headers, media privacy, uniqueness, rights, revisions, audit log |
+| **Realtime** | `npm run test:realtime` | `node --test` + real Worker with GameRoom Durable Objects in local workerd (wrangler `createTestHarness`), real WebSockets | 7 s | Live games: identities, game codes, the room rules on the wire, answers hidden from players, buzz order, atomic increments, re-sent writes applied once, disconnects (clean vs dropped + grace), hibernation, idle clean-up — and the browser's realtime layer (`src/realtime/`) running in Node against it |
+| **E2E** | `npm run test:e2e` | Playwright + Chromium (Pixel 7 emulation; admin at desktop size) | ~70 s | Whole flows in a browser: create → pick a board → lobby → join → start → swirl → buzz → award → reveal; Wi-Fi drop + rejoin, the same buzz order and swirl progress on every screen, host rejoin, no answers before the reveal; board picker states; GM tour; the admin end to end; component gallery |
+
+### Realtime — `tests/realtime/*.test.mjs`
+`tests/realtime/_harness.mjs` boots the real Worker — GameRoom Durable Objects
+included — in local workerd with wrangler's `createTestHarness`, using a config
+derived from `wrangler.jsonc` at runtime (no static assets, throwaway secrets,
+`ROOM_GRACE_MS=400` so disconnect tests don't wait 30 s):
+
+```js
+const rt = await startRealtime();                 // fresh storage; { vars } to override timers
+const amy = await rt.player();                    // { uid, token }
+const code = await rt.reserve(amy);
+const ws = await rt.connect(code, amy);           // speaks the room protocol (see GameRoom.js)
+await ws.next(m => m.t === 'init');
+await ws.write([{ p: '', v: { hostUid: amy.uid } }]);   // → { t: 'ack', ok }
+await rt.worker().evictDurableObject('ROOMS', { name: code, webSockets: 'hibernate' });
+await rt.close();
+```
+
+- `rooms.test.mjs` talks to rooms over raw WebSockets; `client.test.mjs` runs the
+  browser's `src/realtime/client.js` + `db.js` in Node against the same Worker.
+- Messages queue in an inbox; `ws.next(pred)` takes the first match (so check
+  for the *latest* state, not just any patch about a path).
+- Patches carry whole subtrees (`participants/<uid>`, `board/<tile>`,
+  `currentQuestion`), not single fields.
 
 ### Unit — `tests/unit/*.test.mjs`
 Plain functions with no I/O. Use `node:test` + `node:assert/strict`, nothing else.
@@ -69,9 +94,9 @@ await t.dispose();                        // closes bindings, deletes the folder
 - `gallery.spec.js` runs at desktop size (the gallery is a desktop dev page).
 - Screenshots land in `screenshots/` (gitignored) for eyeballing.
 
-**Caveat until milestone M4:** the live game still runs on Firebase, so e2e
-games are created in the real Firebase project (that's how it has always
-worked). They're ended in teardown. After M4 the whole suite is local.
+**Everything is local since M4:** live games run on GameRoom Durable Objects
+inside the same local Worker, so e2e games never touch an outside service and
+each run starts from an empty database.
 
 ## Specs and what they protect
 
@@ -95,6 +120,11 @@ worked). They're ended in teardown. After M4 the whole suite is local.
 | `tests/lobby.spec.js` | GM lobby code; a player joins and picks a team |
 | `tests/tour.spec.js` | First-time GM sees the lobby tour; Skip dismisses it for good |
 | `tests/unit/adminImageTools.test.mjs` | Recognizing our own `/media` picture links (reused, never re-downloaded); links out of drops |
+| `tests/unit/tree.test.mjs` | The live-game tree model shared by room and browser: paths, set/delete/prune, normalize, `serverTimestamp`/`increment` sentinels, update semantics, equality |
+| `tests/unit/roomCore.test.mjs` | The room rules: create only as host (and not on someone else's reserved code), host powers, players limited to their own row's whitelisted fields (no `isGM`, no points, no self-approval, teams only in the lobby, late join = pending), buzz rules (one per open question, right shape, host clears), arrival-order clock, what players see (no answers/upcoming pictures before the reveal), patch roots, limits |
+| `tests/realtime/rooms.test.mjs` | GameRoom over WebSockets: signed identities (forged → 4401), codes (6 unambiguous chars, reserved for the creator), host vs player views, the reveal, refused writes stay private, buzz order = arrival, atomic increments from two tabs, re-sent writes applied once, clean close runs disconnect actions at once, a dropped connection gets a grace period (back in time → nothing), hibernation, deleting a game, idle rooms delete themselves |
+| `tests/realtime/client.test.mjs` | The browser realtime layer against the real room: identity, `set`/`get`/`onValue` (only fires for its own location), `update`/`remove`/`push` (time-ordered keys) / `increment`, refusals reject, `onDisconnect` + `cancel`, `.info/connected`, clock offset, reconnect with writes made while offline |
+| `tests/realtime.spec.js` | M4 acceptance in browsers: a player's Wi-Fi drop mid-question → seamless rejoin + buzz; the same buzz order and swirl progress (±4 %) on three screens; the host gets the GM seat back in a new tab (AUDIT M15); a player's WebSocket never carries an answer before the reveal (AUDIT M7) |
 | `tests/unit/draftOps.test.mjs` | Editor moves: insert-and-shift within a category, cross-category swap, move a category, immutability |
 | `tests/admin.spec.js` | Admin in a browser: sign-in (wrong/right password, sign-out clears the cookie), new-board dialog + live name check, editor (category name, file-chooser upload, answers, autosave, ▼ move with picture, ◀▶ category move, undo, persisted after reload), paste a picture, drag a tile by its picture (swap, no link import), drop one of our own pictures (reused, not re-downloaded), publish gate → publish → listed in the game's Pick a Board, tile drawer (preview twirl, rights edit → reasons + badges), boards table (search, bulk archive with confirm, archived filter + URL, select-all, bulk restore) |
 | `tests/game.spec.js` | Live game: board, picture served from `/media`, swirl + pause/resume, buzz, award (score + confetti), continue, reveal-without-award |

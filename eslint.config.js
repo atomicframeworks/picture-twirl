@@ -1,4 +1,4 @@
-// Flat ESLint config (ESLint 9). Vanilla browser ES modules + Firebase.
+// Flat ESLint config (ESLint 9). Vanilla browser ES modules, a Cloudflare Worker, Node tooling.
 import js from '@eslint/js';
 import globals from 'globals';
 
@@ -21,6 +21,15 @@ export default [
             // exact failure mode of splitting a shared closure across files.
             'no-undef': 'error',
             'no-empty': ['warn', { allowEmptyCatch: true }],
+            // Firebase is gone (PROPOSAL.md §8.4): live games use src/realtime/. Code merged
+            // from an older branch gets its imports rewritten by `npm run migrate:code`.
+            'no-restricted-imports': ['error', {
+                paths: [{ name: 'firebase', message: 'Firebase was replaced by src/realtime/ — run `npm run migrate:code`.' }],
+                patterns: [
+                    { group: ['firebase/*'], message: 'Firebase was replaced by src/realtime/db.js — run `npm run migrate:code`.' },
+                    { group: ['**/firebase.js'], message: 'src/firebase.js was replaced by src/realtime/client.js — run `npm run migrate:code`.' },
+                ],
+            }],
         },
     },
 

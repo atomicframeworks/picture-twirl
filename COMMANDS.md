@@ -79,26 +79,40 @@ and the tunnel.
 - HMR works over the tunnel (wss on 443). While sharing, use the tunnel URL on
   this machine too; `localhost:3000` still serves but its HMR socket won't connect.
 - Anyone with the link reaches your dev server, so treat it as public.
-- Firebase anonymous auth works from the tunnel origin as-is (authorized-domain
-  checks only apply to popup/redirect sign-in, which this app doesn't use).
+- Live games work over the tunnel too (their WebSockets ride the same HTTPS
+  URL) — the easy way to try a real multi-device game: open the URL on two to
+  five phones and play. `window.PictureTwirl.realtime.stats()` in a browser's
+  devtools shows each device's round-trip time.
 - Port 3000 must be free — share mode uses `strictPort` so a shifted port can't
   leave the tunnel pointing at nothing.
 
 ## Tests (details: TESTING.md)
 ```bash
-npm test                               # lint + unit + API — no browser, ~10 s; run before committing
+npm test                               # lint + unit + API + realtime — no browser, ~25 s; run before committing
 npm run test:unit                      # node --test tests/unit (pure logic)
 npm run test:api                       # node --test tests/api (real Worker + throwaway D1/R2)
+npm run test:realtime                  # node --test tests/realtime (GameRoom Durable Objects over real WebSockets)
 npm run test:all                       # npm test + e2e
 
 # Playwright — auto-starts the dev server (or reuses one on :3000)
 npm run test:e2e                       # run all browser flows
-npm run test:e2e -- gallery.spec.js    # one file (no Firebase needed)
+npm run test:e2e -- realtime.spec.js   # one file (here: the live-game acceptance tests)
 npm run test:e2e -- --headed           # watch in a real browser
 npm run test:e2e -- --ui               # interactive debug UI
 npm run test:e2e:report                # open last HTML report
 ```
 Screenshots → `screenshots/`
+
+## Live games (GameRoom Durable Objects)
+```bash
+npm run measure:realtime               # latency through a room: ping / write confirmed / delivered to another player
+npm run measure:realtime -- --url https://<site> --n 300   # against a deployed site (after cutover)
+npm run migrate:code                   # code written against Firebase (older branches) → src/realtime/ imports
+npm run migrate:code -- --check        # exit 1 if any Firebase import is left
+```
+In a browser's devtools: `PictureTwirl.realtime.stats()` (connection, round
+trips, clock offset) and `PictureTwirl.realtime.simulateDrop()` (cut this tab's
+connection like a Wi-Fi drop — it reconnects by itself).
 
 ## Lint
 ```bash

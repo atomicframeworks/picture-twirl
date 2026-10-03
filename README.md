@@ -1,13 +1,13 @@
 # Picture Twirl
 
-Multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite, vanilla JavaScript, and Firebase Realtime Database — and, on the `cloudflare` branch, a Cloudflare Worker with D1 + R2 that serves the game's content (Boards). The switch-over plan is in [PROPOSAL.md](PROPOSAL.md); tests in [TESTING.md](TESTING.md).
+Multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite and vanilla JavaScript on one Cloudflare Worker (branch `cloudflare`): D1 + R2 serve the game's content (Boards), and every live game is a GameRoom Durable Object that keeps all players in sync over WebSockets. The switch-over plan is in [PROPOSAL.md](PROPOSAL.md); tests in [TESTING.md](TESTING.md).
 
 ## Prerequisites
 
 - **Node.js 22+** on the host (recommended): macOS 13.5+, Windows 11 or a glibc
   Linux — what the local Cloudflare runtime supports
 - Or **Docker Desktop** as a fallback (e.g. on Windows 10) — see below
-- A Firebase project with Realtime Database (see [Firebase config](#firebase-config)) — until milestone M4
+- Nothing else: no accounts or cloud services are needed to run, test or play locally
 
 ## Quick start
 
@@ -114,25 +114,14 @@ npm run content:sheet      # AI: boards from the team spreadsheet → ✨ To rev
 npm run content:discover   # AI: brand-new board ideas with free pictures
 ```
 
-## Firebase config
+## Configuration
 
-Copy [`.env.local.example`](./.env.local.example) to `.env.local` and fill in
-your project's values (`cp .env.local.example .env.local`).
-
-The app reads config from either:
-
-1. `window.__FIREBASE_CONFIG__` (set in `index.html` or a script), **or**
-2. Vite env vars in `.env.local` (gitignored):
-
-```
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_DATABASE_URL=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_APP_ID=...
-```
-
-Anonymous auth is required and enforced automatically.
+- `.dev.vars` (created automatically from `.dev.vars.example`, gitignored): the
+  local Worker's secrets — `SESSION_SECRET` (signs player identities and admin
+  sessions), `ADMIN_PASSWORD`, `IMPORT_TOKEN`.
+- `.env.local` (optional, gitignored): content-tool settings — see
+  `.env.local.example`. Firebase is no longer used; old `VITE_FIREBASE_*` lines
+  can be deleted.
 
 ## Working with Claude Code
 
@@ -157,8 +146,8 @@ app.append(Button({ label: 'Start', onClick: go }));
 ```
 
 A live showcase of every component is at **`/gallery.html`** (run `npm run dev`,
-then open http://localhost:3000/gallery.html). It loads no Firebase, so it's a
-fast place to build and visually verify components. The Playwright suite
+then open http://localhost:3000/gallery.html). It needs no game or server
+state, so it's a fast place to build and visually verify components. The Playwright suite
 screenshots it (`tests/gallery.spec.js`).
 
 ## Project structure

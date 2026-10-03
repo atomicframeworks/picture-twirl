@@ -14,36 +14,16 @@
 // no static assets (the tests don't need them), throwaway secrets, and short
 // room timers (ROOM_GRACE_MS) so disconnect tests don't wait 30 s.
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTestHarness } from 'wrangler';
+import { readWranglerConfig as readConfig } from '../../scripts/lib/wranglerConfig.mjs';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-/** wrangler.jsonc → object (comments and trailing commas removed, strings respected). */
-export function readWranglerConfig() {
-    const raw = readFileSync(path.join(ROOT, 'wrangler.jsonc'), 'utf8');
-    let out = '';
-    let inString = false;
-    for (let i = 0; i < raw.length; i++) {
-        const ch = raw[i];
-        if (inString) {
-            out += ch;
-            if (ch === '\\') out += raw[++i];
-            else if (ch === '"') inString = false;
-        } else if (ch === '"') {
-            inString = true;
-            out += ch;
-        } else if (ch === '/' && raw[i + 1] === '/') {
-            while (i < raw.length && raw[i] !== '\n') i++;
-            out += '\n';
-        } else {
-            out += ch;
-        }
-    }
-    return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1'));
-}
+const readWranglerConfig = () => readConfig(ROOT);
+export { readWranglerConfig };
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 export { sleep };

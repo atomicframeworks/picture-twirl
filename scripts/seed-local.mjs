@@ -21,21 +21,26 @@ import { normalizeImage } from '../tools/content/lib/images.mjs';
 import { storeImage } from '../worker/lib/images.js';
 import { createBoard, publishBoard } from '../worker/lib/boards.js';
 import { DEFAULT_POINTS } from '../src/shared/boards.js';
+import { toolsConfig } from './lib/wranglerConfig.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SEED_DIR = path.join(root, 'content', 'seed');
 const SEEDS = ['pop-icons'];
 
-const stateDir = process.env.PT_STATE_DIR;
+const stateDir = process.env.PT_STATE_DIR || path.join('.wrangler', 'state');
+// The config without the GameRoom Durable Objects (the seed only needs D1/R2):
+// see scripts/lib/wranglerConfig.mjs.
+const tools = toolsConfig(root);
 const { env, dispose } = await getPlatformProxy({
-    configPath: path.join(root, 'wrangler.jsonc'),
+    configPath: tools.configPath,
     // Same layout as `wrangler … --persist-to <dir>`: state lives in <dir>/v3.
-    ...(stateDir && { persist: { path: path.join(root, stateDir, 'v3') } }),
+    persist: { path: path.join(root, stateDir, 'v3') },
 });
 try {
     for (const name of SEEDS) await seedBoard(name);
 } finally {
     await dispose();
+    tools.cleanup();
 }
 
 async function seedBoard(name) {

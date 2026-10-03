@@ -18,6 +18,8 @@ import { getPlatformProxy } from 'wrangler';
 import worker from '../../worker/index.js';
 import { normalizeImage } from '../../tools/content/lib/images.mjs';
 import { storeImage } from '../../worker/lib/images.js';
+import { toolsConfig } from '../../scripts/lib/wranglerConfig.mjs';
+import { parseEnvFile } from '../../tools/content/lib/env.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const configPath = path.join(root, 'wrangler.jsonc');
@@ -35,7 +37,17 @@ export async function startTestEnv() {
     }
 
     // `--persist-to X` stores state under X/v3; getPlatformProxy takes that v3 folder.
-    const { env, dispose } = await getPlatformProxy({ configPath, persist: { path: path.join(stateDir, 'v3') } });
+    // The config without the GameRoom Durable Objects (live games are tested in
+    // tests/realtime/); its copy can't see .dev.vars, so the secrets come along as vars.
+    const vars = { ...parseEnvFile(path.join(root, '.dev.vars.example')), ...parseEnvFile(path.join(root, '.dev.vars')) };
+    const tools = toolsConfig(root, { vars });
+    let proxy;
+    try {
+        proxy = await getPlatformProxy({ configPath: tools.configPath, persist: { path: path.join(stateDir, 'v3') } });
+    } finally {
+        tools.cleanup();
+    }
+    const { env, dispose } = proxy;
     const ctx = { waitUntil() {}, passThroughOnException() {} };
 
     return {

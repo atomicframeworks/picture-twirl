@@ -671,7 +671,7 @@ tools/content/                                 ← the local pipeline (Node, ESM
 ### 8.3 Secrets
 | Secret | Where | Notes |
 |---|---|---|
-| `ADMIN_PASSWORD`, `SESSION_SECRET` | Worker secrets; local `.dev.vars` (gitignored, with `.dev.vars.example`) | |
+| `ADMIN_PASSWORD`, `SESSION_SECRET` | Worker secrets; local `.dev.vars` (gitignored, with `.dev.vars.example`). Decided 2026-10-03: the **same team admin password** locally, on staging and in production — set in each `.dev.vars` and with `wrangler secret put`, never in a committed file | |
 | `IMPORT_TOKEN` | Worker secret + your `.env.local` | Lets content tools submit to `import` only |
 | `CONTENT_AI` (+ Ollama URL or API key only if those backends are used), `PIXABAY_KEY`, `PEXELS_KEY` | `.env.local` on the machine running tools | Never in the Worker; the default backend uses your `claude` login |
 | Firebase config | `.env.local` on the branch until M4, then deleted | Public by design; gone after the switch-over |

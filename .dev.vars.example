@@ -5,6 +5,8 @@
 # (`wrangler secret put …` at cutover) and are never committed anywhere.
 
 # /admin sign-in password (local only)
+# Use the team's admin password here if you want the same one everywhere —
+# .dev.vars is gitignored; never put the real password in THIS (committed) file.
 ADMIN_PASSWORD=dev-admin-password
 
 # Signs admin session cookies (any long random string)

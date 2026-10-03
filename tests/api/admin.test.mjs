@@ -6,10 +6,10 @@ import assert from 'node:assert/strict';
 import { startTestEnv, storeTestImage, fullDraft } from './_harness.mjs';
 import { normalizeImage } from '../../tools/content/lib/images.mjs';
 import sharp from 'sharp';
+import { ADMIN_PASSWORD as PASSWORD } from '../devVars.mjs';   // what the harness runs with (.dev.vars)
 
 let t;
 let cookie;                                  // signed-in admin session
-const PASSWORD = 'dev-admin-password';       // .dev.vars.example
 
 before(async () => {
     t = await startTestEnv();
@@ -328,4 +328,16 @@ test('rights edits recompute status and the ⚠️ counts of boards using the pi
     assert.equal(blocked.body.image.rightsStatus, 'blocked');
     const check = (await api('GET', `/api/admin/boards/${b.id}`)).body.validation;
     assert.ok(check.problems.some(p => p.code === 'picture_blocked'));
+});
+
+test('own pictures by content hash: found (for drag-from-another-board), else 400/404; admins only', async () => {
+    const img = await storeTestImage(t.env, 777, { license: 'cc0' });
+    const row = await t.env.DB.prepare('SELECT sha256 FROM images WHERE id = ?').bind(img.id).first();
+    const found = await api('GET', `/api/admin/images?sha=${row.sha256}`);
+    assert.equal(found.status, 200);
+    assert.equal(found.body.image.id, img.id);
+    assert.match(found.body.image.url, new RegExp(`/media/display/${row.sha256}\\.`));
+    assert.equal((await api('GET', '/api/admin/images?sha=nope')).status, 400);
+    assert.equal((await api('GET', `/api/admin/images?sha=${'0'.repeat(64)}`)).status, 404);
+    assert.equal((await t.fetch(`/api/admin/images?sha=${row.sha256}`)).status, 401);
 });

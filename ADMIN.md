@@ -7,7 +7,10 @@
 ## Signing in
 - Enter **your name** (it appears in the Activity log next to everything you
   change) and the shared **password**.
-  - Local dev password: `dev-admin-password` (from `.dev.vars`).
+  - Local dev password: the `ADMIN_PASSWORD` in your `.dev.vars` — we use the
+    same team password locally and online. A fresh checkout starts with the
+    throwaway value from `.dev.vars.example`; set yours to the team password.
+    The real password never goes in a committed file.
   - Production password: a Cloudflare secret, set at cutover — never in git.
 - You stay signed in for 7 days on that browser. **Sign out** (top right) ends it.
 - 10 wrong passwords from one network → a 15-minute pause.
@@ -57,14 +60,17 @@ Everything **saves automatically** (top right: *Saving… / ✓ Saved*).
   - paste a **link** (to a picture, or to a page that has one) — in the tile's
     **⋯** details or by pasting it over the tile. We download it and keep our
     own copy; the link is recorded as the picture's source.
+  - drop one of **our own** pictures (e.g. dragged from another board in a
+    second tab) — it's reused as is, with its source and rights.
   Pictures are resized automatically (crisp 1280 px versions, fast to load).
 - **Answer** — type under the picture.
 - **Rearrange**:
   - **▲ / ▼** moves a tile up/down its category (points follow the row: moving
     the 500 tile up to 300 makes it worth 300; the others shift).
   - **◀ / ▶** moves a whole category left/right with all its tiles.
-  - Or **drag** the ⠿ handles. Dropping a tile on another category **swaps**
-    the two tiles (every category keeps 5).
+  - Or **drag** a tile by its **picture** (or its ⠿ handle). Dropping it in
+    its own category moves it there (the others shift); dropping it on another
+    category **swaps** the two tiles (every category keeps 5).
 - **Undo / redo**: ⌘/Ctrl+Z and ⌘/Ctrl+Shift+Z (outside text boxes).
 - **👀 Preview** shows the board the way players see it.
 - If someone else saves the same board while you're editing, you'll see

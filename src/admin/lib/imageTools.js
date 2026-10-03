@@ -135,6 +135,26 @@ export async function uploadPictureFromUrl(url) {
     });
 }
 
+/**
+ * A link to one of OUR stored pictures (`/media/display|thumb/<sha256>.<ext>`,
+ * e.g. dragged in from another board or tab) → its sha256, else null. Those are
+ * reused as they are (keeping their source + rights) instead of being downloaded
+ * again — the link importer refuses this site's own address anyway.
+ * @param {string} url
+ * @param {string} [origin]  this page's origin
+ */
+export function ownPictureSha(url, origin = globalThis.location?.origin) {
+    let u;
+    try { u = new URL(url, origin); } catch { return null; }
+    if (origin && u.origin !== origin) return null;
+    return u.pathname.match(/^\/media\/(?:display|thumb)\/([0-9a-f]{64})\.(?:webp|jpg|png)$/)?.[1] || null;
+}
+
+/** The stored picture with this content hash (see ownPictureSha). */
+export async function findOwnPicture(sha) {
+    return (await api('GET', `/api/admin/images?sha=${sha}`)).image;
+}
+
 /** Pull a picture (file) or a link (text) out of a paste / drop. */
 export function readTransfer(dt) {
     if (!dt) return null;

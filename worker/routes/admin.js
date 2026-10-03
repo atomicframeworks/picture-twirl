@@ -166,6 +166,16 @@ export function registerAdminRoutes(router) {
         });
     }));
 
+    // One of OUR pictures by content hash (its /media URL ends in <sha256>.<ext>) —
+    // the editor reuses a picture dropped from another board/tab instead of re-downloading it.
+    router.get('/api/admin/images', admin(async ({ env, url }) => {
+        const sha = url.searchParams.get('sha') || '';
+        if (!/^[0-9a-f]{64}$/.test(sha)) throw new HttpError(400, 'bad_sha', 'Expected ?sha=<64 hex characters>.');
+        const row = await first(env, 'SELECT * FROM images WHERE sha256 = ?', sha);
+        if (!row) throw new HttpError(404, 'not_found', 'That picture isn’t in our library.');
+        return json({ image: publicImage(row) });
+    }));
+
     router.get('/api/admin/images/:id', admin(async ({ env, params }) => {
         const row = await first(env, 'SELECT * FROM images WHERE id = ?', params.id);
         if (!row) throw new HttpError(404, 'not_found');

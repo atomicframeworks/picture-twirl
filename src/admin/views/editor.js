@@ -16,7 +16,7 @@ import { get, post, put } from '../lib/api.js';
 import { navigate } from '../lib/router.js';
 import { fullDate, plural, timeAgo } from '../lib/format.js';
 import { moveCategory, moveTile, sameDraft, setCategoryTitle, setTile, swapTiles } from '../lib/draftOps.js';
-import { isImageFile, readTransfer, uploadPicture, uploadPictureFromUrl } from '../lib/imageTools.js';
+import { findOwnPicture, isImageFile, ownPictureSha, readTransfer, uploadPicture, uploadPictureFromUrl } from '../lib/imageTools.js';
 import { readyBar, rightsBadge, statusChip } from '../ui/chips.js';
 import { confirmDialog, openDialog, toast } from '../ui/feedback.js';
 import { emojiButton } from '../ui/emojiField.js';
@@ -232,7 +232,11 @@ export function mountEditor(outlet, { boardId }) {
         }));
         gridEl.querySelectorAll('.ed-tiles').forEach((list) => {
             s.sortables.push(Sortable.create(list, {
-                group: 'tiles', handle: '.ed-tile-handle', draggable: '.ed-tile', animation: 150,
+                // Drag a tile by its ⠿ handle OR its picture. Pointer-based (forceFallback): it
+                // works from the picture button in every browser, and never hands the browser an
+                // image link to "drop" (that used to import the picture's own URL → "host isn't allowed").
+                group: 'tiles', handle: '.ed-tile-handle, .ed-pic', draggable: '.ed-tile', animation: 150,
+                forceFallback: true, fallbackTolerance: 5,
                 onEnd: (evt) => {
                     const from = { cat: Number(evt.from.dataset.cat), row: evt.oldIndex };
                     const to = { cat: Number(evt.to.dataset.cat), row: Math.min(evt.newIndex, TILES_PER_CATEGORY - 1) };
@@ -260,7 +264,7 @@ export function mountEditor(outlet, { boardId }) {
             'aria-label': img ? `Open ${where(c, r)}` : `Add a picture to ${where(c, r)}`,
             onClick: () => (img ? openDrawer(c, r) : pickFile(c, r)),
         },
-        img ? h('img', { src: img.thumb, alt: '', loading: 'lazy' }) : h('span', { class: 'ed-pic-empty' }, busy ? '⟳' : '＋', h('small', null, busy ? 'Uploading…' : 'Drop, click or paste')),
+        img ? h('img', { src: img.thumb, alt: '', loading: 'lazy', draggable: 'false' }) : h('span', { class: 'ed-pic-empty' }, busy ? '⟳' : '＋', h('small', null, busy ? 'Uploading…' : 'Drop, click or paste')),
         busy && img ? h('span', { class: 'ed-pic-busy' }, '⟳') : null);
 
         const card = h('article', {
@@ -303,7 +307,10 @@ export function mountEditor(outlet, { boardId }) {
         s.uploading.add(key);
         renderGrid();
         try {
-            const image = file ? await uploadPicture(file, { provider: 'upload' }) : await uploadPictureFromUrl(url);
+            const ownSha = url && ownPictureSha(url);
+            const image = file ? await uploadPicture(file, { provider: 'upload' })
+                : ownSha ? await findOwnPicture(ownSha)              // one of ours (another board / tab)
+                    : await uploadPictureFromUrl(url);
             s.images[image.id] = image;
             pushUndo();
             s.draft = setTile(s.draft, c, r, { imageId: image.id });

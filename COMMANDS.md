@@ -17,7 +17,7 @@ macOS 13.5+, Windows 11 and glibc Linux (not Alpine — see docker-compose.yml).
 ```bash
 npm run dev            # → http://localhost:3000  (Vite + local Worker/D1/R2)
                        #   first migrates + seeds the local database
-                       #   admin:   http://localhost:3000/admin/  (password: dev-admin-password)
+                       #   admin:   http://localhost:3000/admin/  (password: ADMIN_PASSWORD in your .dev.vars)
                        #   gallery: http://localhost:3000/gallery.html
                        #   API:     http://localhost:3000/api/health, /api/boards
 npm run dev:e2e        # the browser tests' own server: :3100, fresh database each start

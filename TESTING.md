@@ -55,7 +55,9 @@ await t.dispose();                        // closes bindings, deletes the folder
   are repeatable and your dev data on :3000 is never touched. (If an e2e server
   is already running, Playwright reuses it and its data carries over.) The
   internal test board **Pop Culture Icons** is always published.
-- Admin specs sign in with the dev password from `.dev.vars.example` and run at
+- Admin specs sign in with the `ADMIN_PASSWORD` from your `.dev.vars` (read by
+  `tests/devVars.mjs` — the servers and the API harness run with that file, and
+  the real password never appears in a test) and run at
   desktop size; they build complete boards quickly through the admin API
   (`apiReadyBoard`) and use the UI for what they actually test.
 - Shared flows live in `tests/helpers.js` (`createGameAsGM`, `joinAsPlayer`, …);
@@ -92,8 +94,9 @@ worked). They're ended in teardown. After M4 the whole suite is local.
 | `tests/boards.spec.js` | Board list comes from the API; Next gated on selection; error + retry; titles rendered as text (no HTML injection) |
 | `tests/lobby.spec.js` | GM lobby code; a player joins and picks a team |
 | `tests/tour.spec.js` | First-time GM sees the lobby tour; Skip dismisses it for good |
+| `tests/unit/adminImageTools.test.mjs` | Recognizing our own `/media` picture links (reused, never re-downloaded); links out of drops |
 | `tests/unit/draftOps.test.mjs` | Editor moves: insert-and-shift within a category, cross-category swap, move a category, immutability |
-| `tests/admin.spec.js` | Admin in a browser: sign-in (wrong/right password, sign-out clears the cookie), new-board dialog + live name check, editor (category name, file-chooser upload, answers, autosave, ▼ move with picture, ◀▶ category move, undo, persisted after reload), paste a picture, publish gate → publish → listed in the game's Pick a Board, tile drawer (preview twirl, rights edit → reasons + badges), boards table (search, bulk archive with confirm, archived filter + URL, select-all, bulk restore) |
+| `tests/admin.spec.js` | Admin in a browser: sign-in (wrong/right password, sign-out clears the cookie), new-board dialog + live name check, editor (category name, file-chooser upload, answers, autosave, ▼ move with picture, ◀▶ category move, undo, persisted after reload), paste a picture, drag a tile by its picture (swap, no link import), drop one of our own pictures (reused, not re-downloaded), publish gate → publish → listed in the game's Pick a Board, tile drawer (preview twirl, rights edit → reasons + badges), boards table (search, bulk archive with confirm, archived filter + URL, select-all, bulk restore) |
 | `tests/game.spec.js` | Live game: board, picture served from `/media`, swirl + pause/resume, buzz, award (score + confetti), continue, reveal-without-award |
 | `tests/gallery.spec.js` | Component gallery renders; modal opens |
 

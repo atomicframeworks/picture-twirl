@@ -6,9 +6,9 @@ import assert from 'node:assert/strict';
 import sharp from 'sharp';
 import { startTestEnv, storeTestImage, fullDraft } from './_harness.mjs';
 import { normalizeImage } from '../../tools/content/lib/images.mjs';
+import { IMPORT_TOKEN as TOKEN } from '../devVars.mjs';         // what the harness runs with (.dev.vars)
 
 let t;
-const TOKEN = 'dev-import-token';           // .dev.vars.example
 before(async () => { t = await startTestEnv(); });
 after(() => t?.dispose());
 

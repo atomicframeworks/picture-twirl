@@ -6,8 +6,7 @@
 import { test, expect } from '@playwright/test';
 import sharp from 'sharp';
 import { normalizeImage } from '../tools/content/lib/images.mjs';
-
-const PASSWORD = 'dev-admin-password';     // .dev.vars.example
+import { ADMIN_PASSWORD as PASSWORD } from './devVars.mjs';   // whatever the e2e server runs with (.dev.vars)
 test.use({ viewport: { width: 1440, height: 950 }, isMobile: false, hasTouch: false }); // admins use desktops
 
 /** A distinct PNG for a file chooser / paste. */
@@ -136,6 +135,60 @@ test('paste a picture onto the tile under the mouse', async ({ page }) => {
         globalThis.document.dispatchEvent(new globalThis.ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
     }, b64);
     await expect(page.locator('[data-testid="tile-2-3"] .ed-pic img')).toBeVisible({ timeout: 15_000 });
+});
+
+test('drag a tile by its picture: dropped on another category it swaps — no link import, no error', async ({ page }) => {
+    await signIn(page);
+    const board = await apiReadyBoard(page, uniq('E2E Drag'));
+    await page.goto(`/admin/#/boards/${board.id}`);
+    const a = page.locator('[data-testid="tile-0-0"]');
+    const b = page.locator('[data-testid="tile-1-0"]');
+    await expect(a.locator('.ed-pic img')).toBeVisible();
+    const [answerA, answerB] = [await a.locator('.ed-answer').inputValue(), await b.locator('.ed-answer').inputValue()];
+
+    // A real pointer drag that starts ON THE PICTURE (it used to start the browser's image drag).
+    const from = await a.locator('.ed-pic').boundingBox();
+    const to = await b.locator('.ed-pic').boundingBox();
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(from.x + from.width / 2 + 12, from.y + from.height / 2 + 6, { steps: 4 });
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 20 });
+    await page.mouse.up();
+
+    await expect(page.locator('[data-testid="tile-0-0"] .ed-answer')).toHaveValue(answerB);
+    await expect(page.locator('[data-testid="tile-1-0"] .ed-answer')).toHaveValue(answerA);
+    await expect(page.locator('.adm-toast.is-error')).toHaveCount(0);
+    await expect(page.locator('.ed-drawer')).toHaveCount(0);          // a drag isn't a click: no drawer
+    await expect(page.locator('[data-testid="save-state"]')).toContainText('Saved', { timeout: 10_000 });
+});
+
+test('dropping one of our own pictures (e.g. from another board) reuses it instead of re-downloading', async ({ page }) => {
+    await signIn(page);
+    const img = await normalizeImage(await pngFor(41));
+    const up = await page.request.post('/api/admin/images', {
+        multipart: {
+            display: { name: 'display.webp', mimeType: 'image/webp', buffer: img.display.bytes },
+            thumb: { name: 'thumb.webp', mimeType: 'image/webp', buffer: img.thumb.bytes },
+            meta: JSON.stringify({ provider: 'upload', license: 'cc0' }),
+        },
+    });
+    const { image } = await up.json();
+    const { board } = await (await page.request.post('/api/admin/boards', { data: { title: uniq('E2E Own Drop') } })).json();
+    await page.goto(`/admin/#/boards/${board.id}`);
+    await expect(page.locator('[data-testid="tile-1-1"]')).toBeVisible();
+
+    await page.evaluate((url) => {                             // runs in the browser: a link dropped from another tab
+        const dt = new globalThis.DataTransfer();
+        dt.setData('text/uri-list', new URL(url, globalThis.location.origin).href);
+        const tile = globalThis.document.querySelector('[data-testid="tile-1-1"]');
+        tile.dispatchEvent(new globalThis.DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    }, image.url);
+
+    await expect(page.locator('[data-testid="tile-1-1"] .ed-pic img')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.adm-toast.is-error')).toHaveCount(0);
+    await expect(page.locator('[data-testid="save-state"]')).toContainText('Saved', { timeout: 10_000 });
+    const saved = await (await page.request.get(`/api/admin/boards/${board.id}`)).json();
+    expect(saved.draft.categories[1].tiles[1].imageId).toBe(image.id);   // the same picture, not a re-encoded copy
 });
 
 test('publish gate, then publish → the board is in the game’s “Pick a Board” list', async ({ page }) => {

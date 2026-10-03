@@ -26,7 +26,7 @@ a local D1 database and R2 bucket under `.wrangler/` — migrated and seeded wit
 the internal test board automatically. No Cloudflare account or login needed.
 
 The **admin** (manage boards, pictures and rights) is at
-http://localhost:3000/admin/ — local password `dev-admin-password`. How to use
+http://localhost:3000/admin/ — local password = `ADMIN_PASSWORD` in your `.dev.vars` (we use the team password; never commit it). How to use
 it: [ADMIN.md](ADMIN.md).
 
 ## Quick start (Docker fallback)

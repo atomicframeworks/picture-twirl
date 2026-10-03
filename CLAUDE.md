@@ -241,8 +241,12 @@ Boards are content in a database, not code (PROPOSAL.md §4):
   autosave `PUT` with `rev` (stale → "Changed elsewhere" banner, never
   overwrite); text inputs update state without re-render (keeps focus);
   ▲▼ = move within a category (points follow the row), ◀▶ = move a category,
-  drag across categories = swap; ⌘/Ctrl+Z undo outside text fields; paste
-  targets the tile under the mouse. `ui/tileDrawer.js`: big picture, preview
+  drag a tile by its picture or ⠿ (Sortable `forceFallback` — pointer-based, so
+  the browser never drops an image link) — across categories = swap; ⌘/Ctrl+Z
+  undo outside text fields; paste targets the tile under the mouse. A dropped
+  or pasted link to one of OUR pictures (`/media/display|thumb/<sha>…`) is
+  reused via `GET /api/admin/images?sha=` (`ownPictureSha` in `imageTools.js`);
+  the link importer refuses this site's own (private) address. `ui/tileDrawer.js`: big picture, preview
   twirl (reuses `src/game/swirl.js`), answer/notes, rights form.
 
 **Admin API** (`worker/routes/admin.js`):

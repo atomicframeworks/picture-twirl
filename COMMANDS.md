@@ -109,6 +109,8 @@ npm run measure:realtime               # latency through a room: ping / write co
 npm run measure:realtime -- --url https://<site> --n 300   # against a deployed site (after cutover)
 npm run migrate:code                   # code written against Firebase (older branches) → src/realtime/ imports
 npm run migrate:code -- --check        # exit 1 if any Firebase import is left
+npm run rehearse:migration             # sandbox: "Lu's" Firebase-era branch + a simulated cutover (prints the Claude command)
+npm run rehearse:migration -- --run    # …and let a fresh headless Claude session do the merge (~5 min, your Claude usage)
 ```
 In a browser's devtools: `PictureTwirl.realtime.stats()` (connection, round
 trips, clock offset) and `PictureTwirl.realtime.simulateDrop()` (cut this tab's

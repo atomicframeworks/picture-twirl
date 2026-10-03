@@ -62,6 +62,11 @@ git fetch origin                # always safe — downloads, changes nothing in 
 # … keep committing on lu/wip; DON'T `git pull` on main / `git merge origin/main` yet
 ```
 
+- If you'd been committing straight onto `main`: once your work is safe on
+  `lu/wip`, make your local `main` match GitHub again, so a later `git pull`
+  doesn't mix the old code back in:
+  `git switch main && git reset --keep origin/main && git switch lu/wip`
+  (`--keep` refuses to run if anything is uncommitted — nothing can be lost).
 - It's **one merge** — you can't take part of it.
 - After cutover, pushing to `main` **deploys the live site**. git won't let you
   push old work over the new `main` (it isn't a fast-forward) — don't

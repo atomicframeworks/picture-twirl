@@ -783,7 +783,7 @@ switches to the new account.
 | # | Milestone (on `cloudflare`) | Done when | Size |
 |---|---|---|---|
 | **M0** | Setup: `wrangler.jsonc`, Cloudflare Vite plugin, Worker skeleton, D1 schema (`migrations/`), `.dev.vars.example`, Docker image → Debian, spreadsheet → `content/sources/`; today's Firebase rules exported for reference (needs you: Firebase console) | `npm run dev` serves the game + `/api/health` from local D1. **Done 2026-10-03** | S |
-| **M1** | Platform: D1 schema, `/media`, public boards API, seed *Pop Culture Icons*, create flow + Play Again read the API, "Board" wording | Full game playable (still on Firebase) with boards from the API | M |
+| **M1** | Platform: D1 schema, `/media`, public boards API, seed *Pop Culture Icons*, create flow + Play Again read the API, "Board" wording | Full game playable (still on Firebase) with boards from the API. **Done 2026-10-03:** `npm test` (lint, 23 unit, 13 API) + 10/10 e2e green | M |
 | **M2** | Admin (§5): login, dashboard, table, new board, editor, images + provenance, publish snapshots, audit | Create → edit → publish a board in staging admin; it shows up in the game | L |
 | **M3** | Content tools (§7): import API, `content:sheet`, `content:discover`, `content:verify`, project skill | Spreadsheet boards sitting in staging *Imports*, reviewed | L |
 | **M4** | Realtime (§8.4): shim, GameRoom, identity, rules; Firebase deleted | e2e (GM + player contexts) and multi-device play pass with no Firebase anywhere | XL |
@@ -872,6 +872,17 @@ What ships inside the merge:
   - A throwaway branch made from `main` with a fake gameplay edit in
     `renderGame.js`, merged with `cloudflare` by a fresh Claude Code session that
     only gets "follow CLAUDE.md". Fix the docs until that works without help.
+
+### 9.3b Definition of done for every milestone (decided 2026-10-03)
+Every milestone ships with tests and docs, or it isn't done:
+- `npm test` green: lint (0 errors), unit, and API tests. `npm run test:e2e` is
+  green too.
+- New behavior gets a test at the lowest layer that can see it (unit → API →
+  e2e). A bug fix gets a test that failed before the fix.
+- Docs are updated in the same commit: CLAUDE.md (architecture + file map),
+  COMMANDS.md, TESTING.md (new specs/layers), README when setup changes, and the
+  REFACTOR.md change log.
+- The rules live in [TESTING.md](TESTING.md).
 
 ### 9.4 After cutover (beta polish)
 Credits page, play/recognition stats, image library, optional Cloudflare Access,

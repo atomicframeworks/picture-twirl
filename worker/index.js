@@ -2,34 +2,37 @@
 //
 // Picture Twirl — the Cloudflare Worker (PROPOSAL.md §3).
 // -----------------------------------------------------------------------------
-// Static files (the game's index.html, JS, CSS, images) are served by Workers
-// Static Assets without running this script. It only runs for the paths listed
-// in wrangler.jsonc `assets.run_worker_first`: /api/* and /media/*.
+// Static files (the game's index.html, JS, CSS) are served by Workers Static
+// Assets without running this script. It only runs for the paths listed in
+// wrangler.jsonc `assets.run_worker_first`: /api/* and /media/*.
 //
 // Bindings (wrangler.jsonc): DB (D1), MEDIA (R2), ASSETS (static files).
+// Routes live in worker/routes/*; shared rules in src/shared/*.
 // -----------------------------------------------------------------------------
 
+import { createRouter, HttpError, json, notFound } from './lib/http.js';
+import { registerPublicRoutes } from './routes/public.js';
+
+const router = createRouter();
+
+// Liveness + "is the database migrated?"
+router.get('/api/health', async ({ env }) => {
+    const row = await env.DB.prepare('SELECT COUNT(*) AS boards FROM boards').first();
+    return json({ ok: true, boards: row?.boards ?? 0 });
+});
+
+registerPublicRoutes(router);
+
 export default {
-    async fetch(request, env) {
-        const url = new URL(request.url);
-
+    async fetch(request, env, ctx) {
         try {
-            if (url.pathname === '/api/health') return await health(env);
-
-            if (url.pathname.startsWith('/api/')) {
-                return Response.json({ error: 'not_found' }, { status: 404 });
-            }
-
-            return new Response('Not found', { status: 404 });
+            return (await router.handle(request, env, ctx)) ?? notFound();
         } catch (err) {
-            console.error('Unhandled error', url.pathname, err);
-            return Response.json({ error: 'internal_error' }, { status: 500 });
+            if (err instanceof HttpError) {
+                return json({ error: err.code, message: err.message }, { status: err.status });
+            }
+            console.error('Unhandled error', request.method, new URL(request.url).pathname, err);
+            return json({ error: 'internal_error' }, { status: 500 });
         }
     },
 };
-
-/** Liveness + "is the database migrated?" check. */
-async function health(env) {
-    const row = await env.DB.prepare('SELECT COUNT(*) AS boards FROM boards').first();
-    return Response.json({ ok: true, boards: row?.boards ?? 0 });
-}

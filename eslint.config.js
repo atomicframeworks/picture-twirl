@@ -39,8 +39,11 @@ export default [
     },
 
     {
-        // Build/tooling config + Playwright tests run in Node.
-        files: ['vite.config.js', 'eslint.config.js', 'playwright.config.js', 'tests/**/*.js', 'scripts/**/*.js'],
+        // Build/tooling config, scripts, content tools and tests run in Node.
+        files: [
+            'vite.config.js', 'eslint.config.js', 'playwright.config.js',
+            'tests/**/*.js', 'tests/**/*.mjs', 'scripts/**/*.js', 'scripts/**/*.mjs', 'tools/**/*.mjs',
+        ],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'module',

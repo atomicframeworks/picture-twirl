@@ -7,6 +7,19 @@
 import { expect } from '@playwright/test';
 
 /**
+ * Mark the GM onboarding tour as dismissed for every page in `context`
+ * (same localStorage key the app uses: game/gmOnboarding.js).
+ * @param {import('@playwright/test').BrowserContext} context
+ */
+export async function skipGMTour(context) {
+    await context.addInitScript(() => {
+        try {
+            localStorage.setItem('pt.gm.onboarding.v1', JSON.stringify({ dismissed: true }));
+        } catch { /* storage unavailable: the tour will simply show */ }
+    });
+}
+
+/**
  * Create a game as the GM, all the way to the "Game ready" screen, and return
  * the game code. The passed `page` becomes the GM (its anon uid == hostUid),
  * so keep using THIS page for any later GM actions.
@@ -35,7 +48,7 @@ export async function createGameAsGM(page, opts = {}) {
     await expect(page.locator('#step1NextBtn')).toBeEnabled();
     await page.locator('#step1NextBtn').click();
 
-    // Step 2 — pick the first question set
+    // Step 2 — pick the first board (cards load from /api/boards)
     const firstSet = page.locator('#setList .set-card').first();
     await expect(firstSet).toBeVisible();
     await firstSet.click();

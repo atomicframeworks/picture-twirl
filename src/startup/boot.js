@@ -17,7 +17,7 @@
 // - flows/createFlow.js: initCreateFlow
 // - flows/joinFlow.js: initJoinFlow
 // - session.js: setSession (for seed state)
-// - predefinedGames.js: predefinedGames (for the selector)
+// - (boards come from /api/boards — see flows/createFlow.js + ui/boardPicker.js)
 //
 // Notes:
 // - This file does NOT reach into RTDB directly; flows/services handle that.
@@ -34,7 +34,6 @@ import {
 import { ref, get } from 'firebase/database';
 import * as P from '../data/paths.js';
 
-import { predefinedGames } from '../predefinedGames.js';
 import { createGameShell } from '../game/createGame.js';
 import { renderLobby } from '../game/lobby.js';
 import { renderLateJoin } from '../game/renderLateJoin.js';
@@ -97,7 +96,7 @@ export async function boot() {
         const step2BackBtn = byId('step2BackBtn');
         const step2NextBtn = byId('step2NextBtn');
 
-        const setListEl = byId('setList');        // where set cards are rendered
+        const setListEl = byId('setList');        // where board cards are rendered
         const headerTitleEl = byId('create2Title'); // fixed header title (game name)
 
         // -------------------------
@@ -159,12 +158,11 @@ export async function boot() {
         const generateGameId = () => Math.random().toString(36).substring(2, 8);
 
         // -------------------------------------------------------------------------
-        // Initialize Create flow (2-step: details → set selection → game ready)
+        // Initialize Create flow (2-step: details → pick a board → game ready)
         // -------------------------------------------------------------------------
         const { startCreateFlow } = initCreateFlow({
             services: {
                 requireAuth,
-                predefinedGames,
                 createGameShell,
                 renderLobby,
                 setSession,

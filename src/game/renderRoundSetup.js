@@ -1,9 +1,9 @@
 // src/game/renderRoundSetup.js
 //
-// Round setup screen: GM picks a category for the next round; players wait.
+// Round setup screen: GM picks a board for the next round; players wait.
 // Mounted when state.phase === 'roundSetup'.
 //
-// GM flow:  Category picker → Ready to Start → Start Game (atomic reset)
+// GM flow:  Board picker (ui/boardPicker.js) → Ready to Start → Start Game (atomic reset)
 // Player flow: Waiting screen (Leave game link)
 //
 // Navigation is driven by the shared phase listener:
@@ -14,10 +14,9 @@ import { rtdb, getCurrentUser } from '../firebase.js';
 import { ref, onValue, update, get, serverTimestamp } from 'firebase/database';
 import * as P from '../data/paths.js';
 import { getSession } from '../session.js';
-import { predefinedGames } from '../predefinedGames.js';
-import { buildBoardFromSet } from './createGame.js';
+import { loadBoardForGame } from './createGame.js';
 import { createDisposer, leaveGame } from './controllerKit.js';
-import { escapeHtml } from '../ui/format.js';
+import { mountBoardPicker } from '../ui/boardPicker.js';
 
 export async function renderRoundSetup(gameId, { dispose = null } = {}) {
     if (typeof dispose === 'function') dispose();
@@ -52,16 +51,16 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
         mountPlayerWaiting();
     }
 
-    // ── GM: category picker → confirm screen ──────────────────────────────────
+    // ── GM: board picker → confirm screen ─────────────────────────────────────
 
     function mountGMSetup() {
         app.innerHTML = `
 <div class="rsetup-root is-gm">
 
-  <!-- Screen 1: Category picker -->
+  <!-- Screen 1: Board picker -->
   <div class="rsetup-screen" id="rsetupPicker">
     <header class="rsetup-header">
-      <h1 class="rsetup-title">Choose a Category</h1>
+      <h1 class="rsetup-title">Pick a Board</h1>
       <p class="rsetup-sub">Round 2</p>
     </header>
     <div class="rsetup-list-wrap">
@@ -91,46 +90,26 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
 
 </div>`;
 
-        let selectedSetId = '';
-
-        // Render set cards (same markup/classes as createFlow step 2)
+        // Board cards (same component + markup as createFlow step 2)
         const cardsEl = document.getElementById('rsetupCards');
-        if (cardsEl) {
-            const sets = Array.isArray(predefinedGames) ? predefinedGames : [];
-            cardsEl.innerHTML = sets.map(s => {
-                const icon = escapeHtml(s.icon || '🃏');
-                const sub = s.subtitle || s.description || '';
-                return `<button class="set-card" data-set="${escapeHtml(s.id)}" type="button" aria-pressed="false">
-  <div class="set-ic" aria-hidden="true">${icon}</div>
-  <div>
-    <div class="set-title">${escapeHtml(s.title || s.id)}</div>
-    ${sub ? `<div class="set-sub">${escapeHtml(sub)}</div>` : ''}
-  </div>
-</button>`;
-            }).join('');
-
-            cardsEl.querySelectorAll('.set-card').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    selectedSetId = btn.getAttribute('data-set') || '';
-                    cardsEl.querySelectorAll('.set-card').forEach(b => {
-                        const sel = b.getAttribute('data-set') === selectedSetId;
-                        b.classList.toggle('is-selected', sel);
-                        b.setAttribute('aria-pressed', sel ? 'true' : 'false');
-                    });
+        const picker = cardsEl
+            ? mountBoardPicker(cardsEl, {
+                onChange: (board) => {
                     const nextBtn = document.getElementById('rsetupNext');
-                    if (nextBtn) nextBtn.disabled = false;
-                });
-            });
-        }
+                    if (nextBtn) nextBtn.disabled = !board;
+                },
+            })
+            : null;
+        picker?.load();
 
         // Next → confirm screen
         document.getElementById('rsetupNext')?.addEventListener('click', () => {
-            if (!selectedSetId) return;
-            const gameSet = predefinedGames.find(s => s.id === selectedSetId);
+            const board = picker?.getSelected();
+            if (!board) return;
             const iconEl = document.getElementById('rsetupConfirmIcon');
             const nameEl = document.getElementById('rsetupConfirmName');
-            if (iconEl) iconEl.textContent = gameSet?.icon || '🃏';
-            if (nameEl) nameEl.textContent = gameSet?.title || selectedSetId;
+            if (iconEl) iconEl.textContent = board.emoji || '🎲';
+            if (nameEl) nameEl.textContent = board.title;
             showScreen('confirm');
         });
 
@@ -148,12 +127,13 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
 
         // Start Game — atomic round reset then write phase: 'live'
         document.getElementById('rsetupStart')?.addEventListener('click', async () => {
-            if (!selectedSetId) return;
+            const board = picker?.getSelected();
+            if (!board) return;
             const startBtn = document.getElementById('rsetupStart');
             if (startBtn?.dataset.busy === '1') return;
             if (startBtn) { startBtn.disabled = true; startBtn.dataset.busy = '1'; }
             try {
-                await startRound(selectedSetId);
+                await startRound(board.id);
                 // phase: 'live' write triggers the phase listener → all clients go to renderGameUI
             } catch (err) {
                 console.error('[renderRoundSetup] startRound failed:', err);
@@ -192,12 +172,9 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
 
     // ── Atomic round reset ────────────────────────────────────────────────────
 
-    async function startRound(setId) {
-        const gameSet = predefinedGames.find(s => s.id === setId);
-        if (!gameSet) throw new Error(`Unknown setId: "${setId}"`);
-
+    async function startRound(boardId) {
         const now = serverTimestamp();
-        const board = buildBoardFromSet(gameSet, now);
+        const { board, boardMeta } = await loadBoardForGame(boardId, now);
 
         // Fetch participants to reset per-player round stats
         const partsSnap = await get(ref(rtdb, P.participants(gameId)));
@@ -216,8 +193,9 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
             [`${P.game(gameId)}/swirlPaused`]: null,
             [`${P.game(gameId)}/swirlStartTime`]: null,
             [`${P.game(gameId)}/buzzQueue`]: null,
-            // Update category setting for the new round
-            [`${P.settings(gameId)}/setId`]: setId,
+            // Record which board (and version) this round plays
+            [P.boardId(gameId)]: boardMeta.boardId,
+            [`${P.settings(gameId)}/boardRev`]: boardMeta.boardRev,
             // Advance phase — triggers navigation on all clients
             [`${P.state(gameId)}/phase`]: 'live',
             [`${P.state(gameId)}/endedAt`]: null,

@@ -47,6 +47,20 @@
     gap: 14px;
 }
 
+/* Board picker: loading / empty / error message (src/ui/boardPicker.js) */
+.board-picker-status {
+    text-align: center;
+    color: var(--muted);
+    padding: var(--space-8) var(--space-4);
+    display: grid;
+    gap: var(--space-4);
+    justify-items: center;
+}
+
+.board-picker-status p {
+    margin: 0;
+}
+
 /* Set cards */
 .set-card {
     background: #fff;

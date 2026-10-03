@@ -280,6 +280,8 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-09-27 | feature | Name suggestions: `names.js` + `prefs.js`, prefilled screen/team names, dice re-roll on team fields | `994c6f5` |
 | 2026-09-27 | feature | Extract `ui/diceButton.js`; dice re-roll on both screen-name fields | `88aaa01` |
 | 2026-09-27 | feature | Prefill + dice re-roll for the game title (`GAME_NAMES`, `pt.prefs.gameName`) | `899917f` |
+| 2026-10-03 | Cloudflare M0 | Branch `cloudflare` (tag `pre-cloudflare` = `e2b1f83`): wrangler.jsonc + @cloudflare/vite-plugin, Worker skeleton, D1 schema, Docker → Debian, PROPOSAL.md | `8fffce2` |
+| 2026-10-03 | Cloudflare M1 | Boards come from the Worker (`/api/boards`, `/media/*`, D1/R2) instead of `predefinedGames.js`; shared `src/shared/{boards,rights}.js`; local seed of the test board; `ui/boardPicker.js` for Create + Play Again; "Pick a Board" wording; test layers (unit/API via `node --test`) + e2e updated (TESTING.md) | M1 commit on `cloudflare` (see `git log`) |
 
 > Append a row per commit. Keep the newest at the bottom.
 

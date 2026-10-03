@@ -3,16 +3,33 @@
 <!-- repo: github.com/atomicframeworks/picture-twirl -->
 
 ```bash
-npm install            # first time on each machine (Windows + Linux separately)
+npm install                     # first time on each machine (Windows + Mac/Linux separately)
+cp .dev.vars.example .dev.vars  # local Worker secrets (throwaway dev values)
+npx playwright install chromium # once per machine, for npm run test:e2e
 ```
+Needs Node ≥ 22 (wrangler). The local Cloudflare runtime runs natively on
+macOS 13.5+, Windows 11 and glibc Linux (not Alpine — see docker-compose.yml).
 
 ## Run the app
 ```bash
-npm run dev            # → http://localhost:3000
+npm run dev            # → http://localhost:3000  (Vite + local Worker/D1/R2)
+                       #   first migrates + seeds the local database
                        #   gallery: http://localhost:3000/gallery.html
-npm run build          # production build → dist/
+                       #   API:     http://localhost:3000/api/health, /api/boards
+npm run build          # production build → dist/client (site) + dist/picture_twirl (Worker)
 npm run preview        # serve the build
 ```
+
+## Local database (Cloudflare D1/R2, simulated under .wrangler/)
+```bash
+npm run db:setup:local          # migrate + seed (automatic before dev/share)
+npm run db:migrate:local        # apply migrations/*.sql
+npm run db:seed:local           # add the test board if missing (dev server stopped)
+npx wrangler d1 execute DB --local --command "SELECT slug, status FROM boards"
+```
+Start fresh: stop the dev server, delete `.wrangler/state`, run `npm run dev`.
+No Cloudflare login is needed for any of this. **Don't run `wrangler deploy`**
+on the `cloudflare` branch before cutover (PROPOSAL.md §9.2).
 
 ## Share mode (dev here, test on another device)
 ```bash
@@ -32,9 +49,15 @@ and the tunnel.
 - Port 3000 must be free — share mode uses `strictPort` so a shifted port can't
   leave the tunnel pointing at nothing.
 
-## Tests (Playwright — auto-starts the dev server)
+## Tests (details: TESTING.md)
 ```bash
-npm run test:e2e                       # run all
+npm test                               # lint + unit + API — no browser, ~10 s; run before committing
+npm run test:unit                      # node --test tests/unit (pure logic)
+npm run test:api                       # node --test tests/api (real Worker + throwaway D1/R2)
+npm run test:all                       # npm test + e2e
+
+# Playwright — auto-starts the dev server (or reuses one on :3000)
+npm run test:e2e                       # run all browser flows
 npm run test:e2e -- gallery.spec.js    # one file (no Firebase needed)
 npm run test:e2e -- --headed           # watch in a real browser
 npm run test:e2e -- --ui               # interactive debug UI
@@ -78,5 +101,7 @@ git push                               # push (first push: git push -u origin ma
 ```
 
 ## Gotcha
-Build error `Cannot find module @rollup/rollup-win32-...`? → `node_modules` got
-synced across OSes via Dropbox. Just re-run `npm install` on this machine.
+Build error `Cannot find module @rollup/rollup-win32-...` (or a `sharp` /
+`workerd` platform error)? → `node_modules` got synced across OSes via Dropbox.
+Just re-run `npm install` on this machine — and tell Dropbox to ignore
+`node_modules` and `.wrangler` on each device (README).

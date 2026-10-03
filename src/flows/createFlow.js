@@ -1,13 +1,14 @@
 // src/flows/createFlow.js
 //
-// Create Game — 3-step flow (Details → Select Set → Game Ready)
+// Create Game — 3-step flow (Details → Pick a Board → Game Ready)
 // -----------------------------------------------------------------------------
 // Step 1:
 //   - Validate GM name, Game name, (optional) team names.
 //   - "Next" enabled only when valid.
 // Step 2:
-//   - Scrollable list of sets with fixed header + bottom tray.
-//   - "Next" enabled only when a set is selected.
+//   - Scrollable list of published boards (from /api/boards, via
+//     ui/boardPicker.js) with fixed header + bottom tray.
+//   - "Next" enabled only when a board is selected.
 // On final Next:
 //   - requireAuth()
 //   - createGameShell()
@@ -25,6 +26,7 @@
 import { on, enable, disable } from '../ui/dom.js';
 import { flashCheckmark } from '../ui/copyButton.js';
 import { attachDiceButton } from '../ui/diceButton.js';
+import { mountBoardPicker } from '../ui/boardPicker.js';
 import { LIMITS } from '../config.js';
 import { randomGameName, randomPlayerName, randomTeamName } from '../names.js';
 import {
@@ -43,7 +45,6 @@ import { modal } from '../ui/modal.js';
 export function initCreateFlow({ services, els }) {
     const {
         requireAuth,
-        predefinedGames,
         createGameShell,
         renderLobby,
         setSession,
@@ -83,8 +84,12 @@ export function initCreateFlow({ services, els }) {
 
     // Internal state
     let currentGameId = null;
-    let selectedSetId = '';
     const teamsOn = true; // Teams are always enabled in this version
+
+    // Step 2 board list (loads from the API each time step 2 opens)
+    const boardPicker = setListEl
+        ? mountBoardPicker(setListEl, { onChange: () => updateStep2NextEnabled() })
+        : null;
 
     // ───────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -99,7 +104,7 @@ export function initCreateFlow({ services, els }) {
     }
 
     function isStep2Valid() {
-        return !!selectedSetId;
+        return !!boardPicker?.getSelected();
     }
 
     function updateStep1NextEnabled() {
@@ -175,52 +180,12 @@ export function initCreateFlow({ services, els }) {
         saveTeamName('B', teamBNameInput?.value || '');
     }
 
-    function renderSetCards() {
-        if (!setListEl) return;
-
-        const sets = Array.isArray(predefinedGames) ? predefinedGames : [];
-        if (!sets.length) {
-            setListEl.innerHTML = '<div style="color:#666">No question sets found.</div>';
-            return;
-        }
-
-        setListEl.innerHTML = sets.map(s => {
-            const selected = s.id === selectedSetId ? ' is-selected' : '';
-            const icon = s.icon || '🃏';
-            const sub = s.subtitle || s.description || '';
-            return `
-        <button class="set-card${selected}" data-set="${s.id}" type="button" aria-pressed="${selected ? 'true' : 'false'}">
-          <div class="set-ic" aria-hidden="true">${icon}</div>
-          <div>
-            <div class="set-title">${s.title || s.id}</div>
-            ${sub ? `<div class="set-sub">${sub}</div>` : ''}
-          </div>
-        </button>
-      `;
-        }).join('');
-
-        // Click wire
-        setListEl.querySelectorAll('.set-card').forEach(btn => {
-            on(btn, 'click', () => {
-                selectedSetId = btn.getAttribute('data-set') || '';
-                // update selection UI quickly
-                setListEl.querySelectorAll('.set-card').forEach(b => {
-                    const onSel = b.getAttribute('data-set') === selectedSetId;
-                    b.classList.toggle('is-selected', onSel);
-                    b.setAttribute('aria-pressed', onSel ? 'true' : 'false');
-                });
-                updateStep2NextEnabled();
-            });
-        });
-    }
-
     function resetCreate() {
         createGameForm?.reset?.();
         prefillNames();
-        selectedSetId = '';
+        boardPicker?.reset();
         updateStep1NextEnabled();
         updateStep2NextEnabled();
-        if (setListEl) setListEl.innerHTML = '';
         if (headerTitleEl) headerTitleEl.textContent = '';
     }
 
@@ -275,8 +240,8 @@ export function initCreateFlow({ services, els }) {
         // Update the header for Step 2 (title = game name)
         if (headerTitleEl) headerTitleEl.textContent = gameDisplayName || 'Picture Twirl';
 
-        // Populate set cards
-        renderSetCards();
+        // Load the published boards (Next stays disabled until one is picked)
+        boardPicker?.load();
         updateStep2NextEnabled();
         gotoStep(2);
     });
@@ -319,7 +284,7 @@ export function initCreateFlow({ services, els }) {
             setSession({ displayName: gmDisplayName, isGM: true });
 
             await createGameShell(currentGameId, {
-                setId: selectedSetId,
+                boardId: boardPicker.getSelected().id,
                 title: gameDisplayName,
                 gmName: gmDisplayName,
                 teamsEnabled: teamsOn,

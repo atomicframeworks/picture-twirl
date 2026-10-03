@@ -1,9 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// E2E + screenshot suite. Boots the Vite dev server (which loads .env.local for
-// Firebase config) and drives the app in a real Chromium browser.
+// E2E + screenshot suite. Boots the dev server (`npm run dev`: Vite + the local
+// Worker/D1/R2, seeded; Firebase config from .env.local) and drives the app in
+// a real Chromium browser. See TESTING.md.
 export default defineConfig({
     testDir: './tests',
+    // Browser specs only — tests/unit and tests/api run under `node --test`.
+    testMatch: '*.spec.js',
     // Screenshots/artifacts land here for visual verification.
     outputDir: './test-results',
     timeout: 30_000,

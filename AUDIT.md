@@ -18,6 +18,16 @@
 >
 > **Tree health at revision:** lint 0 · build OK (393 kB JS / 25 kB CSS) ·
 > `tests/game.spec.js` still broken (T1) · ≈4,200 lines JS, 1,940 CSS.
+>
+> **Status note 2026-10-03 (branch `cloudflare`, Cloudflare M1):** **T1 fixed** —
+> `game.spec.js` follows the current GM flow (award reveals; Reveal resolves
+> without points; pause state via `data-paused`), the GM tour is dismissed in the
+> e2e fixture and tested on its own; **T2 addressed** — unit + API layers added
+> (`npm test`, see TESTING.md). **H4 (asset size)** is fixed for content served
+> by the Worker: pictures are normalized to ≤1280 px WebP (the 2.1 MB
+> `rihanna.jpg` is now ~100 kB). **L9** (unescaped set titles) fixed in
+> `ui/boardPicker.js`. Findings otherwise unchanged; see PROPOSAL.md for M4 (which
+> addresses M3/M4/M7/M15/H6/L15).
 
 ---
 

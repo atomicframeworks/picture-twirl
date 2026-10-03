@@ -2,13 +2,14 @@
 //
 // Creates a new game shell, upserts the host into /participants,
 // writes a public existence flag at /gameIndex/{gameId}, and
-// (optionally) materializes a stable board snapshot from a predefined set.
+// (optionally) materializes the chosen Board's published snapshot
+// (fetched from /api/boards/:id — see data/boardsApi.js).
 //
 // -----------------------------------------------------------------------------
 // Data written (simplified):
 // - /games/{id}:
 //     hostUid, isPublic, createdAt, title, gmName,
-//     settings: { setId, teamsEnabled },
+//     settings: { boardId, boardRev, teamsEnabled },
 //     state: { phase: 'lobby' },
 //     teams: { A: {name}, B: {name} },
 //     scores: { A:0, B:0 }
@@ -27,17 +28,32 @@
 //   but only the host adjudicates /board/* state and /buzzing/active.
 //
 // Notes:
-// - This file assumes a `predefinedGames` module in the same app that exports an
-//   array of game sets: [{ id, columns: [{ title, rows: [{ imageUrl?, image?, answer?, value? }] }] }]
-//   Adjust `buildBoardFromSet()` mapping below if your shape is different.
+// - Boards come from the API as snapshots; data/boardsApi.js toBoardSet()
+//   converts one into the { columns: [{ title, rows: [...] }] } shape that
+//   buildBoardFromSet() below materializes.
 //
 // -----------------------------------------------------------------------------
 
 import { rtdb, getCurrentUser } from '../firebase.js';
 import { ref, set, update, serverTimestamp, get } from 'firebase/database';
-import { predefinedGames } from '../predefinedGames.js';
+import { getBoard, toBoardSet } from '../data/boardsApi.js';
 import { LIMITS, TEAM } from '../config.js';
 import * as P from '../data/paths.js';
+
+/**
+ * Fetch a published board and turn it into a live-game board.
+ * Used by game creation and by Play Again (renderRoundSetup.js).
+ * @param {string} boardId - board id or slug
+ * @param {any} nowTimestamp - serverTimestamp() sentinel
+ * @returns {Promise<{ board: Record<string, any>, boardMeta: { boardId: string, boardRev: number } }>}
+ */
+export async function loadBoardForGame(boardId, nowTimestamp) {
+    const snapshot = await getBoard(boardId);
+    return {
+        board: buildBoardFromSet(toBoardSet(snapshot), nowTimestamp),
+        boardMeta: { boardId: snapshot.slug, boardRev: snapshot.rev },
+    };
+}
 
 /**
  * Build a stable board snapshot for a selected set.
@@ -51,7 +67,7 @@ import * as P from '../data/paths.js';
  *   id, col, row, category, imageUrl, answer, value
  * plus live-state fields: opened, answered, answeredBy, awardedPoints, locked, lastActionAt
  *
- * @param {object} set - One entry from predefinedGames (matching the selected setId)
+ * @param {object} set - A board in shape A or B (usually toBoardSet(snapshot))
  * @param {any} nowTimestamp - serverTimestamp() sentinel (passed-through for consistency)
  * @returns {Record<string, any>} board object keyed by tileId e.g. "0-0"
  */
@@ -142,7 +158,7 @@ function buildBoardFromSet(set, nowTimestamp) {
  *
  * @param {string} gameId
  * @param {{
- *   setId: string,
+ *   boardId: string,                  // board id or slug (published)
  *   teamA?: string,
  *   teamB?: string,
  *   gmName?: string,
@@ -151,12 +167,10 @@ function buildBoardFromSet(set, nowTimestamp) {
  *   materializeBoard?: boolean        // default true
  * }} opts
  */
-// src/game/createGame.js  (patched createGameShell)
-
 export async function createGameShell(
     gameId,
     {
-        setId,
+        boardId,
         teamA,
         teamB,
         gmName,
@@ -168,6 +182,7 @@ export async function createGameShell(
     const user = getCurrentUser();
     const uid = user?.uid;
     if (!uid) throw new Error('Not signed in');
+    if (!boardId) throw new Error('No board selected');
 
     // sanitize
     const safeTitle = (title || '').slice(0, LIMITS.GAME_TITLE);
@@ -179,13 +194,17 @@ export async function createGameShell(
     const now = serverTimestamp();
     const rootRef = ref(rtdb);
 
+    // Fetch the board BEFORE writing anything, so a network/API failure can't
+    // leave a half-created game behind.
+    const { board, boardMeta } = await loadBoardForGame(boardId, now);
+
     const gameData = {
         hostUid: uid,
         isPublic: false,
         createdAt: now,
         title: safeTitle,
         gmName: safeGM,
-        settings: { setId, teamsEnabled: teamsOn },
+        settings: { boardId: boardMeta.boardId, boardRev: boardMeta.boardRev, teamsEnabled: teamsOn },
         state: { phase: 'lobby' },
         teams: { A: { name: safeTeamA }, B: { name: safeTeamB } },
         scores: { A: 0, B: 0 },
@@ -198,12 +217,6 @@ export async function createGameShell(
 
     // --- 2) Optionally materialize board + buzzing in a separate update
     if (materializeBoard) {
-        // NB: don't name this `set` — it would shadow the imported Firebase set().
-        const gameSet = predefinedGames.find(g => g.id === setId);
-        if (!gameSet) throw new Error(`Unknown setId: ${setId}`);
-
-        const board = buildBoardFromSet(gameSet, now);
-
         await update(rootRef, {
             [`games/${gameId}/board`]: board,
             // Optional: create an empty container so UI sees the node (not required)

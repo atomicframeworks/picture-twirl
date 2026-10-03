@@ -1,14 +1,28 @@
 # Picture Twirl
 
-Multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite, vanilla JavaScript, and Firebase Realtime Database.
+Multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite, vanilla JavaScript, and Firebase Realtime Database — and, on the `cloudflare` branch, a Cloudflare Worker with D1 + R2 that serves the game's content (Boards). The switch-over plan is in [PROPOSAL.md](PROPOSAL.md); tests in [TESTING.md](TESTING.md).
 
 ## Prerequisites
 
-- **Docker Desktop** (recommended dev path) — running before you start
-- Or **Node.js 24+** if you'd rather run Vite directly on the host
-- A Firebase project with Realtime Database (see [Firebase config](#firebase-config))
+- **Node.js 22+** on the host (recommended): macOS 13.5+, Windows 11 or a glibc
+  Linux — what the local Cloudflare runtime supports
+- Or **Docker Desktop** as a fallback (e.g. on Windows 10) — see below
+- A Firebase project with Realtime Database (see [Firebase config](#firebase-config)) — until milestone M4
 
-## Quick start (Docker)
+## Quick start
+
+```bash
+npm install
+cp .dev.vars.example .dev.vars    # local Worker secrets (dev values)
+npm run dev                       # → http://localhost:3000
+npm test                          # lint + unit + API tests
+```
+
+`npm run dev` runs Vite **and** the Worker in the local Cloudflare runtime, with
+a local D1 database and R2 bucket under `.wrangler/` — migrated and seeded with
+the internal test board automatically. No Cloudflare account or login needed.
+
+## Quick start (Docker fallback)
 
 ```powershell
 docker compose up
@@ -39,12 +53,8 @@ docker exec -it picture-twirl-app-1 sh
 
 From inside the container you can run `npm install <pkg>`, `npm run build`, etc.
 
-## Quick start (without Docker)
-
-```powershell
-npm install
-npm run dev
-```
+The image is Debian-based (`node:24-bookworm-slim`), not Alpine: the local
+Workers runtime needs glibc.
 
 > **Each machine installs its own `node_modules`.** Run `npm install` once per
 > environment (Windows host, Linux host, container). They are not interchangeable.
@@ -61,17 +71,25 @@ Cannot find module '@rollup/rollup-win32-x64-msvc'
 
 …because the folder holds the *other* platform's binary. Fix / prevention:
 
-1. **Tell Dropbox to ignore `node_modules`** on each device (keeps a separate
-   local copy per machine, syncs nothing):
+1. **Tell Dropbox to ignore `node_modules` and `.wrangler`** on each device
+   (keeps a separate local copy per machine, syncs nothing). `.wrangler/` holds
+   the local database files — syncing those between machines can corrupt them.
 
    ```powershell
    # Windows (PowerShell), from the project root:
    Set-Content -Path "$PWD\node_modules:com.dropbox.ignored" -Value 1
+   Set-Content -Path "$PWD\.wrangler:com.dropbox.ignored" -Value 1
    ```
    ```bash
-   # macOS/Linux:
+   # macOS:
+   xattr -w com.dropbox.ignored 1 node_modules
+   xattr -w com.dropbox.ignored 1 .wrangler
+   # Linux:
    attr -s com.dropbox.ignored -V 1 node_modules
    ```
+   (Ignoring a folder that already synced removes it from Dropbox on your
+   other devices — they then need their own `npm install`, which they need
+   anyway.)
 
 2. **Reinstall for the current OS:** `npm install` (regenerates the correct
    native binary; the committed `package-lock.json` already lists every
@@ -139,7 +157,12 @@ screenshots it (`tests/gallery.spec.js`).
 See `CLAUDE.md` for the full file map and architecture notes. Top-level:
 
 ```
-src/         # app source (flows, game, ui, data)
-public/      # static assets (game images)
+src/         # app source (flows, game, ui, data, shared rules)
+worker/      # Cloudflare Worker: /api/* and /media/* (boards + pictures)
+migrations/  # D1 database schema
+content/     # content sources (the Google Sheet export) + local seed board
+tools/       # content tooling (picture normalizing; AI import tools later)
+tests/       # unit + API (node --test) and browser (Playwright) — TESTING.md
+public/      # static assets (favicon, home pattern, sounds)
 index.html   # entry + templates (tpl-lobby, tpl-game)
 ```

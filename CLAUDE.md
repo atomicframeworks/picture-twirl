@@ -6,17 +6,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > phased cleanup plan, and the rationale behind structural changes. Keep this
 > file and REFACTOR.md in sync — documentation drift is a known past problem here.
 
+> **Cloudflare switch-over in progress on branch `cloudflare`** (plan + decisions:
+> [PROPOSAL.md](PROPOSAL.md) §9). Milestones land on that branch and merge into
+> `main` once, with a migration guide. Done so far: **M0** (local Worker + D1/R2
+> setup) and **M1** (Boards come from the Worker API instead of bundled JS).
+> Still Firebase: the live game (until M4). Everything Cloudflare runs
+> **locally only** until cutover — never `wrangler deploy` from this branch.
+> Testing rules: [TESTING.md](TESTING.md).
+
 ## Project Overview
 
-Picture Twirl is a multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite, vanilla JavaScript, and Firebase Realtime Database. The game features team-based gameplay with a host (GM) who controls game flow and awards points.
+Picture Twirl is a multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite, vanilla JavaScript, and Firebase Realtime Database, plus (switch-over branch) a Cloudflare Worker with D1 + R2 serving the game's content — **Boards**. The game features team-based gameplay with a host (GM) who controls game flow and awards points.
+
+**Vocabulary:** a **Board** (e.g. "Pop Culture Icons 🎤") is what a GM picks; it has 5 **Categories** (columns) × 5 **Tiles** (picture + answer + 100–500 points). A **Game** is the live session with a code.
 
 ## Development Commands
 
 ```bash
-# Development server (runs on port 3000)
+# Development server (port 3000): Vite + the Worker (worker/index.js) in the
+# local Workers runtime, with local D1/R2 under .wrangler/ (no Cloudflare
+# login). `predev` first applies migrations and seeds the test board.
 npm run dev
 
-# Production build
+# Tests — see TESTING.md
+npm test             # lint + unit + API (no browser, ~10 s)
+npm run test:e2e     # Playwright browser flows
+npm run test:all     # both
+
+# Local database
+npm run db:setup:local     # migrate + seed (runs automatically before dev/share)
+# Start fresh: stop the dev server, delete .wrangler/state, npm run dev
+
+# Production build (site → dist/client, Worker → dist/picture_twirl)
 npm run build
 
 # Preview production build
@@ -26,6 +47,8 @@ npm run preview
 # (dev on this machine, test on a phone or another computer)
 npm run share
 ```
+
+Local Worker secrets: `cp .dev.vars.example .dev.vars` (throwaway dev values).
 
 ## Architecture
 
@@ -83,7 +106,10 @@ Entry: `main.js` → `startup/boot.js`
 
 **Create Flow (`flows/createFlow.js`)**
 1. Step 1: Collect GM name, game name, team names
-2. Step 2: Select game set from predefined options (renders card UI)
+2. Step 2: "Pick a Board" — `ui/boardPicker.js` loads published boards from
+   `/api/boards` (loading / empty / error-with-retry states) and renders the
+   `.set-card` list; Next is enabled once one is picked. Play Again
+   (`game/renderRoundSetup.js`) uses the same picker.
 3. On completion:
    - Generates 6-character game code
    - Calls `createGameShell()` to initialize RTDB game node
@@ -123,7 +149,7 @@ Entry: `main.js` → `startup/boot.js`
 /gameIndex/{gameId}: true             # Public existence flag
 /games/{gameId}/
   ├─ hostUid, isPublic, title, gmName, createdAt
-  ├─ settings: { setId, teamsEnabled }
+  ├─ settings: { boardId, boardRev, teamsEnabled }   # boardId = board slug; boardRev = its published revision
   ├─ state: { phase: 'lobby'|'live'|'ended', endedAt? }
   ├─ teams: { A: {name}, B: {name} }
   ├─ scores: { A: number, B: number }
@@ -143,30 +169,45 @@ through `update()`/`set()` in the controllers using path builders from
 `data/paths.js` — there is intentionally **no** service-abstraction module.
 
 **Board Materialization (`game/createGame.js`)**
-- Converts predefined game sets into a stable RTDB board snapshot
-- Supports two input shapes:
-  - `{ categories: string[], board: Tile[][] }` (current structure)
-  - `{ columns: [{ title, rows: [] }] }` (legacy, still handled by `buildBoardFromSet`)
+- `loadBoardForGame(boardId, now)` fetches the board's published snapshot
+  (`data/boardsApi.js getBoard`), converts it with `toBoardSet()` and returns
+  `{ board, boardMeta }`. `createGameShell()` calls it **before** writing
+  anything, so an API failure can't leave a half-created game.
+- `buildBoardFromSet()` accepts two shapes:
+  - `{ columns: [{ title, rows: [{ imageUrl, answer, value }] }] }` (what `toBoardSet()` produces)
+  - `{ categories: string[], board: Tile[][] }` (old bundled shape, still handled)
 - Output keyed by `"col-row"` (e.g., `"0-3"`) with content + live-state fields
-- Tile `value` is computed as `(row + 1) * 100` → 100–500
+- Tile `value` comes from the board's `points` by row → 100–500
 
-### Predefined Games (`predefinedGames.js`)
+### Boards: content from the Worker (`worker/`, `src/shared/`, D1 + R2)
 
-Game sets define content structure:
+Boards are content in a database, not code (PROPOSAL.md §4):
+- **D1** (`migrations/0001_init.sql`): `boards` (draft_json = what admins edit,
+  published_json = the snapshot players get, status `draft|published|import|archived`,
+  unique `title_key`), `board_revisions` (one row per publish), `images`
+  (provenance + rights), `audit_log`, `import_runs`.
+- **R2**: pictures under content-hash keys — `display/<sha256>.webp` (≤1280 px),
+  `thumb/<sha256>.webp` (≤320 px) are public via `/media/*`; `archive/` (≤2560 px
+  private copy) and `evidence/` never are.
+- **Worker** (`worker/index.js`, routes in `worker/routes/`, logic in
+  `worker/lib/`): `GET /api/boards` (published list), `GET /api/boards/:id|slug`
+  (snapshot), `GET /media/*` (immutable cache, 304s), `GET /api/health`. Only
+  `/api/*` and `/media/*` run the Worker (`wrangler.jsonc run_worker_first`);
+  everything else is a static asset. Pictures are same-origin on purpose: the
+  swirl reads canvas pixels, which cross-origin images would block.
+- **Shared rules** (`src/shared/boards.js`, `src/shared/rights.js`) are imported
+  by the game, the Worker and the Node scripts — one definition of board shape,
+  snapshot, slugs/title uniqueness, and what each license means (ok ✅ /
+  flagged ⚠️ with a reason / blocked ❌).
+- **Seed**: `npm run dev` runs `scripts/seed-local.mjs`, which loads the
+  internal test board *Pop Culture Icons* from `content/seed/` into the local
+  D1/R2 (pictures normalized by `tools/content/lib/images.mjs` with sharp). Its
+  pictures are flagged "Rights unknown" — it's a test board.
+
+Snapshot shape (what `/api/boards/:id` returns):
 ```javascript
-{
-  id: 'pop-icons',
-  title: 'Pop Culture Icons',
-  categories: ['90s Stars', '00s TV', 'Viral Memes', 'Music Legends', 'Animated'],
-  board: [
-    [ // row 0 ($100)
-      { image: '/images/britney.jpeg', answer: 'Britney Spears' },
-      { image: '/images/friends.jpeg', answer: 'Friends' },
-      // ... 5 tiles total (one per category)
-    ],
-    // ... rows 1-4 ($200-$500)
-  ]
-}
+{ id, slug, rev, title, emoji, description, points: [100, 200, 300, 400, 500],
+  categories: [ { title, tiles: [ { answer, image: { url, thumb, width, height }, credit } ] } ] }
 ```
 
 ### UI Patterns
@@ -211,7 +252,9 @@ Game sets define content structure:
 
 ## Firebase Rules Expectations
 
-While rules are not in this repo, the code assumes:
+The deployed rules (copied from the Firebase console on 2026-10-03) are in
+`worker/rooms/firebase-rules.legacy.jsonc` for reference; M4 ports them into the
+GameRoom Durable Object. The code assumes:
 - `/gameIndex/{gameId}` is world-readable (for join validation)
 - `/games/{gameId}` reads require auth
 - Host-only writes: game metadata, board state, currentQuestion, scores
@@ -232,45 +275,103 @@ Example: Store actual config in `.env.local` (gitignored).
 ## File Organization
 
 ```
+index.html                     # App shell: Home/Create/Ready/Join views + <template>s (lobby, game)
+gallery.html                   # Dev-only component showcase (src/gallery.js)
+wrangler.jsonc                 # Cloudflare Worker config: assets, D1 (DB), R2 (MEDIA)
+vite.config.js                 # Vite + @cloudflare/vite-plugin (runs the Worker in dev)
+
 src/
 ├── main.js                    # Entry point
-├── config.js                  # App-level constants
-├── firebase.js                # Firebase bootstrap + auth
+├── config.js                  # App-level constants (limits, swirl, Double Take, teams)
+├── firebase.js                # Firebase bootstrap + anonymous auth (live game, until M4)
 ├── session.js                 # Client-side session state (sessionStorage)
 ├── prefs.js                   # Durable device prefs (localStorage): remembered names
 ├── names.js                   # Random player/game/team name generators (puns)
-├── predefinedGames.js         # Game content definitions
+├── gallery.js                 # Component gallery page logic
 ├── startup/
-│   └── boot.js               # App initialization
+│   └── boot.js                # App initialization + flow wiring
 ├── flows/
-│   ├── createFlow.js         # Create game wizard
-│   └── joinFlow.js           # Join game flow
+│   ├── createFlow.js          # Create wizard: details → Pick a Board → Game Ready
+│   └── joinFlow.js            # Join game flow
+├── data/
+│   ├── paths.js               # RTDB path helpers
+│   └── boardsApi.js           # Boards from the Worker: listBoards, getBoard, toBoardSet
+├── shared/                    # Imported by the game, the Worker AND Node scripts
+│   ├── boards.js              # Board shape, slugs/title keys, stats, buildSnapshot
+│   └── rights.js              # License meanings + rights flags (ok/flagged/blocked), credits
 ├── ui/
-│   ├── dom.js                # DOM utilities
-│   ├── diceButton.js         # "Roll a new name" button (spin + handler)
-│   ├── views.js              # View controller
-│   ├── templates.js          # Template helpers
-│   └── modal.js              # Modal dialogs
+│   ├── dom.js                 # DOM utilities
+│   ├── views.js               # View controller
+│   ├── templates.js           # <template> clone + data-ref collection
+│   ├── modal.js               # Promise-based modal dialogs
+│   ├── boardPicker.js         # "Pick a Board" list (Create step 2 + Play Again)
+│   ├── diceButton.js          # "Roll a new name" button (spin + handler)
+│   ├── copyButton.js          # Clipboard + checkmark feedback
+│   ├── format.js              # escapeHtml
+│   ├── confetti.js            # Branded celebration burst
+│   ├── sound.js               # Web Audio sound effects
+│   ├── howToPlay.js           # "How to Play" overlay
+│   └── gmTour.js              # GM Quick Start spotlight tour engine
 ├── game/
-│   ├── createGame.js         # RTDB game shell + board materialization
-│   ├── lobby.js              # Pre-game lobby controller (listeners + UI + presence)
-│   ├── renderGame.js         # Live game controller (listeners + UI + adjudication)
-│   ├── createBoard.js        # Builds board DOM from RTDB snapshot
-│   ├── buzz.js               # Buzz queue helpers (enqueueBuzz, clearBuzzQueue)
-│   └── swirl.js              # Canvas swirl animation
-└── data/
-    └── paths.js              # RTDB path helpers
+│   ├── createGame.js          # RTDB game shell + board materialization (loadBoardForGame)
+│   ├── lobby.js               # Pre-game lobby controller (listeners + UI + presence)
+│   ├── lobbyInstructions.js   # Lobby instruction-line state machine (DOM-free)
+│   ├── participants.js        # Participant row + presence helpers
+│   ├── gmOnboarding.js        # GM tour state (localStorage pt.gm.onboarding.v1)
+│   ├── renderGame.js          # Live game controller (listeners + UI + adjudication)
+│   ├── createBoard.js         # Builds board DOM from RTDB snapshot
+│   ├── turn.js                # Team turn management
+│   ├── buzz.js                # Buzz queue helpers (enqueueBuzz, clearBuzzQueue)
+│   ├── swirl.js               # Canvas swirl animation
+│   ├── controllerKit.js       # Disposer, exit/leave/end helpers
+│   ├── renderLateJoin.js      # Late joiner "waiting for GM" screen
+│   ├── renderFinale.js        # End-game finale (winner, scores, MVP, Play Again)
+│   └── renderRoundSetup.js    # Play Again: GM picks the next board
+├── components/                # Factory components (used by the gallery)
+├── styles/tokens.css          # Design tokens (Playful Party theme)
+└── *.css                      # Per-screen stylesheets (linked from index.html)
 
+worker/                        # Cloudflare Worker (runs only for /api/* and /media/*)
+├── index.js                   # Entry: router + error handling
+├── routes/public.js           # /api/boards, /api/boards/:id, /media/*
+├── lib/http.js                # json(), HttpError, createRouter()
+├── lib/db.js                  # D1 helpers, ids, audit(), sha256Hex()
+├── lib/boards.js              # Boards: list/get published, createBoard, publishBoard
+├── lib/images.js              # Pictures: storeImage (R2 + D1), imagesByIds
+└── rooms/firebase-rules.legacy.jsonc  # Firebase rules as deployed (reference for M4)
+
+migrations/0001_init.sql       # D1 schema (applied by `npm run db:migrate:local`)
+content/
+├── sources/Picture Twirl Content Tracker.xlsx  # Export of the team's Google Sheet
+└── seed/pop-icons.json + pop-icons/            # Internal test board (local seed)
+tools/content/lib/images.mjs   # Picture normalizing (sharp): display/thumb/archive WebP
 scripts/
-└── share.js                 # Dev server + Cloudflare quick tunnel (npm run share)
+├── share.js                   # Dev server + Cloudflare quick tunnel (npm run share)
+└── seed-local.mjs             # Seeds the local D1/R2 (runs before dev/share)
+tests/                         # See TESTING.md
+├── unit/*.test.mjs            # node --test: pure logic
+├── api/*.test.mjs             # node --test: real Worker + throwaway local D1/R2
+└── *.spec.js                  # Playwright browser flows (+ helpers.js, fixtures.js)
 ```
 
 ## Common Patterns
 
-**Adding a New Predefined Game**
-1. Add entry to `predefinedGames.js` with id, title, categories, board
-2. Place images in `/public/images/`
-3. Board structure: 5 columns (categories) × 5 rows; values computed as `(row+1)*100` → $100–$500
+**Adding / Changing Boards**
+- Boards are content, not code: they live in D1/R2 and are served by the Worker.
+- Until the admin (M2) exists, the only way to add one locally is a seed file:
+  `content/seed/<slug>.json` (+ pictures in `content/seed/<slug>/`), listed in
+  `SEEDS` in `scripts/seed-local.mjs`; then delete `.wrangler/state` and
+  `npm run dev`. From M2 on: `/admin`. From M3 on: `npm run content:*`.
+- Board structure: 5 categories × 5 tiles; points by row from `points`
+  (default 100–500). Shape + rules: `src/shared/boards.js`.
+- Changing the D1 schema = a new numbered file in `migrations/` (never edit an
+  applied one) + update `worker/lib/*` + tests in `tests/api/`.
+
+**Adding an API route**
+1. Handler in `worker/routes/*.js` (register it in `worker/index.js`); logic in `worker/lib/*`
+2. Path must start with `/api/` or `/media/` (only those run the Worker — `wrangler.jsonc`)
+3. Throw `HttpError(status, code)` for expected failures; anything else becomes a 500
+4. Add an API test (`tests/api/`) — see TESTING.md
 
 **Adding / Editing Name Suggestions**
 1. Screen-name words → `PLAYER_ADJECTIVES` / `PLAYER_NOUNS` in `names.js`
@@ -295,3 +396,13 @@ scripts/
 - Session changes emit `app:session-changed` CustomEvent
 - View changes emit `app:view-changed` CustomEvent
 - RTDB writes logged in Firebase console
+- Worker: `curl localhost:3000/api/health`; local D1 queries:
+  `npx wrangler d1 execute DB --local --command "SELECT slug, status FROM boards"`;
+  the dev server also prints a local explorer at `/cdn-cgi/local/explorer/api`
+
+## Testing
+
+See [TESTING.md](TESTING.md). `npm test` (lint + unit + API, no browser) before
+every commit; `npm run test:e2e` for browser flows. New behavior ships with a
+test at the lowest layer that can see it; bug fixes ship with a test that
+failed before the fix.

@@ -41,6 +41,7 @@ npm run test:all     # both
 # Live games (Durable Objects) — see "Realtime" below
 npm run measure:realtime                 # latency through a GameRoom (local; --url for a deployed site)
 npm run migrate:code                     # rewrite Firebase imports (code from before M4) to src/realtime/
+npm run rehearse:migration [-- --run]    # rehearse an old branch's merge in a sandbox (MIGRATION.md)
 
 # Local database
 npm run db:setup:local     # migrate + seed (runs automatically before dev/share)
@@ -578,7 +579,9 @@ scripts/
 ├── seed-local.mjs             # Seeds the local D1/R2 (runs before dev/share; PT_STATE_DIR for others)
 ├── e2e-server.mjs             # Isolated server for Playwright: :3100, fresh .wrangler/e2e-state
 ├── migrate-code.mjs           # npm run migrate:code — Firebase imports → src/realtime/ (--check)
-└── measure-realtime.mjs       # npm run measure:realtime — latency through a GameRoom
+├── measure-realtime.mjs       # npm run measure:realtime — latency through a GameRoom
+├── rehearse-migration.mjs     # npm run rehearse:migration — Lu's cutover merge in a sandbox (fresh Claude session)
+└── lib/wranglerConfig.mjs     # wrangler.jsonc from Node; a no-Durable-Objects copy for getPlatformProxy tools
 tests/                         # See TESTING.md
 ├── unit/*.test.mjs            # node --test: pure logic
 ├── api/*.test.mjs             # node --test: real Worker + throwaway local D1/R2

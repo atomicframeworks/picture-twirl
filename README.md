@@ -127,6 +127,11 @@ npm run content:discover   # AI: brand-new board ideas with free pictures
 
 Project-specific context for Claude lives in [`CLAUDE.md`](./CLAUDE.md) (architecture, data layer, file map). Open Claude Code in this directory and it loads automatically.
 
+**Coming from the Firebase days** (a branch from before the Cloudflare
+switch-over)? Read [`MIGRATION.md`](./MIGRATION.md) — or just ask Claude: "bring
+`main` into my branch, follow CLAUDE.md". It reads MIGRATION.md and walks you
+through it (rehearsed in M5: PROPOSAL.md §9.3).
+
 Useful commands inside Claude Code:
 
 - `! docker compose up` — start the dev container (interactive, output streams into chat)

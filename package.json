@@ -18,6 +18,7 @@
     "db:seed:local": "node scripts/seed-local.mjs",
     "migrate:code": "node scripts/migrate-code.mjs",
     "measure:realtime": "node scripts/measure-realtime.mjs",
+    "rehearse:migration": "node scripts/rehearse-migration.mjs",
     "content:sheet": "node tools/content/cli.mjs sheet",
     "content:discover": "node tools/content/cli.mjs discover",
     "lint": "eslint .",

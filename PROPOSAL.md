@@ -843,7 +843,7 @@ switches to the new account.
 | **M2** | Admin (§5): login, dashboard, table, new board, editor, images + provenance, publish snapshots, audit | Create → edit → publish a board in the local admin; it shows up in the game. **Done 2026-10-03:** 42 unit + 28 API + 16 e2e green; guide in ADMIN.md | L |
 | **M3** | Content tools (§7): import API, `content:sheet`, `content:discover`, ~~`content:verify`~~ (deferred, §7.3 as built), project skill | Spreadsheet boards sitting in the local admin as ✨ To review; then (requested 2026-10-03) **first real discovery runs** for new board / category / picture ideas, also landing as To review. **Done 2026-10-03:** spreadsheet → 7 boards, 159/175 tiles with free pictures (16 empty: small/local musicians with no free photos); discovery → 4 boards (Passport Party, Creature Feature, Science Fair Frenzy, Rocky Mountain High), 100/100. All 11 sit in the local admin as ✨ To review. 59 unit + 34 API + 16 e2e green | L |
 | **M4** | Realtime (§8.4): shim, GameRoom, identity, rules; Firebase deleted | e2e (GM + player contexts) and multi-device play pass with no Firebase anywhere. **Done 2026-10-03 (automated):** Firebase SDK + `src/firebase.js` deleted; 79 unit + 35 API + 20 realtime + 22 e2e green, incl. the acceptance specs (Wi-Fi drop → rejoin, same buzz order + swirl on every screen, host rejoin, no answers before reveal). **Still open: your two- and five-device play-through** (`npm run share`, phones) | XL |
-| **M5** | Handoff (§9.3): MIGRATION.md, CLAUDE.md banner + rewrite, README/COMMANDS/REFACTOR updates, codemod, lint guard, rehearsal | A fresh clone and a simulated "Lu branch" both migrate cleanly by following the doc cold | M |
+| **M5** | Handoff (§9.3): MIGRATION.md, CLAUDE.md banner + rewrite, README/COMMANDS/REFACTOR updates, codemod, lint guard, rehearsal | A fresh clone and a simulated "Lu branch" both migrate cleanly by following the doc cold. **Done 2026-10-03 on Mac:** a fresh clone came up with `npm run dev` alone and passed every suite; a fresh headless Claude Code session merged a Firebase-era "Lu" branch (emoji reactions) given only "…follow CLAUDE.md" — read MIGRATION.md, resolved the 3 conflicts, allowed the new player fields in the room rules with a test, all tests green, nothing pushed (5 min, 45 turns). The rehearsals found and fixed: a reconnect race in clock-sync pings, `npm test` on a fresh checkout, alarming harmless warnings on every `npm run dev`, dev-tool audit findings. **Still open: a fresh clone on Windows** (you or Lu: `npm run dev`, `npm test`, `npm run test:e2e`) | M |
 
 **Staying in sync:** merge `main` into `cloudflare` at least weekly and before
 each milestone. That's on the migration side (you + your Claude), never on Lu.
@@ -856,7 +856,9 @@ changes merge cleanly; the predictable conflicts are import lines.
    that comes over through MIGRATION.md like any in-progress work.
 2. **Final sync:** merge `main` into `cloudflare`, then run `npm run lint`,
    `npm run build`, the e2e suite (now fully local, no production Firebase), and
-   multi-device play on the branch preview.
+   multi-device play on the branch preview. Re-run the handoff rehearsal on the
+   synced branch: `npm run rehearse:migration -- --run` (a fresh Claude session
+   merges a Firebase-era branch following only the docs).
 3. **Switch accounts and set up production** (the first time anything touches
    Cloudflare):
    - `npx wrangler logout`, then `npx wrangler login` into the **new Picture

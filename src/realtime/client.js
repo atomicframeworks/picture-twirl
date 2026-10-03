@@ -200,7 +200,7 @@ class RoomConnection {
     onClose(e) {
         this.ws = null;
         this.connected = false;
-        clearInterval(this.pingTimer);
+        this.stopPings();
         if (currentRoom === this) setInfo('connected', false);
         if (e.code === 4401) forgetIdentity();          // token refused: get a new identity, then reconnect
         if (e.code === 4404) {                          // not a game code at all: give up, fail what's waiting
@@ -290,12 +290,24 @@ class RoomConnection {
 
     // ── clock sync: offset = room time − local time, from the fastest recent round trip ──
     startPings() {
-        clearInterval(this.pingTimer);
-        const ping = () => this.ws?.send(JSON.stringify({ t: 'ping', id: 0, c: Date.now() }));
+        this.stopPings();
+        // Bound to THIS socket: after a quick drop + reconnect, a ping scheduled for
+        // the old socket must not hit the new one while it's still connecting
+        // (send() would throw "InvalidStateError").
+        const ws = this.ws;
+        const ping = () => {
+            if (this.ws !== ws || ws.readyState !== 1) return;
+            ws.send(JSON.stringify({ t: 'ping', id: 0, c: Date.now() }));
+        };
         ping();
-        setTimeout(ping, 400);
-        setTimeout(ping, 1200);
+        this.pingTimeouts = [setTimeout(ping, 400), setTimeout(ping, 1200)];
         this.pingTimer = setInterval(ping, PING_EVERY_MS);
+    }
+
+    stopPings() {
+        clearInterval(this.pingTimer);
+        for (const t of this.pingTimeouts || []) clearTimeout(t);
+        this.pingTimeouts = [];
     }
 
     onPong(msg) {
@@ -411,7 +423,7 @@ export const _internal = {
         for (const r of rooms.values()) {
             r.shutDown = true;
             clearTimeout(r.reconnectTimer);
-            clearInterval(r.pingTimer);
+            r.stopPings();
             try { r.ws?.close(1000); } catch { /* closing */ }
         }
     },

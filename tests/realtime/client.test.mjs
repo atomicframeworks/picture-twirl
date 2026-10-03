@@ -174,3 +174,22 @@ test('.info/connected + clock offset; reconnect catches up, writes made while of
     assert.ok(stats.bestRttMs !== null && stats.bestRttMs < 1000, JSON.stringify(stats));
     offConn();
 });
+
+test('a drop right after connecting is harmless (clock-sync pings belong to their own socket)', async () => {
+    const { code } = await hostedGame();
+    const r = client._internal.rooms.get(code);
+    // Drop again the moment each reconnect lands, while that socket's quick
+    // follow-up pings (0.4 s / 1.2 s) are still scheduled. They used to fire on
+    // the NEXT socket while it was still connecting → "InvalidStateError".
+    const until = async (cond) => { for (let i = 0; i < 400 && !cond(); i++) await sleep(5); };
+    const before = r.stats.reconnects;
+    for (let round = 0; round < 3; round++) {
+        await until(() => r.connected);                  // a (re)connect just landed: its pings are scheduled
+        client.simulateDrop();
+        await until(() => !r.connected);
+    }
+    await until(() => r.connected);
+    await sleep(1500);                                   // past every scheduled ping
+    assert.equal(r.connected, true);
+    assert.ok(r.stats.reconnects - before >= 3, `reconnects: ${r.stats.reconnects - before}`);
+});

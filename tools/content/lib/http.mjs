@@ -77,6 +77,35 @@ function rawGet(url, { headers, timeoutMs, maxBytes }, redirects = 0) {
     });
 }
 
+/** Status of a GET for the first KB (Range), without reading the body; follows redirects. */
+function probe(url, redirects = 0) {
+    return new Promise((resolve) => {
+        const u = new URL(url);
+        const headers = { 'User-Agent': USER_AGENT, Accept: 'image/*,*/*;q=0.5', Range: 'bytes=0-1023' };
+        const req = (u.protocol === 'http:' ? http : https).get(u, { headers, timeout: 20_000 }, (res) => {
+            res.destroy();
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects < 5) {
+                resolve(probe(new URL(res.headers.location, u).href, redirects + 1));
+            } else {
+                resolve(res.statusCode);
+            }
+        });
+        req.on('timeout', () => req.destroy());
+        req.on('error', () => resolve(0));
+    });
+}
+
+/**
+ * Will this file be served to us? Some hosts refuse named bots for some files
+ * — Flickr's CDN does, per photo, and only on GET (HEAD says 200) — and a
+ * refusal is a "no", so such candidates are dropped before anyone picks them.
+ */
+export async function isServed(url) {
+    await waitTurn(new URL(url).host);
+    const status = await probe(url);
+    return status === 200 || status === 206;
+}
+
 /** Download bytes (with a size cap). */
 export async function getBytes(url, { maxBytes = 25 * 1024 * 1024, timeoutMs = 30_000 } = {}) {
     const host = new URL(url).host;

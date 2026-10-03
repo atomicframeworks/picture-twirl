@@ -23,7 +23,7 @@ import { assessRights, licenseInfo, RIGHTS_FLAGS } from '../../src/shared/rights
 import { createAI } from './lib/ai.mjs';
 import { openBrowser } from './lib/browser.mjs';
 import { ROOT } from './lib/env.mjs';
-import { getBytes } from './lib/http.mjs';
+import { getBytes, isServed } from './lib/http.mjs';
 import { normalizeImage } from './lib/images.mjs';
 import { createImportApi } from './lib/importApi.mjs';
 import { fallbackSheetPlan, planMarkdown, tidyPlan } from './lib/plan.mjs';
@@ -46,7 +46,7 @@ const CHECK_MAX = 8;            // candidates considered per tile
 /**
  * @param {{ kind: 'sheet'|'discover', settings: object, live?: boolean, planOnly?: boolean, resume?: string|null,
  *           boards?: number, theme?: string, sheet?: string, concurrency?: number, evidence?: boolean,
- *           redo?: string[] }} opts   redo: board keys or tile keys ("board/c-r") to pick again on --resume
+ *           redo?: string[] }} opts   redo: board keys, tile keys ("board/c-r") or "missing" (tiles without a picture) to pick again on --resume
  */
 export async function runPipeline(opts) {
     const { kind, settings } = opts;
@@ -172,8 +172,9 @@ const flickrOwner = (cand) => String(cand?.sourcePageUrl || '').match(/flickr\.c
 async function pickTile(job, ctx) {
     const { board, c, r, tile } = job;
     const key = tileKey(board, c, r);
-    const redo = ctx.redo.has(key) || ctx.redo.has(board.key);
-    const prev = redo ? null : ctx.run.state.tiles[key];
+    const saved = ctx.run.state.tiles[key];
+    const redo = ctx.redo.has(key) || ctx.redo.has(board.key) || (ctx.redo.has('missing') && saved && saved.status !== 'picked');
+    const prev = redo ? null : saved;
     if (prev && prev.answer === tile.answer && prev.searchQuery === tile.searchQuery && prev.status !== 'error') {
         if (prev.status === 'picked' && prev.via === 'sheet link' && !prev.check && ctx.ai && aiMayLook(prev)) return recheckFlags(prev, job, ctx);
         return prev;
@@ -297,18 +298,28 @@ async function findAndFetch({ board, cat, c, r, tile }, { run, ai, browser }) {
     return pick;
 }
 
-/** The AI looks at up to CHECK_MAX candidates, CHECK_BATCH at a time, and picks one (or none). */
+/** The AI looks at up to CHECK_MAX usable candidates, CHECK_BATCH at a time, and picks one (or none). */
 async function choose(candidates, { ai, personPicked, board, cat, r, tile }) {
     if (!candidates.length) return { chosen: null, check: null, reason: 'No candidates left.' };
     if (personPicked) return { chosen: candidates[0], check: null, reason: 'Picked by a person in the spreadsheet.' };
     if (!ai) return { chosen: candidates[0], check: null, reason: 'Top search result (no AI check).' };
     if (!candidates.some(aiMayLook)) return { chosen: candidates[0], check: null, reason: 'Top search result (Unsplash pictures are never shown to the AI).' };
-    candidates = candidates.filter(aiMayLook);
-    const max = Math.min(candidates.length, CHECK_MAX);
+
+    // Usable = may be shown to the AI, and (for Openverse, whose previews come from its own
+    // proxy) the original will actually be served to us — Flickr refuses named bots per photo.
+    const usable = [];
+    for (const cand of candidates) {
+        if (usable.length >= CHECK_MAX) break;
+        if (!aiMayLook(cand)) continue;
+        if (cand.provider?.startsWith('openverse:') && !(await isServed(cand.downloadUrl))) continue;
+        usable.push(cand);
+    }
+    if (!usable.length) return { chosen: null, check: null, reason: 'Every candidate refused to be downloaded by our bot.' };
+
     let reason = 'No candidate showed the answer clearly.';
-    for (let start = 0; start < max; start += CHECK_BATCH) {
+    for (let start = 0; start < usable.length; start += CHECK_BATCH) {
         const looks = [];
-        for (const cand of candidates.slice(start, Math.min(start + CHECK_BATCH, max))) {
+        for (const cand of usable.slice(start, start + CHECK_BATCH)) {
             const image = await previewOf(cand).catch(() => null);
             if (image) looks.push({ cand, image });
         }
@@ -321,7 +332,7 @@ async function choose(candidates, { ai, personPicked, board, cat, r, tile }) {
         reason = String(out?.reason || reason).slice(0, 300);
         if (Number.isInteger(out?.choice) && out.choice >= 0 && out.choice < looks.length) return { chosen: looks[out.choice].cand, check: out, reason };
     }
-    return { chosen: null, check: null, reason: `The AI didn't like any of ${max} candidates: ${reason}` };
+    return { chosen: null, check: null, reason: `The AI didn't like any of ${usable.length} candidates: ${reason}` };
 }
 
 /**

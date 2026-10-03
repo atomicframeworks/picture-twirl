@@ -41,6 +41,8 @@ on the `cloudflare` branch before cutover (PROPOSAL.md §9.2).
 npm run content:sheet                          # dry run: plan boards from the spreadsheet, find + download pictures, write a report
 npm run content:sheet -- --plan-only           # just the plan (≈3 min) → content/runs/<run>/plan.md
 npm run content:sheet -- --resume last         # continue the newest run (after Ctrl-C, or after editing its plan.json)
+npm run content:sheet -- --resume last --redo crate-diggers,snack-attack/0-2   # pick a board's (or one tile's) pictures again
+npm run content:sheet -- --resume last --redo missing   # retry every tile still without a picture
 npm run content:sheet -- --resume last --live  # upload that reviewed dry run to the local site (npm run dev must be running)
 npm run content:discover -- --boards 3         # brand-new boards; the AI searches the web for themes
 npm run content:discover -- --theme "space" --boards 1 --live

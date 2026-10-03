@@ -7,7 +7,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fromCommons, fromOpenverse, licenseCode, rightsOf, stripHtml } from '../../tools/content/lib/license.mjs';
-import { rank } from '../../tools/content/lib/sources.mjs';
+import { commonsCandidates, rank } from '../../tools/content/lib/sources.mjs';
 import { byCategory, readContentTracker } from '../../tools/content/lib/sheet.mjs';
 import { parseEnvFile } from '../../tools/content/lib/env.mjs';
 
@@ -85,4 +85,30 @@ test('parseEnvFile: KEY=VALUE, comments, quotes, CRLF', () => {
     writeFileSync(file, '# comment\r\nA=1\r\nB = "two words"\r\n  C=\'x\'\r\nnot a line\r\n');
     assert.deepEqual(parseEnvFile(file), { A: '1', B: 'two words', C: 'x' });
     assert.deepEqual(parseEnvFile(path.join(dir, 'missing')), {});
+});
+
+test('commonsCandidates: only Wikimedia\u2019s standard thumbnail widths (others are HTTP 400)', () => {
+    const page = (title, width, height, mime = 'image/jpeg') => ({
+        title: `File:${title}`,
+        imageinfo: [{
+            mime, width, height, url: `https://upload.wikimedia.org/wikipedia/commons/a/ab/${title}`,
+            descriptionurl: `https://commons.wikimedia.org/wiki/File:${title}`,
+            thumburl: width > 1920 || mime === 'image/svg+xml'
+                ? `https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/${title}/1920px-${title}${mime === 'image/svg+xml' ? '.png' : ''}`
+                : `https://upload.wikimedia.org/wikipedia/commons/a/ab/${title}`,
+            // SVGs scale up to the requested width; photos never upscale.
+            thumbwidth: mime === 'image/svg+xml' ? 1920 : Math.min(width, 1920), thumbheight: Math.round(height * (mime === 'image/svg+xml' ? 1920 / width : Math.min(1, 1920 / width))),
+            extmetadata: { License: { value: 'cc0' }, LicenseShortName: { value: 'CC0' } },
+        }],
+    });
+    const [big, small, svg, tiny] = commonsCandidates({ query: { pages: [
+        page('Big.jpg', 6000, 4000), page('Small.jpg', 1600, 1200), page('Logo.svg', 300, 120, 'image/svg+xml'), page('Tiny.jpg', 300, 200),
+    ] } }).concat([undefined]);
+    assert.match(big.downloadUrl, /\/1920px-Big\.jpg$/);           // big originals come down at a standard width
+    assert.match(big.previewUrl, /\/500px-Big\.jpg$/);             // previews at a standard width (512 was a 400)
+    assert.equal(small.downloadUrl, 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Small.jpg');
+    assert.match(svg.downloadUrl, /\/1920px-Logo\.svg\.png$/);     // SVGs rasterized by Commons
+    assert.equal(svg.width, 1920);
+    assert.equal(tiny, undefined);                                    // under the 500 px minimum → dropped
+    assert.equal(big.license, 'cc0');
 });

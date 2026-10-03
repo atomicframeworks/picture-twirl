@@ -283,7 +283,9 @@ Boards are content in a database, not code (PROPOSAL.md §4):
   evidence) → **submit** (`--live` only) → **report** (`report.md`).
 - Dry run by default. A run is a folder `content/runs/<stamp>-<kind>/`
   (gitignored) checkpointed in `state.json`: `--resume <folder|last>` continues
-  after a crash, picks up edits to `plan.json` (changed tiles are redone), and
+  after a crash, picks up edits to `plan.json` (changed tiles are redone),
+  `--redo <board|board/c-r,…|missing>` re-picks chosen boards/tiles (or every
+  tile still without a picture), and
   `--resume … --live` uploads a reviewed dry run without redoing work.
 - Everything lands as status `import` (✨ To review); tools never publish.
   Re-runs update their own earlier import via `external_key` (sheet: its
@@ -304,7 +306,11 @@ Boards are content in a database, not code (PROPOSAL.md §4):
   person put in the sheet (read over plain HTTP; Unsplash+ refused; no
   screenshot — Unsplash blocks automated browsers, so the license text is
   recorded). Picture downloads use `node:https`: Flickr's CDN answers
-  `fetch()` (its automatic `Sec-Fetch-Mode: cors`) with 403.
+  `fetch()` (its automatic `Sec-Fetch-Mode: cors`) with 403, and refuses our
+  named bot for some photos — `isServed()` probes Openverse originals with a
+  ranged GET before the AI looks (a refusal is a "no"; never disguise the bot).
+  Wikimedia thumbnails exist only in standard widths (500 px previews, 1920 px
+  downloads; other widths are HTTP 400) — keep `sources.mjs` on those.
 - **Import API** (`worker/routes/import.js`, `Authorization: Bearer IMPORT_TOKEN`;
   404 when the secret isn't set): `GET /api/import/boards` (all boards + external
   keys, for de-duplication), `POST /api/import/runs`, `PATCH /api/import/runs/:id`,

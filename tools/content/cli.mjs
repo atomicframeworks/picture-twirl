@@ -20,7 +20,8 @@ Options
   --theme "…"          discover: a theme to build around ("space", "dogs", "90s toys"…)
   --plan-only          stop after the plan (plan.md) — edit plan.json, then --resume
   --resume <run>       continue a run folder (name under content/runs/, or "last")
-  --redo <keys>        with --resume: pick these again — board keys or tiles ("crate-diggers,snack-attack/0-1")
+  --redo <keys>        with --resume: pick these again — board keys, tiles ("crate-diggers,snack-attack/0-1"),
+                       or "missing" (every tile still without a picture)
   --ai claude-code|ollama|none   who plans + checks pictures (default: CONTENT_AI or claude-code)
   --sheet <file.xlsx>  a different spreadsheet export
   --concurrency N      tiles worked on at once (default 3)

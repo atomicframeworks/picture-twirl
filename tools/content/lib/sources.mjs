@@ -17,6 +17,10 @@ import { getJson, politeFetch } from './http.mjs';
 import { fromCommons, fromOpenverse, rightsOf } from './license.mjs';
 
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
+// Wikimedia serves thumbnails only in standard widths (250, 330, 500, 960,
+// 1280, 1920, 3840 — anything else is HTTP 400 or rounded up), so ask for those.
+const COMMONS_DOWNLOAD_WIDTH = 1920;     // ≥ the 1280 px players see; big originals come down at this size
+const COMMONS_PREVIEW_WIDTH = 500;       // what the AI picture check looks at
 const MIN_EDGE = 500;            // smaller originals look blurry on a TV
 
 // ── Wikimedia Commons ────────────────────────────────────────────────────────
@@ -24,12 +28,13 @@ const MIN_EDGE = 500;            // smaller originals look blurry on a TV
 function commonsQuery(params) {
     const qs = new URLSearchParams({
         action: 'query', format: 'json', formatversion: '2', prop: 'imageinfo',
-        iiprop: 'url|size|mime|extmetadata', iiurlwidth: '2560', ...params,
+        iiprop: 'url|size|mime|extmetadata', iiurlwidth: String(COMMONS_DOWNLOAD_WIDTH), ...params,
     });
     return getJson(`${COMMONS_API}?${qs}`);
 }
 
-function commonsCandidates(data) {
+/** Commons API response → candidates (pure; exported for tests). */
+export function commonsCandidates(data) {
     return (data?.query?.pages || [])
         .map((p) => {
             const ii = p.imageinfo?.[0];
@@ -39,9 +44,9 @@ function commonsCandidates(data) {
                 provider: 'wikimedia',
                 title: String(p.title || '').replace(/^File:/, '').replace(/\.[a-z0-9]+$/i, ''),
                 sourcePageUrl: ii.descriptionurl,
-                // Thumb render (≤2560 px) for big originals and for SVGs (rasterized by Commons).
-                downloadUrl: isSvg || ii.width > 2560 ? (ii.thumburl || ii.url) : ii.url,
-                previewUrl: ii.thumburl ? ii.thumburl.replace(/\/\d+px-/, '/512px-') : ii.url,
+                // A standard-width render for big originals and for SVGs (rasterized by Commons).
+                downloadUrl: isSvg || ii.width > COMMONS_DOWNLOAD_WIDTH ? (ii.thumburl || ii.url) : ii.url,
+                previewUrl: ii.thumburl ? ii.thumburl.replace(/\/\d+px-/, `/${COMMONS_PREVIEW_WIDTH}px-`) : ii.url,
                 width: isSvg ? Math.max(ii.thumbwidth || 0, ii.width) : ii.width,
                 height: isSvg ? Math.max(ii.thumbheight || 0, ii.height) : ii.height,
                 ...fromCommons(ii.extmetadata),

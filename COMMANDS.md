@@ -103,6 +103,25 @@ npm run test:e2e:report                # open last HTML report
 ```
 Screenshots → `screenshots/`
 
+## Cloudflare (the Picture Twirl account) — never `wrangler login`/`logout` here
+This machine's own wrangler login belongs to another project that deploys from
+it. Picture Twirl commands carry their own **API token** instead (wrangler uses
+`CLOUDFLARE_API_TOKEN` over its login, for that one command):
+```bash
+npm run cf:token                       # store the token: reads cloudflare-token.txt (dropped in the project folder),
+                                       # checks it, moves it to ~/.config/picture-twirl/cloudflare.env, deletes the file
+npm run cf -- whoami                   # wrangler against the Picture Twirl account only
+npm run cf -- <any wrangler command>   # e.g. d1 list, deploy, secret put … (refuses if wrangler.jsonc names another account)
+```
+Making the token (works from a phone browser): dash.cloudflare.com → log in to
+the **Picture Twirl** account → My Profile → **API Tokens** → Create Token →
+template **Edit Cloudflare Workers** → add **Account · D1 · Edit**, **Account ·
+Workers R2 Storage · Edit**, **Account · Account Settings · Read** → Account
+Resources: only the Picture Twirl account → set an expiry (TTL) → Create → copy.
+Save it as a plain text file `cloudflare-token.txt` in the `picture-twirl`
+folder (Dropbox app works), then `npm run cf:token`. Revoke it in the dashboard
+when it's no longer needed (day to day, deploys come from Workers Builds).
+
 ## Live games (GameRoom Durable Objects)
 ```bash
 npm run measure:realtime               # latency through a room: ping / write confirmed / delivered to another player

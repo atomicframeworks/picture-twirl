@@ -46,3 +46,6 @@ Thumbs.db
 *.sln
 *.sw?
 .claude/settings.json
+
+# Picture Twirl Cloudflare token dropped in from a phone (npm run cf:token moves it out of Dropbox)
+/cloudflare-token.txt

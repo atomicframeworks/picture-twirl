@@ -833,8 +833,10 @@ At the start, tag the then-current `main` as **`pre-cloudflare`** and branch
 **Local-only until cutover** (decided 2026-10-03): the wrangler login on your
 machine is your *personal* Cloudflare account. So every milestone is built and
 verified with the local runtime (`npm run dev`: local D1/R2/Durable Objects),
-and nothing touches any Cloudflare account until the cutover runbook (§9.2)
-switches to the new account.
+and nothing touches any Cloudflare account until the cutover runbook (§9.2).
+That login also serves another project deploying from this machine, so it is
+**never switched**: Picture Twirl commands carry their own API token for the new
+account (`npm run cf -- …`, COMMANDS.md → Cloudflare).
 
 | # | Milestone (on `cloudflare`) | Done when | Size |
 |---|---|---|---|
@@ -859,10 +861,15 @@ changes merge cleanly; the predictable conflicts are import lines.
    multi-device play on the branch preview. Re-run the handoff rehearsal on the
    synced branch: `npm run rehearse:migration -- --run` (a fresh Claude session
    merges a Firebase-era branch following only the docs).
-3. **Switch accounts and set up production** (the first time anything touches
-   Cloudflare):
-   - `npx wrangler logout`, then `npx wrangler login` into the **new Picture
-     Twirl account**, then `npx wrangler whoami` to confirm.
+3. **Set up production** (the first time anything touches Cloudflare). **Don't
+   switch this machine's wrangler login** — another project deploys from it with
+   that login (decided 2026-10-03). Picture Twirl commands carry their own token:
+   - In the **new Picture Twirl account**'s dashboard (a phone browser is fine):
+     set the `workers.dev` subdomain (Workers & Pages → Your subdomain), make an
+     API token (COMMANDS.md → Cloudflare), drop it into the project as
+     `cloudflare-token.txt`, then `npm run cf:token` and `npm run cf -- whoami`
+     to confirm the account. Every later step runs as `npm run cf -- …`.
+   - **Hosting:** the free `workers.dev` URL first; a custom domain later.
    - Pin `account_id` in `wrangler.jsonc`.
    - Create production + staging D1/R2 and write their ids into the config.
    - Apply D1 migrations remotely, seed, and set the secrets (`ADMIN_PASSWORD`,
@@ -870,8 +877,8 @@ changes merge cleanly; the predictable conflicts are import lines.
    - First deploy, then connect GitHub in the dashboard (Workers Builds, with
      previews bound to staging).
    - Run `content:sheet --site prod` (boards land in *Imports* for review).
-   - Then switch your login back to your personal account if you like. Day to
-     day, nobody needs the new login (deploys come from Workers Builds).
+   - Revoke the setup token afterwards (or keep a short-lived one for remote
+     D1 maintenance). Day to day nobody needs it: deploys come from Workers Builds.
 4. **Merge** `cloudflare` → `main` as one merge commit, tagged
    **`cloudflare-cutover`**. Workers Builds deploys production.
 5. **Smoke test production:** create a game, join from two phones, play a few

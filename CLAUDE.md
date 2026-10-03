@@ -43,6 +43,11 @@ npm run measure:realtime                 # latency through a GameRoom (local; --
 npm run migrate:code                     # rewrite Firebase imports (code from before M4) to src/realtime/
 npm run rehearse:migration [-- --run]    # rehearse an old branch's merge in a sandbox (MIGRATION.md)
 
+# Cloudflare, Picture Twirl account — NEVER `wrangler login`/`logout` on this machine
+# (its login belongs to another project). A per-command API token instead:
+npm run cf:token                         # store the token (COMMANDS.md → Cloudflare)
+npm run cf -- whoami                     # wrangler against the Picture Twirl account only
+
 # Local database
 npm run db:setup:local     # migrate + seed (runs automatically before dev/share)
 # Start fresh: stop the dev server, delete .wrangler/state, npm run dev

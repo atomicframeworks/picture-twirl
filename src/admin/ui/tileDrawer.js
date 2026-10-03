@@ -181,6 +181,10 @@ function rightsForm(image, readOnly, onSaved) {
         h('label', { class: 'a-field adm-grow' }, h('span', null, 'Creator link'), creatorUrl)),
     h('label', { class: 'a-field' }, h('span', null, 'Source page'), sourcePageUrl),
     image.sourceFileUrl ? h('p', { class: 'adm-muted ed-source-file' }, 'Downloaded from: ', h('a', { href: image.sourceFileUrl, target: '_blank', rel: 'noopener noreferrer' }, image.sourceFileUrl)) : null,
+    image.hasEvidence ? h('p', { class: 'ed-source-file' }, h('a', {
+        href: `/api/admin/images/${image.id}/evidence`, target: '_blank', rel: 'noopener', dataset: { testid: 'evidence-link' },
+    }, '🧾 License evidence (screenshot of the source page when it was saved)')) : null,
+    image.provider && image.provider !== 'upload' ? h('p', { class: 'adm-muted ed-source-file' }, `Found via: ${image.provider}`) : null,
     h('label', { class: 'a-field' }, h('span', null, 'License link'), licenseUrl),
     h('label', { class: 'a-field' }, h('span', null, 'Credit line (optional)'), attribution),
     credit,

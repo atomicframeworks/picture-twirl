@@ -11,7 +11,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > `main` once, with a migration guide. Done so far: **M0** (local Worker + D1/R2
 > setup), **M1** (Boards come from the Worker API instead of bundled JS) and
 > **M2** (the `/admin/` app: dashboard, boards table, editor, pictures, rights,
-> publishing — user guide [ADMIN.md](ADMIN.md)). Still Firebase: the live game
+> publishing — user guide [ADMIN.md](ADMIN.md)) and **M3** (AI content tools:
+> `npm run content:sheet` / `content:discover` → boards land as ✨ To review —
+> COMMANDS.md → Content tools). Still Firebase: the live game
 > (until M4). Everything Cloudflare runs **locally only** until cutover — never
 > `wrangler deploy` from this branch. Testing rules: [TESTING.md](TESTING.md).
 
@@ -37,6 +39,11 @@ npm run test:all     # both
 # Local database
 npm run db:setup:local     # migrate + seed (runs automatically before dev/share)
 # Start fresh: stop the dev server, delete .wrangler/state, npm run dev
+
+# Content tools (AI import; dry run unless --live) — COMMANDS.md → Content tools
+npm run content:sheet            # boards from content/sources/*.xlsx → content/runs/<run>/report.md
+npm run content:discover         # new board ideas from the web
+npm run content:sheet -- --resume last --live   # upload a reviewed dry run to the local site
 
 # Production build (site → dist/client, Worker → dist/picture_twirl)
 npm run build
@@ -260,6 +267,54 @@ Boards are content in a database, not code (PROPOSAL.md §4):
   ⚠️ counts of boards using it recomputed).
 - Errors are JSON `{ error, message, ...details }` via `HttpError(status, code, message, details)`.
 
+**Content tools** (`tools/content/`, PROPOSAL.md §7; how to run: COMMANDS.md → Content tools):
+- `npm run content:sheet` (the Content Tracker spreadsheet in `content/sources/`)
+  and `npm run content:discover` (new themes; the AI may web-search) share one
+  pipeline (`tools/content/pipeline.mjs`): **plan** (AI → 5×5 boards →
+  `plan.json`/`plan.md`, made safe by `lib/plan.mjs` `tidyPlan`) → **find** (the
+  sheet's own link when it's a free source — Commons file/category or an
+  Unsplash photo page — else Wikimedia Commons + Openverse search,
+  `lib/sources.mjs`) → **check** (the AI looks at ≤4 previews at a time, picks
+  one, flags answer-visible / real person / logo; a picture a person linked in
+  the sheet is kept as is and only checked for flags; **Unsplash pictures are
+  never shown to the AI** — their terms ask for permission for AI/ML use, so a
+  person reviews them) → **fetch** (download; a picture that won't download →
+  choose again; normalize with sharp; screenshot the source page as license
+  evidence) → **submit** (`--live` only) → **report** (`report.md`).
+- Dry run by default. A run is a folder `content/runs/<stamp>-<kind>/`
+  (gitignored) checkpointed in `state.json`: `--resume <folder|last>` continues
+  after a crash, picks up edits to `plan.json` (changed tiles are redone), and
+  `--resume … --live` uploads a reviewed dry run without redoing work.
+- Everything lands as status `import` (✨ To review); tools never publish.
+  Re-runs update their own earlier import via `external_key` (sheet: its
+  source categories; discover: its title) **only while it's still `import`** —
+  once a person drafts/publishes/archives a board, tools leave it alone ('kept').
+- Rights are decided in code, never by the AI: `lib/license.mjs` maps each
+  source's license metadata to our codes, `src/shared/rights.js` rates them,
+  `rank()` drops NC/ND before anything is downloaded. Commons
+  "trademarked"/"personality" restrictions and what the AI check sees
+  (logo, real person, answer text) become ⚠️ flags with reasons.
+- AI (`lib/ai.mjs`): default `claude-code` = headless `claude -p` on the
+  developer's own subscription — strict `--json-schema`, our short system
+  prompt, no tools (WebSearch/WebFetch only for discovery), run from an empty
+  temp dir so no project context loads (~1.3k tokens + images per check).
+  `CONTENT_AI=ollama` = local model; `--ai none` = no AI (sheet only).
+- Manners (`lib/http.mjs`): named bot user-agent (never a disguised browser),
+  ≥2 s between requests per host, official APIs, Unsplash only for links a
+  person put in the sheet (read over plain HTTP; Unsplash+ refused; no
+  screenshot — Unsplash blocks automated browsers, so the license text is
+  recorded). Picture downloads use `node:https`: Flickr's CDN answers
+  `fetch()` (its automatic `Sec-Fetch-Mode: cors`) with 403.
+- **Import API** (`worker/routes/import.js`, `Authorization: Bearer IMPORT_TOKEN`;
+  404 when the secret isn't set): `GET /api/import/boards` (all boards + external
+  keys, for de-duplication), `POST /api/import/runs`, `PATCH /api/import/runs/:id`,
+  `POST /api/import/images` (multipart display/thumb/archive/evidence + meta JSON),
+  `POST /api/import/boards` (upsert by `externalKey` → `created|updated|kept`).
+  The dashboard lists runs (`GET /api/admin/import-runs`).
+- Never run in CI/tests (network + AI). The pure parts are tested:
+  `tests/unit/contentPlan.test.mjs`, `tests/unit/contentSources.test.mjs`,
+  `tests/api/import.test.mjs`.
+
 Snapshot shape (what `/api/boards/:id` returns):
 ```javascript
 { id, slug, rev, title, emoji, description, points: [100, 200, 300, 400, 500],
@@ -398,7 +453,8 @@ src/
 worker/                        # Cloudflare Worker (runs only for /api/* and /media/*)
 ├── index.js                   # Entry: router + error handling
 ├── routes/public.js           # /api/boards, /api/boards/:id, /media/*
-├── routes/admin.js            # /api/admin/* (sign-in, boards, pictures, stats, audit)
+├── routes/admin.js            # /api/admin/* (sign-in, boards, pictures, stats, audit, import runs)
+├── routes/import.js           # /api/import/* for the content tools (Bearer IMPORT_TOKEN)
 ├── lib/http.js                # json(), HttpError(+details), errorResponse, createRouter()
 ├── lib/db.js                  # D1 helpers, ids, audit(), sha256Hex()
 ├── lib/auth.js                # Admin password check, signed session cookie, login rate limit
@@ -411,9 +467,25 @@ worker/                        # Cloudflare Worker (runs only for /api/* and /me
 migrations/0001_init.sql       # D1 schema (applied by `npm run db:migrate:local`)
 migrations/0002_admin_login_attempts.sql  # login rate-limit table
 content/
-├── sources/Picture Twirl Content Tracker.xlsx  # Export of the team's Google Sheet
-└── seed/pop-icons.json + pop-icons/            # Internal test board (local seed)
-tools/content/lib/images.mjs   # Picture normalizing (sharp): display/thumb/archive WebP
+├── sources/Picture Twirl Content Tracker.xlsx  # Export of the team's Google Sheet (content:sheet reads it)
+├── seed/pop-icons.json + pop-icons/            # Internal test board (local seed)
+└── runs/                                       # Content-tool run folders (gitignored)
+tools/content/                 # Content tools — npm run content:sheet / content:discover
+├── cli.mjs                    # Options → pipeline (--live, --resume, --plan-only, --ai, …)
+├── pipeline.mjs               # plan → find → check → fetch → submit → report
+└── lib/
+    ├── env.mjs                # Settings (env > .env.local > .dev.vars)
+    ├── xlsx.mjs, sheet.mjs    # Dependency-free .xlsx reader → Content Tracker items
+    ├── prompts.mjs            # AI instructions + JSON schemas (+ flagsFromCheck)
+    ├── ai.mjs                 # claude-code (headless claude -p) / ollama backends
+    ├── plan.mjs               # tidyPlan, external keys, no-AI fallback, plan.md
+    ├── sources.mjs            # Wikimedia Commons, Openverse, sheet links (Commons/Unsplash), rank
+    ├── license.mjs            # Source license metadata → our license codes + flags
+    ├── http.mjs               # Polite fetching (bot UA, per-host gap, retry), getBytes via node:https
+    ├── browser.mjs            # Headless Chromium: source-page screenshots (license evidence)
+    ├── images.mjs             # Picture normalizing (sharp): display/thumb/archive WebP
+    ├── importApi.mjs          # Client for /api/import/*
+    └── run.mjs                # Run folders + state.json checkpoints
 scripts/
 ├── share.js                   # Dev server + Cloudflare quick tunnel (npm run share)
 ├── ensure-setup.mjs           # Self-healing setup (npm install / .dev.vars / e2e browser)
@@ -429,10 +501,10 @@ tests/                         # See TESTING.md
 
 **Adding / Changing Boards**
 - Boards are content, not code: they live in D1/R2 and are served by the Worker.
-- Until the admin (M2) exists, the only way to add one locally is a seed file:
-  `content/seed/<slug>.json` (+ pictures in `content/seed/<slug>/`), listed in
-  `SEEDS` in `scripts/seed-local.mjs`; then delete `.wrangler/state` and
-  `npm run dev`. From M2 on: `/admin`. From M3 on: `npm run content:*`.
+- By hand: `/admin/` (ADMIN.md). In bulk: `npm run content:sheet` /
+  `content:discover` → ✨ To review, then check + publish in `/admin/`.
+  Built-in local test data: a seed file `content/seed/<slug>.json` (+ pictures
+  in `content/seed/<slug>/`), listed in `SEEDS` in `scripts/seed-local.mjs`.
 - Board structure: 5 categories × 5 tiles; points by row from `points`
   (default 100–500). Shape + rules: `src/shared/boards.js`.
 - Changing the D1 schema = a new numbered file in `migrations/` (never edit an

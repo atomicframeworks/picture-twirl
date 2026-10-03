@@ -10,9 +10,9 @@ export function mountDashboard(outlet) {
     replace(outlet, h('div', { class: 'adm-loading' }, 'Loading dashboard…'));
     let alive = true;
 
-    get('/api/admin/stats').then((stats) => {
+    Promise.all([get('/api/admin/stats'), get('/api/admin/import-runs?limit=5')]).then(([stats, { runs }]) => {
         if (!alive) return;
-        render(outlet, stats);
+        render(outlet, stats, runs);
     }).catch((err) => {
         if (alive) replace(outlet, h('div', { class: 'adm-card adm-error' }, err.message));
     });
@@ -20,7 +20,28 @@ export function mountDashboard(outlet) {
     return () => { alive = false; };
 }
 
-function render(outlet, { counts, attention, totals, recent, activity }) {
+const RUN_KINDS = { sheet: '📊 Spreadsheet import', discover: '🔎 Discovery', verify: '🔁 Rights re-check' };
+
+/** One content-tool run: kind, when, who, what it made. */
+function runItem(run) {
+    const s = run.summary || {};
+    const bits = [
+        run.boards ? plural(run.boards, 'board') : null,
+        s.tilesWithPictures != null ? `${s.tilesWithPictures} pictures` : null,
+        s.flagged ? `⚠️ ${s.flagged}` : null,
+        !run.finished_at ? 'still running / interrupted' : null,
+    ].filter(Boolean);
+    return h('li', null,
+        h('span', { class: 'adm-todo-icon', 'aria-hidden': 'true' }, (RUN_KINDS[run.kind] || '🤖').split(' ')[0]),
+        h('span', { class: 'adm-todo-text' },
+            h('strong', null, (RUN_KINDS[run.kind] || run.kind).replace(/^\S+ /, '')),
+            ` · ${run.actor || 'AI'} · `,
+            h('span', { title: fullDate(run.started_at) }, timeAgo(run.started_at)),
+            bits.length ? h('small', { class: 'adm-muted' }, ` — ${bits.join(' · ')}`) : null),
+        run.boards ? h('a', { class: 'a-btn ghost sm', href: '#/boards?status=import' }, 'Review →') : null);
+}
+
+function render(outlet, { counts, attention, totals, recent, activity }, runs = []) {
     const card = (status) => h('a', { class: `adm-stat is-${status}`, href: `#/boards?status=${status}`, dataset: { testid: `stat-${status}` } },
         h('span', { class: 'adm-stat-icon', 'aria-hidden': 'true' }, STATUS_ICONS[status]),
         h('span', { class: 'adm-stat-num' }, String(counts[status] ?? 0)),
@@ -60,6 +81,10 @@ function render(outlet, { counts, attention, totals, recent, activity }) {
                         statusChip(b.status, { unpublishedChanges: b.unpublished_changes }),
                         h('span', { class: 'adm-muted', title: fullDate(b.updated_at) }, `${timeAgo(b.updated_at)}${b.updated_by ? ` · ${b.updated_by}` : ''}`))))
                     : h('p', { class: 'adm-empty' }, 'No boards yet — create the first one!'))),
+
+        runs.length ? h('section', { class: 'adm-card', dataset: { testid: 'import-runs' } },
+            h('h2', null, '🤖 Content tool runs'),
+            h('ul', { class: 'adm-todo' }, runs.map(runItem))) : null,
 
         h('section', { class: 'adm-card' },
             h('div', { class: 'adm-card-head' }, h('h2', null, 'Activity'), h('a', { class: 'a-btn ghost sm', href: '#/activity' }, 'All activity →')),

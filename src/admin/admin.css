@@ -265,6 +265,7 @@ textarea.a-input { resize: vertical; }
 .ed-save.is-error, .ed-save.is-conflict { color: var(--danger); }
 
 .ed-banner { display: flex; gap: 14px; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: var(--radius-md); background: var(--adm-warn-bg); color: var(--adm-warn-ink); font-weight: 600; margin-bottom: 14px; }
+.ed-banner.is-info { background: var(--adm-imp-bg); color: var(--adm-imp-ink); font-weight: 500; }
 .ed-check { background: #fff; border-radius: var(--radius-md); padding: 10px 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
 .ed-check p { margin: 0; font-weight: 600; }
 .ed-check-ok { color: var(--success); }
@@ -280,11 +281,13 @@ textarea.a-input { resize: vertical; }
 .ed-col, .ed-tiles, .ed-tile, .ed-col-head, .ed-tile-top, .ed-tile-foot, .ed-answer { min-width: 0; }
 .ed-col { background: rgba(255, 255, 255, .6); border-radius: var(--radius-lg); padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-content: start; scroll-snap-align: start; border: 1.5px solid var(--line); }
 .ed-col.sortable-ghost { opacity: .4; }
-.ed-col-head { display: flex; align-items: center; gap: 6px; }
-.ed-col-title { flex: 1; min-width: 0; font: 600 16px var(--font-display); text-align: center; padding: 8px; border-radius: var(--radius-sm); border: 1.5px solid transparent; background: var(--grad-brand); color: #fff; }
+/* Handle + ◀▶ on a slim top row; the name gets the column's full width below
+   (AI-made names like "Colorado Deep Cuts" were cut off beside the arrows). */
+.ed-col-head { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
+.ed-col-title { order: 3; flex: 1 1 100%; min-width: 0; font: 600 15px var(--font-display); text-align: center; padding: 8px 6px; border-radius: var(--radius-sm); border: 1.5px solid transparent; background: var(--grad-brand); color: #fff; text-overflow: ellipsis; }
 .ed-col-title::placeholder { color: rgba(255, 255, 255, .75); }
 .ed-col-title:focus { outline: none; box-shadow: 0 0 0 3px var(--ring); }
-.ed-col-moves { display: flex; }
+.ed-col-moves { display: flex; margin-left: auto; }
 .ed-handle { cursor: grab; color: var(--muted); font-size: 18px; user-select: none; padding: 0 2px; }
 .ed-handle:active { cursor: grabbing; }
 .ed-icon { border: 0; background: none; cursor: pointer; font-size: 13px; padding: 5px 7px; border-radius: 8px; color: var(--muted); }

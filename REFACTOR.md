@@ -284,7 +284,8 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-10-03 | Cloudflare M1 | Boards come from the Worker (`/api/boards`, `/media/*`, D1/R2) instead of `predefinedGames.js`; shared `src/shared/{boards,rights}.js`; local seed of the test board; `ui/boardPicker.js` for Create + Play Again; "Pick a Board" wording; test layers (unit/API via `node --test`) + e2e updated (TESTING.md) | `8bfdc07` |
 | 2026-10-03 | Cloudflare tooling | Self-healing setup (`scripts/ensure-setup.mjs`): auto `npm install` / `.dev.vars` / Playwright browser before dev, build and tests | `80595e0` |
 | 2026-10-03 | Cloudflare M2a | Admin API: password + signed session cookie + login rate limit, autosave with `rev` conflicts, publish gate, status machine, bulk, picture upload/link import/rights, stats, audit | `5e6945f` |
-| 2026-10-03 | Cloudflare M2 | `/admin/` app (dashboard, boards table, editor with drag/arrows/undo/autosave, pictures by drop/click/paste/link, rights drawer with preview twirl, emoji picker); isolated e2e server on :3100; ADMIN.md guide | M2 commit on `cloudflare` |
+| 2026-10-03 | Cloudflare M2 | `/admin/` app (dashboard, boards table, editor with drag/arrows/undo/autosave, pictures by drop/click/paste/link, rights drawer with preview twirl, emoji picker); isolated e2e server on :3100; ADMIN.md guide | `4bd3f9a` |
+| 2026-10-03 | Cloudflare M3 | Content tools: `/api/import/*` (bearer token; runs, pictures + evidence, idempotent board upserts that never touch boards a person took over), `npm run content:sheet` / `content:discover` (`tools/content/`: spreadsheet reader, Commons/Openverse/Unsplash-link sources, license → rights flags, headless Claude Code or Ollama for planning + picture checks, evidence screenshots, resumable run folders + reports), admin runs card / evidence link / import banner, `.claude/skills/content` | M3 commit on `cloudflare` |
 
 > Append a row per commit. Keep the newest at the bottom.
 

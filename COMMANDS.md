@@ -36,6 +36,34 @@ Start fresh: stop the dev server, delete `.wrangler/state`, run `npm run dev`.
 No Cloudflare login is needed for any of this. **Don't run `wrangler deploy`**
 on the `cloudflare` branch before cutover (PROPOSAL.md §9.2).
 
+## Content tools (AI import → ✨ To review in /admin)
+```bash
+npm run content:sheet                          # dry run: plan boards from the spreadsheet, find + download pictures, write a report
+npm run content:sheet -- --plan-only           # just the plan (≈3 min) → content/runs/<run>/plan.md
+npm run content:sheet -- --resume last         # continue the newest run (after Ctrl-C, or after editing its plan.json)
+npm run content:sheet -- --resume last --live  # upload that reviewed dry run to the local site (npm run dev must be running)
+npm run content:discover -- --boards 3         # brand-new boards; the AI searches the web for themes
+npm run content:discover -- --theme "space" --boards 1 --live
+npm run content:sheet -- --help                # every option
+```
+- Each run is a folder in `content/runs/` (not in git): `plan.md`, `report.md`
+  (every tile with its picture, license, ⚠️ flags and why), the pictures,
+  license-evidence screenshots and `run.log`. Read `report.md` before `--live`.
+- `--live` uploads to the site in `.dev.vars` (`IMPORT_TOKEN`) at
+  `http://localhost:3000`. Boards arrive as **✨ To review**; nothing is ever
+  published by a tool. Re-running updates its own earlier imports while they're
+  still ✨ To review — boards a person has touched are left alone.
+- AI: your own Claude Code subscription by default (headless `claude -p`; be
+  signed in to `claude`). Optional local model: `CONTENT_AI=ollama` with
+  `OLLAMA_MODEL` (a vision model, e.g. `qwen2.5vl:7b`). `--ai none` = no AI
+  (spreadsheet categories in order + top search result). Models:
+  `CONTENT_AI_MODEL_PLAN` (default `opus`), `CONTENT_AI_MODEL_CHECK` (`sonnet`).
+- A spreadsheet run takes ~15–30 min (≈7 boards, 175 tiles); a discovery run
+  ~5–10 min per board. Uses your Claude usage: ~1 planning call plus one
+  short picture check per tile (Unsplash pictures are never shown to the AI).
+- After cutover: `--site prod` with `CONTENT_SITE_PROD` + `IMPORT_TOKEN_PROD`
+  in `.env.local`.
+
 ## Share mode (dev here, test on another device)
 ```bash
 npm run share          # dev server + public HTTPS URL via Cloudflare

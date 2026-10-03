@@ -559,6 +559,25 @@ Defaults follow the crawler's habits: **dry run unless `--live`**,
 `--site local|prod`, a named bot user-agent, ≥2 s between requests to one host,
 and 403/429 treated as "no".
 
+**As built (M3, 2026-10-03)** — differences from the plan above:
+- The picture check sees up to 4 candidates per look, each with its library
+  title (so the AI never has to recognize faces) and the planner's search
+  phrase (so "Fear" the punk band isn't a scared child). A picture a person
+  linked in the sheet is kept as is; the AI only looks for ⚠️ flags.
+  **Unsplash pictures are never shown to the AI** (see §7.6).
+- Evidence is a JPEG screenshot of the source page. Unsplash refuses automated
+  browsers, so for Unsplash the license text read from the page is recorded in
+  the picture's rights note instead.
+- A picture that won't download (deleted, private) → the tool chooses again.
+- Links to **Unsplash+** (paid) photos are refused and listed in the report as
+  spreadsheet fixes (the team's sheet had 7).
+- Sources built: Wikimedia Commons, Openverse, and sheet links (Commons
+  files/categories, Unsplash photo pages). Pixabay / Pexels / NASA: later (optional).
+- `content:verify` (re-check stored pictures' licenses) is **deferred** to
+  before public beta; `content:discover` without `--theme` is the planned `--auto`.
+- Extra options: `--plan-only`, `--resume <run|last>`, `--redo <board|tile keys>`,
+  `--ai claude-code|ollama|none`, `--concurrency`, `--no-evidence`.
+
 ### 7.4 Commands
 ```bash
 npm run content:sheet                                  # dry run: plan + pictures + report, submits nothing
@@ -785,7 +804,7 @@ switches to the new account.
 | **M0** | Setup: `wrangler.jsonc`, Cloudflare Vite plugin, Worker skeleton, D1 schema (`migrations/`), `.dev.vars.example`, Docker image → Debian, spreadsheet → `content/sources/`; today's Firebase rules exported for reference (needs you: Firebase console) | `npm run dev` serves the game + `/api/health` from local D1. **Done 2026-10-03** | S |
 | **M1** | Platform: D1 schema, `/media`, public boards API, seed *Pop Culture Icons*, create flow + Play Again read the API, "Board" wording | Full game playable (still on Firebase) with boards from the API. **Done 2026-10-03:** `npm test` (lint, 23 unit, 13 API) + 10/10 e2e green | M |
 | **M2** | Admin (§5): login, dashboard, table, new board, editor, images + provenance, publish snapshots, audit | Create → edit → publish a board in the local admin; it shows up in the game. **Done 2026-10-03:** 42 unit + 28 API + 16 e2e green; guide in ADMIN.md | L |
-| **M3** | Content tools (§7): import API, `content:sheet`, `content:discover`, `content:verify`, project skill | Spreadsheet boards sitting in the local admin as ✨ To review; then (requested 2026-10-03) **first real discovery runs** for new board / category / picture ideas, also landing as To review | L |
+| **M3** | Content tools (§7): import API, `content:sheet`, `content:discover`, ~~`content:verify`~~ (deferred, §7.3 as built), project skill | Spreadsheet boards sitting in the local admin as ✨ To review; then (requested 2026-10-03) **first real discovery runs** for new board / category / picture ideas, also landing as To review. **Spreadsheet done 2026-10-03:** 7 boards, 157/175 tiles with free pictures (61 ⚠️ flagged, 18 empty — local artists without free photos) in the local admin; 58 unit + 34 API + 16 e2e green | L |
 | **M4** | Realtime (§8.4): shim, GameRoom, identity, rules; Firebase deleted | e2e (GM + player contexts) and multi-device play pass with no Firebase anywhere | XL |
 | **M5** | Handoff (§9.3): MIGRATION.md, CLAUDE.md banner + rewrite, README/COMMANDS/REFACTOR updates, codemod, lint guard, rehearsal | A fresh clone and a simulated "Lu branch" both migrate cleanly by following the doc cold | M |
 

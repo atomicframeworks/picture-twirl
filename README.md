@@ -110,6 +110,8 @@ inside the container, never touching the host folder.
 ```powershell
 npm run build      # production build → dist/
 npm run preview    # serve dist/ locally
+npm run content:sheet      # AI: boards from the team spreadsheet → ✨ To review (dry run; see COMMANDS.md)
+npm run content:discover   # AI: brand-new board ideas with free pictures
 ```
 
 ## Firebase config
@@ -168,7 +170,7 @@ src/         # app source (flows, game, ui, data, shared rules)
 worker/      # Cloudflare Worker: /api/* and /media/* (boards + pictures)
 migrations/  # D1 database schema
 content/     # content sources (the Google Sheet export) + local seed board
-tools/       # content tooling (picture normalizing; AI import tools later)
+tools/       # content tools: AI board import from the spreadsheet / discovery (npm run content:*)
 tests/       # unit + API (node --test) and browser (Playwright) — TESTING.md
 public/      # static assets (favicon, home pattern, sounds)
 index.html   # entry + templates (tpl-lobby, tpl-game)

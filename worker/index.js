@@ -15,6 +15,7 @@
 import { createRouter, errorResponse, HttpError, json, notFound } from './lib/http.js';
 import { registerPublicRoutes } from './routes/public.js';
 import { registerAdminRoutes } from './routes/admin.js';
+import { registerImportRoutes } from './routes/import.js';
 
 const router = createRouter();
 
@@ -26,6 +27,7 @@ router.get('/api/health', async ({ env }) => {
 
 registerPublicRoutes(router);
 registerAdminRoutes(router);
+registerImportRoutes(router);
 
 export default {
     async fetch(request, env, ctx) {

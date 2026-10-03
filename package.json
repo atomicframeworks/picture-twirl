@@ -16,6 +16,8 @@
     "db:setup:local": "npm run db:migrate:local && npm run db:seed:local",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:seed:local": "node scripts/seed-local.mjs",
+    "content:sheet": "node tools/content/cli.mjs sheet",
+    "content:discover": "node tools/content/cli.mjs discover",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "pretest": "node scripts/ensure-setup.mjs",

@@ -11,6 +11,7 @@ const VERBS = {
     'board.unpublish': 'moved to draft',
     'board.archive': 'archived',
     'board.restore': 'restored',
+    'board.import_update': 're-imported',
 };
 
 /** "Kim published 🎃 Spooky Season" as a DOM fragment (board name links to the editor). */

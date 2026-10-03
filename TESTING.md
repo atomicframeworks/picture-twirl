@@ -22,7 +22,7 @@ downloads Playwright's Chromium (~90 MB, outside the repo) on first use.
 | Layer | Command | Runs in | Speed | Covers |
 |---|---|---|---|---|
 | **Lint** | `npm run lint` | ESLint | 2 s | Undefined names, unused code. Must be **0 errors** (warnings are tolerated, but don't add new ones) |
-| **Unit** | `npm run test:unit` | `node --test` | 1 s | Pure logic: board shape + snapshot (`src/shared/boards.js`), license rules (`src/shared/rights.js`), the Worker router, snapshot → live board (`toBoardSet` + `buildBoardFromSet`) |
+| **Unit** | `npm run test:unit` | `node --test` | 1 s | Pure logic: board shape + snapshot (`src/shared/boards.js`), license rules (`src/shared/rights.js`), the Worker router, snapshot → live board (`toBoardSet` + `buildBoardFromSet`), the content tools' plan/license/spreadsheet logic |
 | **API** | `npm run test:api` | `node --test` + real local D1/R2 | 5 s | The real Worker (`worker/index.js`) answering real requests against a throwaway database: routes, status codes, cache headers, media privacy, uniqueness, rights, revisions, audit log |
 | **E2E** | `npm run test:e2e` | Playwright + Chromium (Pixel 7 emulation; admin at desktop size) | ~55 s | Whole flows in a browser: create → pick a board → lobby → join → start → swirl → buzz → award → reveal; board picker states; GM tour; the admin end to end; component gallery |
 
@@ -84,6 +84,9 @@ worked). They're ended in teardown. After M4 the whole suite is local.
 | `tests/api/admin.test.mjs` | Admin sign-in (wrong password, name required, cookie flags, rate limit, tampered cookie), auth on every route, Origin check, logout, create/title rules, autosave + stale rev + rename, publish gate → publish → players see it, unpublished changes, unpublish/archive/restore rules, duplicate, bulk with skips, stats + audit, uploads (dedupe, disguised/oversized files), link guard, rights edits → ⚠️ recount / ❌ blocks |
 | `tests/api/public.test.mjs` | `/api/health`, `/api/boards` (published only, no-store), `/api/boards/:id` (id or slug, 404s), `/media/*` (WebP, immutable cache, 304, HEAD, private prefixes 404) |
 | `tests/api/content.test.mjs` | Picture dedupe, rights assessment on store, unique titles (case/space-insensitive) + slugs, counts, publish → snapshot + revision + audit |
+| `tests/api/import.test.mjs` | The content tools' API: bearer token (401s), runs (create/finish + summary), picture upload with provenance + rights + private evidence/archive, board upsert (`created` → `updated` on re-run, `kept` once a person took over), taken titles get “(2)”, `externalKey` required, the boards listing |
+| `tests/unit/contentPlan.test.mjs` | Content tools' plan clean-up: exact 5×5 padding, duplicate answers, text limits, spreadsheet links kept across renames/typos but dropped for mismatched ids, unique keys + external keys, name clashes with the site, the no-AI spreadsheet plan, `plan.md`, AI-check flags |
+| `tests/unit/contentSources.test.mjs` | License text → our codes (CC variants, PD, CC0), Commons restrictions → ⚠️ flags + attribution, Openverse NC/ND → blocked, ranking (blocked never taken), the committed spreadsheet export reads cleanly, `.env` parsing |
 | `tests/smoke.spec.js` | Home loads; entry buttons enable after auth |
 | `tests/create.spec.js` | Create wizard end to end |
 | `tests/boards.spec.js` | Board list comes from the API; Next gated on selection; error + retry; titles rendered as text (no HTML injection) |
@@ -93,6 +96,11 @@ worked). They're ended in teardown. After M4 the whole suite is local.
 | `tests/admin.spec.js` | Admin in a browser: sign-in (wrong/right password, sign-out clears the cookie), new-board dialog + live name check, editor (category name, file-chooser upload, answers, autosave, ▼ move with picture, ◀▶ category move, undo, persisted after reload), paste a picture, publish gate → publish → listed in the game's Pick a Board, tile drawer (preview twirl, rights edit → reasons + badges), boards table (search, bulk archive with confirm, archived filter + URL, select-all, bulk restore) |
 | `tests/game.spec.js` | Live game: board, picture served from `/media`, swirl + pause/resume, buzz, award (score + confetti), continue, reveal-without-award |
 | `tests/gallery.spec.js` | Component gallery renders; modal opens |
+
+**Not in any automated suite:** the content tools' network + AI steps
+(`npm run content:*` — real web APIs and your Claude usage). Check them by
+hand with a small run, e.g. `npm run content:discover -- --boards 1 --theme "dogs"`,
+then read its `report.md`.
 
 ## Rules (definition of done)
 

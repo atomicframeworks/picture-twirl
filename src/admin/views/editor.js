@@ -154,6 +154,7 @@ export function mountEditor(outlet, { boardId }) {
     }
 
     function renderBanner() {
+        bannerEl.classList.remove('is-info');
         if (s.status === 'conflict') {
             bannerEl.hidden = false;
             replace(bannerEl, '⛔ Someone else changed this board while you were editing. Your last changes were not saved.',
@@ -162,6 +163,11 @@ export function mountEditor(outlet, { boardId }) {
             bannerEl.hidden = false;
             replace(bannerEl, '🗄️ This board is archived (read-only). Restore it to edit or publish.',
                 h('button', { type: 'button', class: 'a-btn sm', onClick: () => statusAction('restore') }, 'Restore'));
+        } else if (s.board?.status === 'import') {
+            bannerEl.hidden = false;
+            bannerEl.classList.add('is-info');
+            replace(bannerEl, h('span', null,
+                '✨ Made by the AI content tools — check the answers and each picture’s rights (⋯ on a tile shows the source, license and a screenshot of where it came from), fill any empty tiles, then Publish.'));
         } else {
             bannerEl.hidden = true;
         }

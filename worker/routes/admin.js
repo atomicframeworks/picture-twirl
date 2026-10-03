@@ -14,6 +14,7 @@ import {
 } from '../lib/boards.js';
 import { checkUpload, publicImage, storeImage, updateImageRights } from '../lib/images.js';
 import { fetchImageFromUrl } from '../lib/fetchImage.js';
+import { listImportRuns } from './import.js';
 import { first, now } from '../lib/db.js';
 import { HttpError, json } from '../lib/http.js';
 
@@ -66,6 +67,11 @@ export function registerAdminRoutes(router) {
 
     router.get('/api/admin/audit', admin(async ({ env, url }) => json({
         entries: await listAudit(env, { limit: url.searchParams.get('limit'), boardId: url.searchParams.get('board') }),
+    })));
+
+    // Content-tool runs (npm run content:*), newest first, with board counts.
+    router.get('/api/admin/import-runs', admin(async ({ env, url }) => json({
+        runs: await listImportRuns(env, url.searchParams.get('limit')),
     })));
 
     // ── Boards ───────────────────────────────────────────────────────────────
@@ -164,6 +170,17 @@ export function registerAdminRoutes(router) {
         const row = await first(env, 'SELECT * FROM images WHERE id = ?', params.id);
         if (!row) throw new HttpError(404, 'not_found');
         return json({ image: publicImage(row) });
+    }));
+
+    // License evidence screenshot (private; admins only).
+    router.get('/api/admin/images/:id/evidence', admin(async ({ env, params }) => {
+        const row = await first(env, 'SELECT evidence_key FROM images WHERE id = ?', params.id);
+        if (!row?.evidence_key) throw new HttpError(404, 'not_found');
+        const object = await env.MEDIA.get(row.evidence_key);
+        if (!object) throw new HttpError(404, 'not_found');
+        const headers = new Headers({ 'Cache-Control': 'private, max-age=3600' });
+        object.writeHttpMetadata(headers);
+        return new Response(object.body, { headers });
     }));
 
     router.patch('/api/admin/images/:id', admin(async ({ request, env, params, session }) => {

@@ -77,6 +77,26 @@ jump to that tile. **Publish** stays blocked until it's ✅; heads-ups (⚠️ r
 flags, small pictures, duplicate answers) don't block — you'll just be asked
 to confirm when rights flags are present.
 
+## Reviewing AI imports (✨ To review)
+The content tools (`npm run content:sheet` / `content:discover`, run by a
+developer — COMMANDS.md) build whole boards from the team spreadsheet or from
+new ideas, with free-to-use pictures, and drop them here as **✨ To review**.
+The dashboard's **🤖 Content tool runs** card lists each run; **Review →**
+filters the table to those boards.
+- Open one: a blue banner says it was made by the AI. Check each tile — is the
+  picture right, fair for its points, family friendly? Swap any you don't like
+  (drop / paste / link a better one).
+- Each tile's **notes** say where it came from (spreadsheet row, the link a
+  person picked, or the AI's search and why it chose this picture). Tiles the
+  AI couldn't fill say so — add a picture by hand.
+- Each picture's **⋯** shows its source page, license and creator, the flags
+  the AI raised (logo, real person, answer visible), and **🧾 License
+  evidence** — a screenshot of the source page at the moment it was saved
+  (Unsplash pictures have the license text recorded instead).
+- When it's good: **Publish**, or **Move to draft** to keep working on it.
+  Once you've done either, the tools never change that board again. Boards you
+  don't want: **Archive**.
+
 ## Picture rights (please read)
 Every picture records **where it came from and its license**. Open a tile's
 **⋯** to see and edit it:
@@ -95,4 +115,5 @@ Every picture records **where it came from and its license**. Open a tile's
 
 ## Activity
 Every create / rename / publish / move-to-draft / archive / restore is logged
-with who and when (Activity tab, and on the dashboard).
+with who and when (Activity tab, and on the dashboard). Content-tool changes
+show as **AI · <developer>** (e.g. "re-imported").

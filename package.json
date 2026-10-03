@@ -7,6 +7,7 @@
     "setup": "node scripts/ensure-setup.mjs",
     "predev": "node scripts/ensure-setup.mjs && npm run db:setup:local",
     "dev": "vite",
+    "dev:e2e": "node scripts/e2e-server.mjs",
     "preshare": "node scripts/ensure-setup.mjs && npm run db:setup:local",
     "share": "node scripts/share.js",
     "prebuild": "node scripts/ensure-setup.mjs",
@@ -38,6 +39,9 @@
     "wrangler": "^4.147.0"
   },
   "dependencies": {
-    "firebase": "^11.10.0"
+    "emoji-picker-element": "^1.29.1",
+    "emoji-picker-element-data": "^1.8.0",
+    "firebase": "^11.10.0",
+    "sortablejs": "^1.15.7"
   }
 }

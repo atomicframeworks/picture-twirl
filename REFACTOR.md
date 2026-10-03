@@ -281,7 +281,10 @@ Increments (each its own commit, behavior-preserving, verified by `node --check`
 | 2026-09-27 | feature | Extract `ui/diceButton.js`; dice re-roll on both screen-name fields | `88aaa01` |
 | 2026-09-27 | feature | Prefill + dice re-roll for the game title (`GAME_NAMES`, `pt.prefs.gameName`) | `899917f` |
 | 2026-10-03 | Cloudflare M0 | Branch `cloudflare` (tag `pre-cloudflare` = `e2b1f83`): wrangler.jsonc + @cloudflare/vite-plugin, Worker skeleton, D1 schema, Docker → Debian, PROPOSAL.md | `8fffce2` |
-| 2026-10-03 | Cloudflare M1 | Boards come from the Worker (`/api/boards`, `/media/*`, D1/R2) instead of `predefinedGames.js`; shared `src/shared/{boards,rights}.js`; local seed of the test board; `ui/boardPicker.js` for Create + Play Again; "Pick a Board" wording; test layers (unit/API via `node --test`) + e2e updated (TESTING.md) | M1 commit on `cloudflare` (see `git log`) |
+| 2026-10-03 | Cloudflare M1 | Boards come from the Worker (`/api/boards`, `/media/*`, D1/R2) instead of `predefinedGames.js`; shared `src/shared/{boards,rights}.js`; local seed of the test board; `ui/boardPicker.js` for Create + Play Again; "Pick a Board" wording; test layers (unit/API via `node --test`) + e2e updated (TESTING.md) | `8bfdc07` |
+| 2026-10-03 | Cloudflare tooling | Self-healing setup (`scripts/ensure-setup.mjs`): auto `npm install` / `.dev.vars` / Playwright browser before dev, build and tests | `80595e0` |
+| 2026-10-03 | Cloudflare M2a | Admin API: password + signed session cookie + login rate limit, autosave with `rev` conflicts, publish gate, status machine, bulk, picture upload/link import/rights, stats, audit | `5e6945f` |
+| 2026-10-03 | Cloudflare M2 | `/admin/` app (dashboard, boards table, editor with drag/arrows/undo/autosave, pictures by drop/click/paste/link, rights drawer with preview twirl, emoji picker); isolated e2e server on :3100; ADMIN.md guide | M2 commit on `cloudflare` |
 
 > Append a row per commit. Keep the newest at the bottom.
 

@@ -24,7 +24,7 @@ downloads Playwright's Chromium (~90 MB, outside the repo) on first use.
 | **Lint** | `npm run lint` | ESLint | 2 s | Undefined names, unused code. Must be **0 errors** (warnings are tolerated, but don't add new ones) |
 | **Unit** | `npm run test:unit` | `node --test` | 1 s | Pure logic: board shape + snapshot (`src/shared/boards.js`), license rules (`src/shared/rights.js`), the Worker router, snapshot → live board (`toBoardSet` + `buildBoardFromSet`) |
 | **API** | `npm run test:api` | `node --test` + real local D1/R2 | 5 s | The real Worker (`worker/index.js`) answering real requests against a throwaway database: routes, status codes, cache headers, media privacy, uniqueness, rights, revisions, audit log |
-| **E2E** | `npm run test:e2e` | Playwright + Chromium (Pixel 7 emulation) | 35 s | Whole flows in a browser: create → pick a board → lobby → join → start → swirl → buzz → award → reveal; board picker states; GM tour; component gallery |
+| **E2E** | `npm run test:e2e` | Playwright + Chromium (Pixel 7 emulation; admin at desktop size) | ~55 s | Whole flows in a browser: create → pick a board → lobby → join → start → swirl → buzz → award → reveal; board picker states; GM tour; the admin end to end; component gallery |
 
 ### Unit — `tests/unit/*.test.mjs`
 Plain functions with no I/O. Use `node:test` + `node:assert/strict`, nothing else.
@@ -49,9 +49,15 @@ await t.dispose();                        // closes bindings, deletes the folder
   laptops).
 
 ### E2E — `tests/*.spec.js`
-- `playwright.config.js` starts `npm run dev` (or reuses one already running on
-  :3000). `npm run dev` migrates + seeds the local database first, so the
+- `playwright.config.js` starts its **own** server, `npm run dev:e2e`
+  (`scripts/e2e-server.mjs`): port **3100**, local database in
+  `.wrangler/e2e-state`, **wiped + migrated + seeded on every start** — so runs
+  are repeatable and your dev data on :3000 is never touched. (If an e2e server
+  is already running, Playwright reuses it and its data carries over.) The
   internal test board **Pop Culture Icons** is always published.
+- Admin specs sign in with the dev password from `.dev.vars.example` and run at
+  desktop size; they build complete boards quickly through the admin API
+  (`apiReadyBoard`) and use the UI for what they actually test.
 - Shared flows live in `tests/helpers.js` (`createGameAsGM`, `joinAsPlayer`, …);
   `tests/fixtures.js` provides a `gm` fixture (a fresh game per test, ended in
   teardown).
@@ -83,6 +89,8 @@ worked). They're ended in teardown. After M4 the whole suite is local.
 | `tests/boards.spec.js` | Board list comes from the API; Next gated on selection; error + retry; titles rendered as text (no HTML injection) |
 | `tests/lobby.spec.js` | GM lobby code; a player joins and picks a team |
 | `tests/tour.spec.js` | First-time GM sees the lobby tour; Skip dismisses it for good |
+| `tests/unit/draftOps.test.mjs` | Editor moves: insert-and-shift within a category, cross-category swap, move a category, immutability |
+| `tests/admin.spec.js` | Admin in a browser: sign-in (wrong/right password, sign-out clears the cookie), new-board dialog + live name check, editor (category name, file-chooser upload, answers, autosave, ▼ move with picture, ◀▶ category move, undo, persisted after reload), paste a picture, publish gate → publish → listed in the game's Pick a Board, tile drawer (preview twirl, rights edit → reasons + badges), boards table (search, bulk archive with confirm, archived filter + URL, select-all, bulk restore) |
 | `tests/game.spec.js` | Live game: board, picture served from `/media`, swirl + pause/resume, buzz, award (score + confetti), continue, reveal-without-award |
 | `tests/gallery.spec.js` | Component gallery renders; modal opens |
 

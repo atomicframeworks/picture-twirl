@@ -10,6 +10,8 @@
 // login. Run it while the dev server is stopped (both use the same files).
 //
 // Start over:  delete .wrangler/state, then `npm run dev`.
+// PT_STATE_DIR=<dir> seeds a different local state folder (the e2e server uses
+// .wrangler/e2e-state).
 
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +26,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SEED_DIR = path.join(root, 'content', 'seed');
 const SEEDS = ['pop-icons'];
 
-const { env, dispose } = await getPlatformProxy({ configPath: path.join(root, 'wrangler.jsonc') });
+const stateDir = process.env.PT_STATE_DIR;
+const { env, dispose } = await getPlatformProxy({
+    configPath: path.join(root, 'wrangler.jsonc'),
+    // Same layout as `wrangler … --persist-to <dir>`: state lives in <dir>/v3.
+    ...(stateDir && { persist: { path: path.join(root, stateDir, 'v3') } }),
+});
 try {
     for (const name of SEEDS) await seedBoard(name);
 } finally {

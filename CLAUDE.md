@@ -9,10 +9,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > **Cloudflare switch-over in progress on branch `cloudflare`** (plan + decisions:
 > [PROPOSAL.md](PROPOSAL.md) §9). Milestones land on that branch and merge into
 > `main` once, with a migration guide. Done so far: **M0** (local Worker + D1/R2
-> setup) and **M1** (Boards come from the Worker API instead of bundled JS).
-> Still Firebase: the live game (until M4). Everything Cloudflare runs
-> **locally only** until cutover — never `wrangler deploy` from this branch.
-> Testing rules: [TESTING.md](TESTING.md).
+> setup), **M1** (Boards come from the Worker API instead of bundled JS) and
+> **M2** (the `/admin/` app: dashboard, boards table, editor, pictures, rights,
+> publishing — user guide [ADMIN.md](ADMIN.md)). Still Firebase: the live game
+> (until M4). Everything Cloudflare runs **locally only** until cutover — never
+> `wrangler deploy` from this branch. Testing rules: [TESTING.md](TESTING.md).
 
 ## Project Overview
 
@@ -219,7 +220,25 @@ Boards are content in a database, not code (PROPOSAL.md §4):
   D1/R2 (pictures normalized by `tools/content/lib/images.mjs` with sharp). Its
   pictures are flagged "Rights unknown" — it's a test board.
 
-**Admin API** (`worker/routes/admin.js`; UI at `/admin/` from M2):
+**Admin UI** (`/admin/` → `admin/index.html` + `src/admin/`; user guide: [ADMIN.md](ADMIN.md)):
+- Vanilla ES modules like the game, styled by `src/admin/admin.css` on the
+  game's `tokens.css`. Hash routes (`#/`, `#/boards`, `#/boards/:id`,
+  `#/activity`) so `/admin/` is the only page. Libraries: `sortablejs` (drag),
+  `emoji-picker-element` (+ self-hosted `emoji-picker-element-data`).
+- `lib/dom.js` `h()` builds DOM; **strings are always text, never HTML** (keep
+  it that way — board/picture data comes from the database). `lib/api.js` is
+  the only fetch path (401 → sign-in). `lib/draftOps.js` = pure board moves
+  (unit-tested). `lib/imageTools.js` = in-browser resize to display/thumb/
+  archive WebP (JPEG fallback) + upload; links go through the Worker's fetch.
+- `views/editor.js`: every edit makes a new draft → re-render → debounced
+  autosave `PUT` with `rev` (stale → "Changed elsewhere" banner, never
+  overwrite); text inputs update state without re-render (keeps focus);
+  ▲▼ = move within a category (points follow the row), ◀▶ = move a category,
+  drag across categories = swap; ⌘/Ctrl+Z undo outside text fields; paste
+  targets the tile under the mouse. `ui/tileDrawer.js`: big picture, preview
+  twirl (reuses `src/game/swirl.js`), answer/notes, rights form.
+
+**Admin API** (`worker/routes/admin.js`):
 - Auth (`worker/lib/auth.js`): one shared password (secret `ADMIN_PASSWORD`) +
   a "who's editing" name → HMAC-signed session cookie `pt_admin` (secret
   `SESSION_SECRET`, HttpOnly, SameSite=Strict, 7 days). Failed logins are
@@ -313,7 +332,9 @@ Example: Store actual config in `.env.local` (gitignored).
 
 ```
 index.html                     # App shell: Home/Create/Ready/Join views + <template>s (lobby, game)
+admin/index.html               # The admin page (/admin/) → src/admin/main.js
 gallery.html                   # Dev-only component showcase (src/gallery.js)
+public/_headers                # Production response headers (noindex/no-frame for /admin)
 wrangler.jsonc                 # Cloudflare Worker config: assets, D1 (DB), R2 (MEDIA)
 vite.config.js                 # Vite + @cloudflare/vite-plugin (runs the Worker in dev)
 
@@ -364,6 +385,12 @@ src/
 │   ├── renderLateJoin.js      # Late joiner "waiting for GM" screen
 │   ├── renderFinale.js        # End-game finale (winner, scores, MVP, Play Again)
 │   └── renderRoundSetup.js    # Play Again: GM picks the next board
+├── admin/                     # The admin app (see "Admin UI" above)
+│   ├── main.js                # Boot: signed out → login; else shell + hash routes
+│   ├── admin.css              # Admin styles (on the game's tokens)
+│   ├── lib/                   # dom (h), api, router, format, draftOps, imageTools
+│   ├── ui/                    # feedback (toasts/dialogs), chips, emojiField, tileDrawer
+│   └── views/                 # login, shell, dashboard, boards (table), editor, activity
 ├── components/                # Factory components (used by the gallery)
 ├── styles/tokens.css          # Design tokens (Playful Party theme)
 └── *.css                      # Per-screen stylesheets (linked from index.html)
@@ -371,20 +398,27 @@ src/
 worker/                        # Cloudflare Worker (runs only for /api/* and /media/*)
 ├── index.js                   # Entry: router + error handling
 ├── routes/public.js           # /api/boards, /api/boards/:id, /media/*
-├── lib/http.js                # json(), HttpError, createRouter()
+├── routes/admin.js            # /api/admin/* (sign-in, boards, pictures, stats, audit)
+├── lib/http.js                # json(), HttpError(+details), errorResponse, createRouter()
 ├── lib/db.js                  # D1 helpers, ids, audit(), sha256Hex()
-├── lib/boards.js              # Boards: list/get published, createBoard, publishBoard
-├── lib/images.js              # Pictures: storeImage (R2 + D1), imagesByIds
+├── lib/auth.js                # Admin password check, signed session cookie, login rate limit
+├── lib/boards.js              # Boards: public reads, admin list/get, create, autosave, publish gate, status machine, bulk, stats, audit
+├── lib/images.js              # Pictures: upload checks, storeImage (R2 + D1), rights edits + recount
+├── lib/media.js               # Magic-byte type sniffing + header dimensions (WebP/JPEG/PNG)
+├── lib/fetchImage.js          # "Paste a link" download: SSRF guards, size cap, og:image
 └── rooms/firebase-rules.legacy.jsonc  # Firebase rules as deployed (reference for M4)
 
 migrations/0001_init.sql       # D1 schema (applied by `npm run db:migrate:local`)
+migrations/0002_admin_login_attempts.sql  # login rate-limit table
 content/
 ├── sources/Picture Twirl Content Tracker.xlsx  # Export of the team's Google Sheet
 └── seed/pop-icons.json + pop-icons/            # Internal test board (local seed)
 tools/content/lib/images.mjs   # Picture normalizing (sharp): display/thumb/archive WebP
 scripts/
 ├── share.js                   # Dev server + Cloudflare quick tunnel (npm run share)
-└── seed-local.mjs             # Seeds the local D1/R2 (runs before dev/share)
+├── ensure-setup.mjs           # Self-healing setup (npm install / .dev.vars / e2e browser)
+├── seed-local.mjs             # Seeds the local D1/R2 (runs before dev/share; PT_STATE_DIR for others)
+└── e2e-server.mjs             # Isolated server for Playwright: :3100, fresh .wrangler/e2e-state
 tests/                         # See TESTING.md
 ├── unit/*.test.mjs            # node --test: pure logic
 ├── api/*.test.mjs             # node --test: real Worker + throwaway local D1/R2

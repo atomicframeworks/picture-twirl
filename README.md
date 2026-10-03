@@ -25,6 +25,10 @@ browser when you run `npm run test:e2e`.
 a local D1 database and R2 bucket under `.wrangler/` — migrated and seeded with
 the internal test board automatically. No Cloudflare account or login needed.
 
+The **admin** (manage boards, pictures and rights) is at
+http://localhost:3000/admin/ — local password `dev-admin-password`. How to use
+it: [ADMIN.md](ADMIN.md).
+
 ## Quick start (Docker fallback)
 
 ```powershell

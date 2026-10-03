@@ -1,0 +1,36 @@
+{
+    "$schema": "./node_modules/wrangler/config-schema.json",
+    // Picture Twirl — ONE Worker serves the game (static assets), the admin and
+    // the API. Architecture: PROPOSAL.md §3 and §8.
+    //
+    // LOCAL-ONLY until cutover (PROPOSAL.md §9.2): `npm run dev` simulates D1/R2
+    // on this machine and needs no Cloudflare login. Do NOT `wrangler deploy`
+    // from this branch before cutover — the logged-in account may not be the
+    // Picture Twirl one. `account_id` gets pinned here at cutover.
+    "name": "picture-twirl",
+    "main": "./worker/index.js",
+    // Newest date the bundled workerd supports; bump when wrangler is upgraded.
+    "compatibility_date": "2026-10-01",
+
+    "assets": {
+        "binding": "ASSETS",
+        // Unknown paths fall back to index.html (the game routes with #CODE).
+        "not_found_handling": "single-page-application",
+        // Everything else is a static file; only these paths run the Worker.
+        "run_worker_first": ["/api/*", "/media/*"]
+    },
+
+    // Content database (boards, images, audit). Schema: migrations/.
+    // No database_id: local dev doesn't need one, and the real database is
+    // created + pinned at cutover.
+    "d1_databases": [
+        { "binding": "DB", "database_name": "picture-twirl", "migrations_dir": "migrations" }
+    ],
+
+    // Pictures (display/thumb/archive) + license evidence screenshots.
+    "r2_buckets": [
+        { "binding": "MEDIA", "bucket_name": "picture-twirl-media" }
+    ],
+
+    "observability": { "enabled": true }
+}

@@ -1,0 +1,94 @@
+// worker/rooms/firebase-rules.legacy.jsonc
+//
+// REFERENCE ONLY: the Firebase Realtime Database rules as deployed on
+// 2026-10-03 (copied from the Firebase console; they were never in git).
+// Milestone M4 ports them into the GameRoom Durable Object's rules
+// (PROPOSAL.md §8.4) — and tightens them. Gaps noted there:
+//   • any signed-in user who knows a code can read the whole game, answers
+//     included (AUDIT M7);
+//   • a player can write any field of their own participant row (e.g. isGM);
+//   • everything not listed below is covered by the game-level "host may
+//     write" rule (selectedTile, currentTurn, swirlPaused, state, settings…).
+// Delete this file together with Firebase at cutover.
+{
+  "rules": {
+    // Default deny; open what we need below.
+    ".read": false,
+    ".write": false,
+
+    "gameIndex": {
+      "$gameId": {
+        // Publicly readable so join checks work without privileged reads.
+        ".read": true,
+        // Only the host of that game can write this index row.
+        ".write": "auth != null && root.child('games/' + $gameId + '/hostUid').val() === auth.uid"
+      }
+    },
+
+    "games": {
+      "$gameId": {
+        // All authenticated users (incl. Anonymous) can read a live game.
+        ".read": "auth != null",
+
+        // Host can create/update the game subtree.
+        ".write": "auth != null && ( (!data.exists() && newData.child('hostUid').val() === auth.uid) || data.child('hostUid').val() === auth.uid )",
+
+        "participants": {
+          "$uid": {
+            ".read": "auth != null",
+            // Each user can write only their own participant row (presence, name, team selection if you allow it).
+            ".write": "auth != null && auth.uid === $uid",
+            "joinedAt": {
+              // Immutable once set (host seeds it; clients can’t later change it).
+              ".validate": "!data.exists() || newData.val() === data.val()"
+            }
+          }
+        },
+
+        "scores": {
+          ".read": "auth != null",
+          // Only host adjusts scores
+          ".write": "auth != null && root.child('games/' + $gameId + '/hostUid').val() === auth.uid",
+          "A": { ".validate": "newData.isNumber()" },
+          "B": { ".validate": "newData.isNumber()" }
+        },
+
+        "board": {
+          ".read": "auth != null",
+          // Only host can change board tile state (opened/answered/etc.)
+          ".write": "auth != null && root.child('games/' + $gameId + '/hostUid').val() === auth.uid",
+          "$tileId": {
+            "opened":        { ".validate": "newData.isBoolean()" },
+            "answered":      { ".validate": "newData.isBoolean()" },
+            "answeredBy":    { ".validate": "newData.val() === null || newData.isString()" },
+            "awardedPoints": { ".validate": "newData.isNumber()" },
+            "locked":        { ".validate": "newData.isBoolean()" },
+            "lastActionAt":  { ".validate": "newData.isNumber()" }
+          }
+        },
+
+        "currentQuestion": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('games/' + $gameId + '/hostUid').val() === auth.uid"
+        },
+
+        "swirlStartTime": {
+          ".read": "auth != null",
+          ".write": "auth != null && root.child('games/' + $gameId + '/hostUid').val() === auth.uid"
+        },
+
+        "buzzQueue": {
+          ".read": "auth != null",
+          "$pushId": {
+            // Create: any authed player may ADD their own buzz (new child).
+            // Delete: only the host may DELETE entries (to clear/advance).
+            ".write": "auth != null && ( (!data.exists() && newData.exists() && newData.child('uid').val() === auth.uid) || (data.exists() && !newData.exists() && root.child('games/' + $gameId + '/hostUid').val() === auth.uid) )",
+
+            // On create, require required fields to exist
+            ".validate": "!data.exists() || newData.hasChildren(['uid','createdAt'])"
+          }
+        }
+      }
+    }
+  }
+}

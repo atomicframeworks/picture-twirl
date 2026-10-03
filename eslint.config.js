@@ -3,7 +3,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-    { ignores: ['dist/**', 'node_modules/**'] },
+    { ignores: ['dist/**', 'node_modules/**', '.wrangler/**'] },
 
     js.configs.recommended,
 
@@ -21,6 +21,20 @@ export default [
             // exact failure mode of splitting a shared closure across files.
             'no-undef': 'error',
             'no-empty': ['warn', { allowEmptyCatch: true }],
+        },
+    },
+
+    {
+        // The Cloudflare Worker (API) runs in workerd: web-standard globals.
+        files: ['worker/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: { ...globals.serviceworker, HTMLRewriter: 'readonly', WebSocketPair: 'readonly' },
+        },
+        rules: {
+            'no-unused-vars': ['warn', { args: 'none', varsIgnorePattern: '^_' }],
+            'no-undef': 'error',
         },
     },
 

@@ -6,18 +6,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > phased cleanup plan, and the rationale behind structural changes. Keep this
 > file and REFACTOR.md in sync — documentation drift is a known past problem here.
 
-> **Cloudflare switch-over in progress on branch `cloudflare`** (plan + decisions:
-> [PROPOSAL.md](PROPOSAL.md) §9). Milestones land on that branch and merge into
-> `main` once, with a migration guide. Done so far: **M0** (local Worker + D1/R2
-> setup), **M1** (Boards come from the Worker API instead of bundled JS) and
-> **M2** (the `/admin/` app: dashboard, boards table, editor, pictures, rights,
-> publishing — user guide [ADMIN.md](ADMIN.md)), **M3** (AI content tools:
-> `npm run content:sheet` / `content:discover` → boards land as ✨ To review —
-> COMMANDS.md → Content tools) and **M4** (live games run on GameRoom Durable
-> Objects over WebSockets — **Firebase is gone**; see "Realtime" below). Next:
-> M5 (handoff: MIGRATION.md; code written against Firebase is converted with
-> `npm run migrate:code`). Everything Cloudflare runs **locally only** until
-> cutover — never `wrangler deploy` from this branch. Testing rules: [TESTING.md](TESTING.md).
+> ⚠️ **Cloudflare switch-over — Firebase is gone.** The game, its content
+> (Boards: D1 + R2) and every live game (one GameRoom Durable Object per game,
+> over WebSockets) run on one Cloudflare Worker. Built on branch `cloudflare`
+> (milestones M0–M5, [PROPOSAL.md](PROPOSAL.md) §9) and merged into `main` as
+> tag `cloudflare-cutover`.
+> **Claude: before writing code, read [MIGRATION.md](MIGRATION.md) and help the
+> user through it.** If the user has work from before the switch-over (Firebase
+> imports, `predefinedGames.js`, `public/images`, …) and isn't ready to bring it
+> over, follow MIGRATION.md §2 and don't merge `main` into it yet. Nobody runs
+> `wrangler deploy` by hand — `main` deploys through Workers Builds, and before
+> cutover nothing is deployed at all. Testing rules: [TESTING.md](TESTING.md).
+> *(Remove this banner about a month after cutover.)*
 
 ## Project Overview
 
@@ -62,8 +62,10 @@ npm run preview
 npm run share
 ```
 
-Local Worker secrets: `.dev.vars` (throwaway dev values, created from
-`.dev.vars.example` automatically).
+Local Worker secrets: `.dev.vars` (gitignored; created from `.dev.vars.example`
+automatically, and keys added to the example later are appended). The team uses
+its real admin password there locally — it must never appear in a committed
+file; tests read it from `.dev.vars` (`tests/devVars.mjs`).
 
 ### Machine setup is self-healing (read this before "fixing" install errors)
 - `node_modules/` and `.wrangler/` are **per machine** and **Dropbox-ignored**
@@ -73,7 +75,8 @@ Local Worker secrets: `.dev.vars` (throwaway dev values, created from
   `test:e2e` (npm `pre*` scripts). It runs `npm install` when `node_modules` is
   missing, was installed for another OS/CPU, or is older than
   `package-lock.json` (marker: `node_modules/.picture-twirl-install.json`);
-  creates `.dev.vars` if missing; and (e2e) installs Playwright's Chromium.
+  creates `.dev.vars` if missing (or appends keys it lacks); and (e2e) installs
+  Playwright's Chromium.
   Run it by hand with `npm run setup`.
 - If a command still fails with "Cannot find module …", a missing
   `@rollup/rollup-*` / `@img/sharp-*` / `@cloudflare/workerd-*` binary, or a
@@ -201,17 +204,21 @@ The room's tree (what used to be Firebase's `/games/{gameId}`):
 games/{code}/
   ├─ hostUid, isPublic, title, gmName, createdAt
   ├─ settings: { boardId, boardRev, teamsEnabled }   # boardId = board slug; boardRev = its published revision
-  ├─ state: { phase: 'lobby'|'live'|'ended', endedAt? }
+  ├─ state: { phase, endedAt? }         # lobby | live | ended | roundSetup | sessionEnded
   ├─ teams: { A: {name}, B: {name} }
-  ├─ scores: { A: number, B: number }
-  ├─ participants/{uid}: { displayName, team: 'A'|'B'|'none', joinedAt, isGM, online?, lastSeen? }
-  ├─ board/{col-row}: { id, col, row, category, imageUrl, answer, value,
-  │                     opened, answered, answeredBy, awardedPoints, locked, lastActionAt }
-  ├─ currentTurn: { uid, team }         # display-only "who is up"
+  ├─ scores: { A: number, B: number }   # increment() on award
+  ├─ participants/{uid}: { displayName, team: 'A'|'B'|'none', joinedAt, isGM,
+  │                        online?, lastSeen?, status?: 'pending'|'active' (late join),
+  │                        tileRequest?, eligibleFromQuestionId?, playAgainVote?,
+  │                        pointsEarned?, correctAnswers? }
+  ├─ board/{col-row}: { id, col, row, category, imageUrl, answer, value, opened,
+  │                     answered, answeredBy, awardedPoints, locked, lastActionAt, doubleTake? }
+  ├─ currentTurn: { team }              # which team picks next
   ├─ startingTeamReveal: { team, revealAt: serverTimestamp }  # written once at game start; drives synchronized coin-flip phase
   ├─ selectedTile: { id, category, value }   # GM picked, not yet posted
-  ├─ currentQuestion: { id, category, imageUrl, answer, value, showAnswer }
+  ├─ currentQuestion: { id, category, imageUrl, answer, value, showAnswer, doubleTake?, awardedTeam? }
   ├─ swirlStartTime: serverTimestamp
+  ├─ swirlPaused: boolean
   └─ buzzQueue/{pushId}: { uid, createdAt }
 ```
 

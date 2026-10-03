@@ -6,7 +6,8 @@
 //
 //   1. node_modules missing, installed for another OS/CPU (it's per machine and
 //      Dropbox-ignored), or older than package-lock.json  →  `npm install`
-//   2. .dev.vars missing  →  copied from .dev.vars.example (local dev values)
+//   2. .dev.vars missing  →  copied from .dev.vars.example (local dev values);
+//      a key the example has but .dev.vars lacks (added later) → appended
 //   3. with --e2e: Playwright's Chromium missing  →  `npx playwright install chromium`
 //
 // Fast when everything is fine (a hash + a couple of file checks). Node
@@ -60,6 +61,18 @@ if (why) {
 if (!existsSync(at('.dev.vars')) && existsSync(at('.dev.vars.example'))) {
     copyFileSync(at('.dev.vars.example'), at('.dev.vars'));
     console.log('setup: created .dev.vars from .dev.vars.example (local dev values)');
+} else if (existsSync(at('.dev.vars')) && existsSync(at('.dev.vars.example'))) {
+    // An older .dev.vars may miss a secret added since (e.g. SESSION_SECRET for live
+    // games): append the example's value. Existing values are never touched.
+    const keysOf = (text) => new Set([...text.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/gm)].map(m => m[1]));
+    const mine = readFileSync(at('.dev.vars'), 'utf8');
+    const have = keysOf(mine);
+    const missing = readFileSync(at('.dev.vars.example'), 'utf8').split(/\r?\n/)
+        .filter(line => { const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/); return m && !have.has(m[1]); });
+    if (missing.length) {
+        writeFileSync(at('.dev.vars'), `${mine.replace(/\s*$/, '')}\n# added by scripts/ensure-setup.mjs from .dev.vars.example\n${missing.join('\n')}\n`);
+        console.log(`setup: added ${missing.map(l => l.split('=')[0].trim()).join(', ')} to .dev.vars (from .dev.vars.example)`);
+    }
 }
 
 // ── 3. Browser for e2e tests ─────────────────────────────────────────────────

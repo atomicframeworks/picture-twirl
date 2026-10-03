@@ -2,7 +2,7 @@
 //
 // A Firebase-Realtime-Database-shaped API over our GameRoom connections
 // (src/realtime/client.js), so the game moved off Firebase without its logic
-// changing — only the import lines did (PROPOSAL.md §8.4, §9.3):
+// changing — only the import lines did (PROPOSAL.md §8.4; old code: MIGRATION.md):
 //
 //   import { ref, onValue, get, set, update, remove, push, serverTimestamp,
 //            increment, onDisconnect } from '../realtime/db.js';

@@ -1,6 +1,7 @@
 // src/realtime/client.js
 //
 // The browser side of live games (PROPOSAL.md §8.4) — replaces src/firebase.js.
+// Coming from code written against Firebase? Read MIGRATION.md first.
 // -----------------------------------------------------------------------------
 //   identity  an anonymous player { uid, token } from POST /api/player, kept in
 //             localStorage (survives tab close and reload, so a host stays the

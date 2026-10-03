@@ -24,10 +24,10 @@ export default [
             // Firebase is gone (PROPOSAL.md §8.4): live games use src/realtime/. Code merged
             // from an older branch gets its imports rewritten by `npm run migrate:code`.
             'no-restricted-imports': ['error', {
-                paths: [{ name: 'firebase', message: 'Firebase was replaced by src/realtime/ — run `npm run migrate:code`.' }],
+                paths: [{ name: 'firebase', message: 'Firebase was replaced by src/realtime/ — run `npm run migrate:code` (MIGRATION.md §5).' }],
                 patterns: [
-                    { group: ['firebase/*'], message: 'Firebase was replaced by src/realtime/db.js — run `npm run migrate:code`.' },
-                    { group: ['**/firebase.js'], message: 'src/firebase.js was replaced by src/realtime/client.js — run `npm run migrate:code`.' },
+                    { group: ['firebase/*'], message: 'Firebase was replaced by src/realtime/db.js — run `npm run migrate:code` (MIGRATION.md §5).' },
+                    { group: ['**/firebase.js'], message: 'src/firebase.js was replaced by src/realtime/client.js — run `npm run migrate:code` (MIGRATION.md §5).' },
                 ],
             }],
         },

@@ -13,8 +13,9 @@ npm run test:e2e     # browser flows in Chromium (~35 s, needs .env.local for Fi
 npm run test:all     # both
 ```
 
-First time on a machine: `npx playwright install chromium` (downloads the test
-browser, ~90 MB, outside the repo).
+Setup is automatic (`scripts/ensure-setup.mjs` runs first): dependencies are
+installed/refreshed when needed, `.dev.vars` is created, and `npm run test:e2e`
+downloads Playwright's Chromium (~90 MB, outside the repo) on first use.
 
 ## The layers
 
@@ -99,7 +100,10 @@ Every change — and every switch-over milestone — ships with:
 
 ## Troubleshooting
 
-- **`Executable doesn't exist … ms-playwright`** → `npx playwright install chromium`.
+- **`Executable doesn't exist … ms-playwright`** → `npm run setup -- --e2e`
+  (or `npx playwright install chromium`).
+- **"Cannot find module" / platform binary errors** → `npm run setup` (or
+  `npm install`); `node_modules` is per machine.
 - **E2E hangs on the lobby** → a new overlay/tour is covering controls; dismiss it
   in the fixture (see `skipGMTour`) and test it separately.
 - **API tests: `no such table`** → the harness applies migrations itself; if you

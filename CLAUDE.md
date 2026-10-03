@@ -48,7 +48,22 @@ npm run preview
 npm run share
 ```
 
-Local Worker secrets: `cp .dev.vars.example .dev.vars` (throwaway dev values).
+Local Worker secrets: `.dev.vars` (throwaway dev values, created from
+`.dev.vars.example` automatically).
+
+### Machine setup is self-healing (read this before "fixing" install errors)
+- `node_modules/` and `.wrangler/` are **per machine** and **Dropbox-ignored**
+  (the repo lives in Dropbox and is used from Mac and Windows). Never copy them
+  between machines.
+- `scripts/ensure-setup.mjs` runs before `dev`, `share`, `build`, `test` and
+  `test:e2e` (npm `pre*` scripts). It runs `npm install` when `node_modules` is
+  missing, was installed for another OS/CPU, or is older than
+  `package-lock.json` (marker: `node_modules/.picture-twirl-install.json`);
+  creates `.dev.vars` if missing; and (e2e) installs Playwright's Chromium.
+  Run it by hand with `npm run setup`.
+- If a command still fails with "Cannot find module …", a missing
+  `@rollup/rollup-*` / `@img/sharp-*` / `@cloudflare/workerd-*` binary, or a
+  platform mismatch: run `npm install` (or `npm run setup`) and retry.
 
 ## Architecture
 

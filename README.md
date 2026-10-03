@@ -12,11 +12,14 @@ Multiplayer trivia game where players guess images as they gradually "unswirl" f
 ## Quick start
 
 ```bash
-npm install
-cp .dev.vars.example .dev.vars    # local Worker secrets (dev values)
 npm run dev                       # → http://localhost:3000
 npm test                          # lint + unit + API tests
 ```
+
+Setup is automatic: before `dev`/`share`/`build`/tests, `scripts/ensure-setup.mjs`
+runs `npm install` when needed (missing, other OS, or `package-lock.json`
+changed), creates `.dev.vars` from `.dev.vars.example`, and installs the e2e
+browser when you run `npm run test:e2e`.
 
 `npm run dev` runs Vite **and** the Worker in the local Cloudflare runtime, with
 a local D1 database and R2 bucket under `.wrangler/` — migrated and seeded with

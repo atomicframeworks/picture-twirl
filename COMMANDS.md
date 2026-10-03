@@ -3,10 +3,13 @@
 <!-- repo: github.com/atomicframeworks/picture-twirl -->
 
 ```bash
-npm install                     # first time on each machine (Windows + Mac/Linux separately)
-cp .dev.vars.example .dev.vars  # local Worker secrets (throwaway dev values)
-npx playwright install chromium # once per machine, for npm run test:e2e
+npm run dev                     # that's it — setup runs automatically first
 ```
+`npm run dev` (and `share`, `build`, `test`, `test:e2e`) first runs
+`scripts/ensure-setup.mjs`: `npm install` if `node_modules` is missing / from
+another OS / older than `package-lock.json`, `.dev.vars` from the example if
+missing, and (for e2e) Playwright's Chromium. Run it alone with `npm run setup`.
+
 Needs Node ≥ 22 (wrangler). The local Cloudflare runtime runs natively on
 macOS 13.5+, Windows 11 and glibc Linux (not Alpine — see docker-compose.yml).
 

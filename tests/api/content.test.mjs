@@ -3,7 +3,7 @@
 import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { startTestEnv, storeTestImage, fullDraft } from './_harness.mjs';
-import { createBoard, publishBoard } from '../../worker/lib/boards.js';
+import { createBoard, publishBoard, saveBoard } from '../../worker/lib/boards.js';
 import { HttpError } from '../../worker/lib/http.js';
 
 let t;
@@ -57,7 +57,7 @@ test('slugs stay unique when titles slugify the same', async () => {
     assert.equal(b.slug, 'logo-loco-2');
 });
 
-test('createBoard stores counts; publishBoard snapshots + keeps a revision', async () => {
+test('createBoard stores counts; the publish gate blocks until ready; publish snapshots + keeps a revision', async () => {
     const flagged = await storeTestImage(t.env, 30, {});           // rights unknown → flagged
     const fine = await storeTestImage(t.env, 31, { license: 'cc0' });
     const draft = fullDraft([flagged.id, fine.id]);
@@ -70,14 +70,26 @@ test('createBoard stores counts; publishBoard snapshots + keeps a revision', asy
     assert.equal(board.flagged_tiles, 13);                         // tiles 0,2,4,…,24 use the flagged picture
     assert.equal(board.published_json, null);
 
+    // Gate: a missing answer blocks publishing (422 with the problem list).
+    await assert.rejects(publishBoard(t.env, board.id, { actor: 'test' }), (err) =>
+        err instanceof HttpError && err.status === 422 && err.code === 'not_ready'
+        && err.details.problems.some(p => p.code === 'answer_missing' && p.cat === 4 && p.row === 4));
+
+    // Fix it (autosave), then publish: ⚠️ flagged pictures don't block.
+    draft.categories[4].tiles[4].answer = 'Finally';
+    const saved = await saveBoard(t.env, board.id, { rev: 1, draft }, 'test');
+    assert.equal(saved.board.rev, 2);
+    assert.equal(saved.validation.ok, true);
+    assert.ok(saved.validation.warnings.some(w => w.code === 'picture_flagged'));
+
     const snap = await publishBoard(t.env, board.id, { actor: 'test' });
     const row = await t.env.DB.prepare('SELECT * FROM boards WHERE id = ?').bind(board.id).first();
     assert.equal(row.status, 'published');
-    assert.equal(row.published_rev, 1);
+    assert.equal(row.published_rev, 2);
     assert.deepEqual(JSON.parse(row.published_json), snap);
 
     const rev = await t.env.DB.prepare('SELECT * FROM board_revisions WHERE board_id = ?').bind(board.id).first();
-    assert.equal(rev.rev, 1);
+    assert.equal(rev.rev, 2);
     assert.equal(rev.published_by, 'test');
 
     const actions = (await t.env.DB.prepare('SELECT action FROM audit_log WHERE board_id = ? ORDER BY id').bind(board.id).all()).results.map(r => r.action);

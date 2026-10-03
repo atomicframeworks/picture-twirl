@@ -219,6 +219,28 @@ Boards are content in a database, not code (PROPOSAL.md §4):
   D1/R2 (pictures normalized by `tools/content/lib/images.mjs` with sharp). Its
   pictures are flagged "Rights unknown" — it's a test board.
 
+**Admin API** (`worker/routes/admin.js`; UI at `/admin/` from M2):
+- Auth (`worker/lib/auth.js`): one shared password (secret `ADMIN_PASSWORD`) +
+  a "who's editing" name → HMAC-signed session cookie `pt_admin` (secret
+  `SESSION_SECRET`, HttpOnly, SameSite=Strict, 7 days). Failed logins are
+  rate-limited per IP (10 / 15 min, D1 `login_attempts`). Writes with a foreign
+  `Origin` are refused. Admin returns 503 unless both secrets are set. The
+  name is the `actor` in the audit log.
+- Boards: list, create (blank 5×5 draft), get (draft + pictures + publish
+  check), **autosave** `PUT` with optimistic concurrency (`rev`; stale → 409
+  `{error:'stale', rev}`), publish (the **gate**: `validateForPublish` in
+  `src/shared/boards.js` — missing pictures/answers/names or a ❌ blocked
+  picture block; ⚠️ flags, small pictures, duplicate answers only warn),
+  unpublish/archive/restore (status machine at the top of `worker/lib/boards.js`),
+  duplicate, bulk (never stops at the first failure), title check, stats, audit.
+- Pictures: `POST /api/admin/images` takes browser-normalized WebP/JPEG files
+  (type sniffed + size read from the header: `worker/lib/media.js`);
+  `POST /api/admin/images/fetch` downloads a link (or a page's og:image) with
+  SSRF guards (`worker/lib/fetchImage.js`) and returns the bytes for the
+  browser to normalize; `PATCH /api/admin/images/:id` edits rights (re-assessed,
+  ⚠️ counts of boards using it recomputed).
+- Errors are JSON `{ error, message, ...details }` via `HttpError(status, code, message, details)`.
+
 Snapshot shape (what `/api/boards/:id` returns):
 ```javascript
 { id, slug, rev, title, emoji, description, points: [100, 200, 300, 400, 500],

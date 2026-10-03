@@ -73,6 +73,9 @@ worked). They're ended in teardown. After M4 the whole suite is local.
 | `tests/unit/rights.test.mjs` | License decisions: free = ok, CC BY = credit, BY-SA = flagged, NC/ND = blocked, unknown = flagged; flag reasons exist |
 | `tests/unit/router.test.mjs` | `:params`, `*` rest, HEAD → GET, literal dots, JSON no-store default |
 | `tests/unit/boardsApi.test.mjs` | Snapshot → live game board (25 tiles keyed `col-row`, points by row) |
+| `tests/unit/validation.test.mjs` | `normalizeDraft` (exact 5×5, caps, bad ids dropped, keeps mid-typing spaces) and the publish gate (problems vs warnings, tile-pointing messages) |
+| `tests/unit/media.test.mjs` | Magic-byte sniffing, WebP/JPEG/PNG header sizes, private-host + URL guards, og:image extraction, session token sign/verify/tamper/expiry, constant-time compare, cookie parsing |
+| `tests/api/admin.test.mjs` | Admin sign-in (wrong password, name required, cookie flags, rate limit, tampered cookie), auth on every route, Origin check, logout, create/title rules, autosave + stale rev + rename, publish gate → publish → players see it, unpublished changes, unpublish/archive/restore rules, duplicate, bulk with skips, stats + audit, uploads (dedupe, disguised/oversized files), link guard, rights edits → ⚠️ recount / ❌ blocks |
 | `tests/api/public.test.mjs` | `/api/health`, `/api/boards` (published only, no-store), `/api/boards/:id` (id or slug, 404s), `/media/*` (WebP, immutable cache, 304, HEAD, private prefixes 404) |
 | `tests/api/content.test.mjs` | Picture dedupe, rights assessment on store, unique titles (case/space-insensitive) + slugs, counts, publish → snapshot + revision + audit |
 | `tests/smoke.spec.js` | Home loads; entry buttons enable after auth |

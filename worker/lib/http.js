@@ -9,14 +9,22 @@ export function json(data, init = {}) {
     return Response.json(data, { ...init, headers });
 }
 
-/** Throw from any handler to answer with a JSON error. */
+/**
+ * Throw from any handler to answer with a JSON error:
+ * { error: code, message, ...details } with the given status.
+ */
 export class HttpError extends Error {
-    constructor(status, code, message = code) {
+    constructor(status, code, message = code, details = null) {
         super(message);
         this.status = status;
         this.code = code;
+        this.details = details;
     }
 }
+
+/** The JSON Response for an HttpError. */
+export const errorResponse = (err) =>
+    json({ error: err.code, message: err.message, ...(err.details || {}) }, { status: err.status });
 
 export const notFound = () => json({ error: 'not_found' }, { status: 404 });
 

@@ -80,9 +80,11 @@ its real admin password there locally — it must never appear in a committed
 file; tests read it from `.dev.vars` (`tests/devVars.mjs`).
 
 ### Machine setup is self-healing (read this before "fixing" install errors)
-- `node_modules/` and `.wrangler/` are **per machine** and **Dropbox-ignored**
-  (the repo lives in Dropbox and is used from Mac and Windows). Never copy them
-  between machines.
+- `node_modules/`, `.wrangler/` and `dist/` are **per machine** and
+  **Dropbox-ignored** (the repo lives in Dropbox and is used from Mac and
+  Windows) — `scripts/ensure-setup.mjs` marks them on each machine's first run
+  (`scripts/lib/dropbox.mjs`: xattr / NTFS stream / attr). Never copy them
+  between machines. Line endings are LF everywhere (`.gitattributes`).
 - `scripts/ensure-setup.mjs` runs before `dev`, `share`, `build`, `test` and
   `test:e2e` (npm `pre*` scripts). It runs `npm install` when `node_modules` is
   missing, was installed for another OS/CPU, or is older than
@@ -608,6 +610,7 @@ scripts/
 ├── cf.mjs, cf-token.mjs, cf-secrets.mjs  # npm run cf / cf:token / cf:secrets — the Picture Twirl Cloudflare account (COMMANDS.md)
 ├── lib/cloudflare.mjs         # token from cloudflare-token.txt (gitignored), wrangler env, which secrets to set
 ├── lib/localSecrets.mjs       # each machine's own random local SESSION_SECRET / IMPORT_TOKEN (used by ensure-setup)
+├── lib/dropbox.mjs            # marks node_modules / .wrangler / dist Dropbox-ignored on this machine (used by ensure-setup)
 └── lib/wranglerConfig.mjs     # wrangler.jsonc from Node; a no-Durable-Objects copy for getPlatformProxy tools
 tests/                         # See TESTING.md
 ├── unit/*.test.mjs            # node --test: pure logic

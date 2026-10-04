@@ -94,9 +94,11 @@ Alpine — the local Workers runtime needs glibc.
 ## ⚠️ This repo lives in Dropbox — don't sync `node_modules` or `.wrangler`
 
 Native dependencies (Rollup, `sharp`, the Workers runtime) ship **per-OS
-binaries**, and `.wrangler/` holds the local database files. Synced between
-machines, they break (`Cannot find module '@rollup/rollup-win32-x64-msvc'`) or
-corrupt. Tell Dropbox to ignore both, once per device:
+binaries**, `.wrangler/` holds the local database files and `dist/` the build.
+Synced between machines, they break (`Cannot find module '@rollup/rollup-win32-x64-msvc'`)
+or corrupt. **Setup handles this:** the first `npm run dev` (or `npm run setup`)
+on a machine marks all three as Dropbox-ignored there, before anything fills
+them. If it can't, it says so — then do it by hand, once per device:
 
 ```powershell
 # Windows (PowerShell), from the project root:
@@ -112,6 +114,13 @@ attr -s com.dropbox.ignored -V 1 node_modules
 attr -s com.dropbox.ignored -V 1 .wrangler
 ```
 Then `npm install` on each machine (setup does it for you when it notices).
+Each machine therefore has its **own local database** — the boards in your Mac's
+local `/admin/` aren't on the PC; the shared ones live on staging and production.
+
+Line endings are pinned to LF (`.gitattributes`), so a Windows checkout in the
+shared folder doesn't make every file look changed on the Mac. With one working
+copy on two computers: let Dropbox finish syncing before switching machines,
+and don't run git on both at the same time.
 
 ## Configuration
 

@@ -4,6 +4,10 @@
 // (package.json pre* scripts) and fixes what a fresh checkout, another OS, or a
 // `git pull` can leave behind:
 //
+//   0. the repo is inside Dropbox  →  node_modules, .wrangler and dist are marked
+//      Dropbox-ignored on this machine before anything fills them (they're per
+//      machine: native binaries, the local database, build output —
+//      scripts/lib/dropbox.mjs); if that fails, it says how to do it by hand
 //   1. node_modules missing, installed for another OS/CPU (it's per machine and
 //      Dropbox-ignored), or older than package-lock.json  →  `npm install`
 //   2. .dev.vars missing  →  copied from .dev.vars.example (local dev values);
@@ -17,11 +21,12 @@
 // where installs are managed by the pipeline.
 
 import { createHash, randomBytes } from 'node:crypto';
-import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withOwnSecrets } from './lib/localSecrets.mjs';
+import { PER_MACHINE, findDropboxRoot, isIgnored, markIgnored } from './lib/dropbox.mjs';
 
 if (process.env.CI || process.env.WORKERS_CI) process.exit(0);
 
@@ -39,6 +44,20 @@ function run(cmd, args) {
 }
 
 const lockHash = () => createHash('sha256').update(readFileSync(at('package-lock.json'))).digest('hex').slice(0, 16);
+
+// ── 0. Dropbox: per-machine folders never sync ───────────────────────────────
+if (findDropboxRoot(root)) {
+    for (const dir of PER_MACHINE) {
+        try {
+            mkdirSync(at(dir), { recursive: true });
+            if (isIgnored(at(dir))) continue;
+            markIgnored(at(dir));
+            console.log(`setup: told Dropbox to ignore ${dir}/ on this machine (it's per machine — never synced)`);
+        } catch (e) {
+            console.warn(`setup: couldn't mark ${dir}/ as Dropbox-ignored (${e.message}) — do it by hand: README → "This repo lives in Dropbox".`);
+        }
+    }
+}
 
 // ── 1. Dependencies ──────────────────────────────────────────────────────────
 let installed = null;

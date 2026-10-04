@@ -7,18 +7,21 @@
 //   1. node_modules missing, installed for another OS/CPU (it's per machine and
 //      Dropbox-ignored), or older than package-lock.json  →  `npm install`
 //   2. .dev.vars missing  →  copied from .dev.vars.example (local dev values);
-//      a key the example has but .dev.vars lacks (added later) → appended
+//      a key the example has but .dev.vars lacks (added later) → appended;
+//      the example's public SESSION_SECRET / IMPORT_TOKEN → this machine's own
+//      random ones (scripts/lib/localSecrets.mjs — the repo is public)
 //   3. with --e2e: Playwright's Chromium missing  →  `npx playwright install chromium`
 //
 // Fast when everything is fine (a hash + a couple of file checks). Node
 // built-ins only — it must run before anything is installed. Skipped in CI,
 // where installs are managed by the pipeline.
 
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { withOwnSecrets } from './lib/localSecrets.mjs';
 
 if (process.env.CI || process.env.WORKERS_CI) process.exit(0);
 
@@ -72,6 +75,14 @@ if (!existsSync(at('.dev.vars')) && existsSync(at('.dev.vars.example'))) {
     if (missing.length) {
         writeFileSync(at('.dev.vars'), `${mine.replace(/\s*$/, '')}\n# added by scripts/ensure-setup.mjs from .dev.vars.example\n${missing.join('\n')}\n`);
         console.log(`setup: added ${missing.map(l => l.split('=')[0].trim()).join(', ')} to .dev.vars (from .dev.vars.example)`);
+    }
+}
+if (existsSync(at('.dev.vars')) && existsSync(at('.dev.vars.example'))) {
+    const own = withOwnSecrets(readFileSync(at('.dev.vars'), 'utf8'), readFileSync(at('.dev.vars.example'), 'utf8'),
+        () => randomBytes(32).toString('base64url'));
+    if (own.changed.length) {
+        writeFileSync(at('.dev.vars'), own.text);
+        console.log(`setup: gave .dev.vars this machine's own random ${own.changed.join(', ')} (the example's are public; restart npm run dev if it's running)`);
     }
 }
 

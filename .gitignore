@@ -50,3 +50,6 @@ Thumbs.db
 # The Picture Twirl Cloudflare API token (npm run cf / cf:token). Shared via Dropbox, never committed:
 # GitHub refuses pushes that contain Cloudflare tokens.
 /cloudflare-token.txt
+
+# macOS / Dropbox folder-icon files ("Icon" + carriage return) — never commit
+Icon

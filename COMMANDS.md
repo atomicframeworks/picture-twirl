@@ -21,7 +21,7 @@ npm run dev            # → http://localhost:3000  (Vite + local Worker/D1/R2)
                        #   gallery: http://localhost:3000/gallery.html
                        #   API:     http://localhost:3000/api/health, /api/boards
 npm run dev:e2e        # the browser tests' own server: :3100, fresh database each start
-npm run build          # production build → dist/client (site) + dist/picture_twirl (Worker)
+npm run build          # production build → dist/client (site) + dist/play (Worker)
 npm run preview        # serve the build
 ```
 
@@ -63,7 +63,7 @@ npm run content:sheet -- --help                # every option
 - A spreadsheet run takes ~15–30 min (≈7 boards, 175 tiles); a discovery run
   ~5–10 min per board. Uses your Claude usage: ~1 planning call plus one
   short picture check per tile (Unsplash pictures are never shown to the AI).
-- `--site prod` = the live site (https://picture-twirl.k-m-mcginty.workers.dev): `CONTENT_SITE_PROD` +
+- `--site prod` = the live site (https://play.picture-twirl.workers.dev): `CONTENT_SITE_PROD` +
   `IMPORT_TOKEN_PROD` in `.env.local` (`npm run cf:secrets` writes the token).
   A run remembers what it uploaded **per site**, so a reviewed run can go to the
   local site first and to production later: `--resume <run> --live --site prod`.

@@ -895,6 +895,18 @@ changes merge cleanly; the predictable conflicts are import lines.
    - Run `content:sheet --site prod` (boards land in *Imports* for review).
    - Day to day nobody needs the token: deploys come from Workers Builds. If it
      ever leaks beyond the team, roll it in the dashboard and replace the file.
+
+   **Done 2026-10-04:** the token reached the (still empty) Picture Twirl
+   account `8a0bee3d…`; D1 `picture-twirl` (Eastern North America) + R2
+   `picture-twirl-media` created and the migrations applied; the Worker is
+   **`play`** on the account subdomain **`picture-twirl`** →
+   https://play.picture-twirl.workers.dev (the owner may still switch the
+   subdomain to `picturetwirl` after asking Lu: Workers & Pages → Change, then
+   update the docs); secrets set with `npm run cf:secrets`; a live-game check
+   from the owner's Mac measured ping 25 ms and a write reaching another player
+   in 62 ms (medians); the 11 imported boards (259 pictures) uploaded as ✨ To
+   review with 0 errors; a $1 budget alert is set. Left: Workers Builds (Worker
+   `play`, preview builds off), merge + tag + push, phones, Lu.
 4. **Merge** `cloudflare` → `main` as one merge commit, tagged
    **`cloudflare-cutover`**. Workers Builds deploys production.
 5. **Smoke test production:** create a game, join from two phones, play a few
@@ -1037,7 +1049,7 @@ MIGRATION.md  wrangler.jsonc  .dev.vars.example
 ### Still open (none of these block the early milestones)
 1. **Domain**, i.e. the web address players type, like `picturetwirl.com`.
    - Until there is one, the app lives at a free
-     `picture-twirl.<your-subdomain>.workers.dev` address.
+     `play.picture-twirl.workers.dev` address (Worker `play`, account subdomain `picture-twirl`).
    - A real domain can be attached any time before beta.
    - `picturetwirl.com` looked unregistered in a quick `whois` check on
      2026-10-03. Cloudflare Registrar sells at cost (~$10/yr for .com). Buying

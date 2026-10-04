@@ -31,7 +31,7 @@ export default {
     },
     build: {
         // The Cloudflare plugin writes the site to dist/client and the Worker
-        // (plus its generated wrangler.json) to dist/picture_twirl.
+        // (plus its generated wrangler.json) to dist/play (the Worker's name).
         outDir: 'dist'
     },
     environments: {

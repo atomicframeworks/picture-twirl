@@ -58,7 +58,7 @@ npm run content:sheet            # boards from content/sources/*.xlsx → conten
 npm run content:discover         # new board ideas from the web
 npm run content:sheet -- --resume last --live   # upload a reviewed dry run to the local site
 
-# Production build (site → dist/client, Worker → dist/picture_twirl)
+# Production build (site → dist/client, Worker → dist/play)
 npm run build
 
 # Preview production build
@@ -462,7 +462,7 @@ Snapshot shape (what `/api/boards/:id` returns):
 
 ## Configuration
 
-- **Production:** https://picture-twirl.k-m-mcginty.workers.dev (admin: `/admin/`; workers.dev until a
+- **Production:** https://play.picture-twirl.workers.dev (admin: `/admin/`; workers.dev until a
   custom domain). Account, D1 database id and R2 bucket are pinned in
   `wrangler.jsonc`; pushes to `main` deploy via Workers Builds.
 - Live games need `SESSION_SECRET` (signs player identities; `.dev.vars` locally,

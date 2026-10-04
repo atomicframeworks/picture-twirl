@@ -3,13 +3,13 @@
     // Picture Twirl — ONE Worker serves the game (static assets), the admin and
     // the API. Architecture: PROPOSAL.md §3 and §8.
     //
-    // Production: https://picture-twirl.k-m-mcginty.workers.dev (deployed 2026-10-04; workers.dev until a
+    // Production: https://play.picture-twirl.workers.dev (deployed 2026-10-04; workers.dev until a
     // custom domain). Pushes to `main` deploy it through Workers Builds — nobody
     // runs `wrangler deploy` by hand. `npm run dev` simulates D1/R2/Durable Objects
     // on this machine and needs no Cloudflare login. Setup/maintenance commands go
     // through `npm run cf -- …` (the Picture Twirl token in cloudflare-token.txt) —
     // never a machine's own wrangler login, which may be another account.
-    "name": "picture-twirl",
+    "name": "play",
     // The Picture Twirl Cloudflare account (`npm run cf:token` checks the token reaches it).
     "account_id": "8a0bee3d189bc0c27a9761646193595e",
     "main": "./worker/index.js",

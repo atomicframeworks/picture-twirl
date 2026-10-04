@@ -122,6 +122,31 @@ test('create + edit a board: names, picture upload, answer, autosave, reorder, u
     await expect(page.locator('.adm-ready-text').first()).toHaveText('1/25');      // only Cookie has a picture
 });
 
+test('New board dialog: the emoji picker opens on top of it, picks, and Escape closes only the picker', async ({ page }) => {
+    // A modal <dialog> sits in the browser's top layer — above any z-index — and
+    // makes the rest of the page inert, so the picker has to live inside it.
+    await signIn(page);
+    await page.goto('/admin/#/boards');
+    await page.getByRole('button', { name: '+ New board' }).click();
+    const dialog = page.locator('dialog[open]');
+    const emojiBtn = dialog.getByTestId('emoji-button');
+    const picker = page.locator('.adm-emoji-pop emoji-picker');
+
+    await emojiBtn.click();
+    await expect(picker).toBeVisible();
+    await picker.locator('#search').fill('rocket');                   // clicking fails if the dialog covers it
+    await picker.getByRole('option', { name: /rocket/i }).first().click();
+    await expect(emojiBtn).toHaveText('🚀');
+    await expect(page.locator('.adm-emoji-pop')).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+
+    await emojiBtn.click();
+    await expect(picker).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.adm-emoji-pop')).toHaveCount(0);
+    await expect(dialog).toBeVisible();                                // Escape didn't close the New board dialog
+});
+
 test('paste a picture onto the tile under the mouse', async ({ page }) => {
     await signIn(page);
     const { board } = await (await page.request.post('/api/admin/boards', { data: { title: uniq('E2E Paste') } })).json();

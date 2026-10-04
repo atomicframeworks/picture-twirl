@@ -46,14 +46,21 @@ export function emojiButton({ value = '🎲', onChange, label = 'Choose an emoji
         picker.classList.add('light');
         const pop = h('div', { class: 'adm-emoji-pop', role: 'dialog', 'aria-label': 'Pick an emoji' }, picker);
 
+        // In a modal <dialog> (New board) the picker must live inside it: a modal
+        // dialog sits in the browser's top layer, above any z-index, and makes
+        // everything outside it inert. There it's placed against the viewport.
+        const host = el.closest('dialog[open]');
         const rect = el.getBoundingClientRect();
+        const [x0, y0] = host ? [0, 0] : [window.scrollX, window.scrollY];
         Object.assign(pop.style, {
-            top: `${Math.min(window.scrollY + rect.bottom + 6, window.scrollY + window.innerHeight - 420)}px`,
-            left: `${Math.max(8, Math.min(window.scrollX + rect.left, window.scrollX + window.innerWidth - 360))}px`,
+            position: host ? 'fixed' : 'absolute',
+            top: `${Math.min(y0 + rect.bottom + 6, y0 + window.innerHeight - 420)}px`,
+            left: `${Math.max(8, Math.min(x0 + rect.left, x0 + window.innerWidth - 360))}px`,
         });
 
         const onDocDown = (e) => { if (!pop.contains(e.target) && e.target !== el) closeEmojiPopover(); };
-        const onKey = (e) => { if (e.key === 'Escape') { closeEmojiPopover(); el.focus(); } };
+        // preventDefault: Escape closes the picker only, not a dialog around it.
+        const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); closeEmojiPopover(); el.focus(); } };
         picker.addEventListener('emoji-click', (e) => {
             set(e.detail.unicode);
             onChange?.(current);
@@ -61,7 +68,7 @@ export function emojiButton({ value = '🎲', onChange, label = 'Choose an emoji
             el.focus();
         });
 
-        document.body.append(pop);
+        (host || document.body).append(pop);
         setTimeout(() => document.addEventListener('mousedown', onDocDown), 0);
         document.addEventListener('keydown', onKey);
         openPopover = () => {

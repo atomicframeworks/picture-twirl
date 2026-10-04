@@ -46,12 +46,12 @@ test('secrets, first time: the team password, a new import key (to save) and a n
 });
 
 test('secrets, again (e.g. a new team password): same import key, the session secret is left alone', () => {
-    const plan = planSecrets({ devVars, exampleVars, prodImportToken: 'saved-key',
+    const plan = planSecrets({ devVars, exampleVars, savedImportToken: 'saved-key',
         existing: new Set(['ADMIN_PASSWORD', 'IMPORT_TOKEN', 'SESSION_SECRET']), random: counter() });
     assert.deepEqual(plan.secrets, { ADMIN_PASSWORD: 'team-password-example', IMPORT_TOKEN: 'saved-key' });
     assert.equal(plan.saveImportToken, null);
     // …unless a new one is asked for (it signs everyone out)
-    const fresh = planSecrets({ devVars, exampleVars, prodImportToken: 'saved-key',
+    const fresh = planSecrets({ devVars, exampleVars, savedImportToken: 'saved-key',
         existing: new Set(['SESSION_SECRET']), newSessionSecret: true, random: counter() });
     assert.equal(fresh.secrets.SESSION_SECRET, 'random-1');
 });

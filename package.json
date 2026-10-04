@@ -14,6 +14,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "db:setup:local": "npm run db:migrate:local && npm run db:seed:local",
+    "db:migrate:prod": "node scripts/cf.mjs d1 migrations apply DB --remote -c wrangler.jsonc",
+    "db:migrate:staging": "node scripts/cf.mjs d1 migrations apply PREVIEW_DB --remote -c wrangler.preview-migrations.jsonc",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:seed:local": "node scripts/seed-local.mjs",
     "migrate:code": "node scripts/migrate-code.mjs",

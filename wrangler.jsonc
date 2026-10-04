@@ -53,5 +53,23 @@
         { "tag": "v1", "new_sqlite_classes": ["GameRoom"] }
     ],
 
-    "observability": { "enabled": true }
+    "observability": { "enabled": true },
+
+    // STAGING — Worker Previews (WORKFLOW.md → Staging). Pushing a branch other
+    // than main builds a Preview with its own URL; these bindings point it at
+    // STAGING data, never production. Each Preview gets its own fresh Durable
+    // Objects (live games) automatically; D1 + R2 are one staging set shared by
+    // all Previews. Staging schema: npm run db:migrate:staging. Secrets: npm run
+    // cf:secrets -- --previews. Nothing here is used by `npm run dev`.
+    "previews": {
+        "d1_databases": [
+            { "binding": "DB", "database_name": "picture-twirl-staging", "database_id": "b69ca697-5674-4176-8a44-cd3ec52e6860" }
+        ],
+        "r2_buckets": [
+            { "binding": "MEDIA", "bucket_name": "picture-twirl-media-staging" }
+        ],
+        "durable_objects": {
+            "bindings": [{ "name": "ROOMS", "class_name": "GameRoom" }]
+        }
+    }
 }

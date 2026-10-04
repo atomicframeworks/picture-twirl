@@ -15,7 +15,8 @@ const HELP = `Picture Twirl content tools — find free pictures and build board
 
 Options
   --live               upload to the site (default: dry run — download + report only)
-  --site local|prod    which site --live uploads to (default local = npm run dev; prod after the cutover)
+  --site local|staging|prod  which site --live uploads to (default local = npm run dev;
+                       staging = the staging data previews use; prod = the live site)
   --boards N           how many boards to plan (sheet: up to 8, discover: 3)
   --theme "…"          discover: a theme to build around ("space", "dogs", "90s toys"…)
   --plan-only          stop after the plan (plan.md) — edit plan.json, then --resume
@@ -58,8 +59,8 @@ if (o.help || !['sheet', 'discover'].includes(kind)) {
     console.log(HELP);
     process.exit(o.help ? 0 : 2);
 }
-if (!['local', 'prod'].includes(o.site)) {
-    console.error('--site must be local or prod');
+if (!['local', 'staging', 'prod'].includes(o.site)) {
+    console.error('--site must be local, staging or prod');
     process.exit(2);
 }
 

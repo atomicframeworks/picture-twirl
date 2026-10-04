@@ -67,26 +67,27 @@ export function cloudflareEnv(root) {
 export const wranglerBin = (root) => path.join(root, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
 
 /**
- * Which secrets `npm run cf:secrets` sends to the production Worker.
- * - ADMIN_PASSWORD: the team's password from .dev.vars (the same one locally and
- *   in production) — never the .dev.vars.example placeholder.
- * - IMPORT_TOKEN: the content tools' production key, kept in .env.local as
- *   IMPORT_TOKEN_PROD; made the first time (`saveImportToken`).
+ * Which secrets `npm run cf:secrets` sends — to the production Worker, or (with
+ * --previews) to the Preview base config that every staging Preview starts from.
+ * - ADMIN_PASSWORD: the team's password from .dev.vars (the same one locally, in
+ *   staging and in production) — never the .dev.vars.example placeholder.
+ * - IMPORT_TOKEN: the content tools' key for that site, kept in .env.local
+ *   (IMPORT_TOKEN_PROD / IMPORT_TOKEN_STAGING); made the first time (`saveImportToken`).
  * - SESSION_SECRET: signs player identities and admin sessions. Only when the
  *   Worker has none yet, or asked for: a new one signs everyone out, and hosts
  *   of running games lose their seat.
  * @param {{ devVars: Record<string,string>, exampleVars: Record<string,string>,
- *   prodImportToken?: string, existing: Set<string>, newSessionSecret?: boolean,
+ *   savedImportToken?: string, existing: Set<string>, newSessionSecret?: boolean,
  *   random: () => string }} input
  * @returns {{ secrets: Record<string,string>, saveImportToken: string|null, problem: string|null }}
  */
-export function planSecrets({ devVars, exampleVars, prodImportToken, existing, newSessionSecret = false, random }) {
+export function planSecrets({ devVars, exampleVars, savedImportToken, existing, newSessionSecret = false, random }) {
     const password = devVars.ADMIN_PASSWORD;
     if (!password || password === exampleVars.ADMIN_PASSWORD) {
         return { secrets: {}, saveImportToken: null, problem: 'Put the team\'s admin password in .dev.vars (ADMIN_PASSWORD=…) first — production uses the same one.' };
     }
-    const importToken = prodImportToken || random();
+    const importToken = savedImportToken || random();
     const secrets = { ADMIN_PASSWORD: password, IMPORT_TOKEN: importToken };
     if (newSessionSecret || !existing.has('SESSION_SECRET')) secrets.SESSION_SECRET = random();
-    return { secrets, saveImportToken: prodImportToken ? null : importToken, problem: null };
+    return { secrets, saveImportToken: savedImportToken ? null : importToken, problem: null };
 }

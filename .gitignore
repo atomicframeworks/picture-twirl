@@ -47,5 +47,6 @@ Thumbs.db
 *.sw?
 .claude/settings.json
 
-# Picture Twirl Cloudflare token dropped in from a phone (npm run cf:token moves it out of Dropbox)
+# The Picture Twirl Cloudflare API token (npm run cf / cf:token). Shared via Dropbox, never committed:
+# GitHub refuses pushes that contain Cloudflare tokens.
 /cloudflare-token.txt

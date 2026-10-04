@@ -1,83 +1,67 @@
 #!/usr/bin/env node
-// scripts/cf-token.mjs — `npm run cf:token [-- --account <id>]`
+// scripts/cf-token.mjs — `npm run cf:token`
 //
-// Stores the Picture Twirl Cloudflare API token for this project's commands
-// (`npm run cf -- …`) WITHOUT touching this machine's wrangler login — another
-// project deploys from this machine with that login, so never `wrangler logout`
-// or `wrangler login` here.
-//
-// From a phone: make the token in the Picture Twirl account (COMMANDS.md →
-// Cloudflare), save it as a plain text file named `cloudflare-token.txt` in the
-// project folder (it's gitignored), then run this. It checks the token with
-// Cloudflare, finds its account, writes ~/.config/picture-twirl/cloudflare.env
-// (outside Dropbox, readable only by you) and deletes the text file.
-// The token is never printed.
+// Checks the Picture Twirl Cloudflare API token in cloudflare-token.txt (the
+// project folder; scripts/lib/cfToken.mjs): is it active, which account does it
+// reach, and is that the account wrangler.jsonc pins (`account_id`) — the one
+// `npm run cf` works on. Read-only; never prints the token. Handles user tokens
+// and account-owned tokens (`cfat_…`).
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArgs } from 'node:util';
+import { readToken, tokenHelp } from './lib/cfToken.mjs';
+import { readWranglerConfig } from './lib/wranglerConfig.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const CREDENTIALS = path.join(os.homedir(), '.config', 'picture-twirl', 'cloudflare.env');
-const INBOX = path.join(ROOT, 'cloudflare-token.txt');
 const API = 'https://api.cloudflare.com/client/v4';
 
-const { values: o } = parseArgs({ options: { account: { type: 'string' } } });
-
-if (!existsSync(INBOX)) {
-    console.error(`No ${path.basename(INBOX)} in the project folder.
-Make a token in the Picture Twirl Cloudflare account (COMMANDS.md → Cloudflare),
-save it as a plain text file named cloudflare-token.txt in the picture-twirl
-folder (Dropbox works from a phone), then run: npm run cf:token`);
+const found = readToken(ROOT);
+if (!found.token) {
+    console.error(tokenHelp(found));
     process.exit(1);
 }
-
-const token = readFileSync(INBOX, 'utf8').trim();
-if (!/^[A-Za-z0-9_-]{30,}$/.test(token)) {
-    console.error(`${path.basename(INBOX)} doesn't look like a Cloudflare API token (just the token, nothing else).`);
-    process.exit(1);
-}
+const pinned = readWranglerConfig(ROOT).account_id || null;
 
 async function cf(p) {
-    const res = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${found.token}` } });
     const body = await res.json().catch(() => ({}));
     return { ok: res.ok && body.success !== false, body };
 }
 
-const verify = await cf('/user/tokens/verify');
-if (verify.ok && verify.body.result?.status && verify.body.result.status !== 'active') {
-    console.error(`The token isn't active (status: ${verify.body.result.status}). Make a new one.`);
-    process.exit(1);
-}
+// Which accounts does it reach? (An account-owned token may not list accounts: then ask for the pinned one.)
 const accounts = await cf('/accounts?per_page=50');
-if (!accounts.ok) {
+let list = accounts.ok ? (accounts.body.result || []) : [];
+if (!list.length && pinned) {
+    const one = await cf(`/accounts/${pinned}`);
+    if (one.ok && one.body.result) list = [one.body.result];
+}
+if (!list.length) {
     console.error(`Cloudflare didn't accept the token (${accounts.body.errors?.map(e => e.message).join('; ') || 'no details'}).
-Check that it has "Account Settings: Read" and is limited to the Picture Twirl account.`);
+It needs "Account Settings: Read" on the Picture Twirl account (COMMANDS.md → Cloudflare).`);
     process.exit(1);
 }
-const list = accounts.body.result || [];
-let account = o.account ? list.find(a => a.id === o.account) : (list.length === 1 ? list[0] : null);
+const account = pinned ? list.find(a => a.id === pinned) : (list.length === 1 ? list[0] : null);
+
+// Active? User tokens verify at /user/tokens/verify, account-owned (cfat_…) at /accounts/:id/tokens/verify.
+let verify = await cf('/user/tokens/verify');
+if (!verify.ok) verify = await cf(`/accounts/${(account || list[0]).id}/tokens/verify`);
+const status = verify.ok ? verify.body.result?.status || 'unknown' : 'unknown';
+const expires = verify.body.result?.expires_on ? new Date(verify.body.result.expires_on).toISOString().slice(0, 10) : (verify.ok ? 'never' : 'unknown');
+
+console.log(`Token in ${path.basename(found.file)}: status ${status}, expires ${expires}. Reaches:
+${list.map(a => `  ${a.name}  (${a.id})${a.id === pinned ? '  ← wrangler.jsonc account_id' : ''}`).join('\n')}`);
+if (status !== 'active' && status !== 'unknown') {
+    console.error('The token isn\'t active — make a new one (COMMANDS.md → Cloudflare).');
+    process.exit(1);
+}
+if (!pinned) {
+    console.log(list.length === 1
+        ? `wrangler.jsonc has no account_id yet. If “${list[0].name}” is the Picture Twirl account, pin it: "account_id": "${list[0].id}"`
+        : 'wrangler.jsonc has no account_id yet — pin the Picture Twirl account\'s id there.');
+    process.exit(1);
+}
 if (!account) {
-    console.error(list.length > 1
-        ? `The token reaches ${list.length} accounts — limit it to the Picture Twirl account, or pick one:\n${list.map(a => `  npm run cf:token -- --account ${a.id}   # ${a.name}`).join('\n')}`
-        : 'The token reaches no account. Give it "Account Settings: Read" on the Picture Twirl account.');
+    console.error(`This token doesn't reach the pinned account ${pinned} — wrong token, or wrong account_id.`);
     process.exit(1);
 }
-
-mkdirSync(path.dirname(CREDENTIALS), { recursive: true, mode: 0o700 });
-const expires = verify.body.result?.expires_on ? new Date(verify.body.result.expires_on).toISOString().slice(0, 10) : 'no expiry date';
-writeFileSync(CREDENTIALS, `# Picture Twirl — Cloudflare API token for this project's wrangler commands (npm run cf -- …).
-# Account: ${account.name} (${account.id}). Stored ${new Date().toISOString().slice(0, 10)}; token expires: ${expires}.
-# Outside Dropbox on purpose. Revoke the token in the Cloudflare dashboard when it's no longer needed.
-CLOUDFLARE_API_TOKEN=${token}
-CLOUDFLARE_ACCOUNT_ID=${account.id}
-`, { mode: 0o600 });
-chmodSync(CREDENTIALS, 0o600);
-rmSync(INBOX, { force: true });
-
-console.log(`Stored the token for account “${account.name}” (${account.id}) — expires: ${expires}.
-  credentials: ${CREDENTIALS} (only you can read it; not in Dropbox)
-  removed:     ${path.basename(INBOX)} from the project folder
-Check it:  npm run cf -- whoami`);
+console.log(`OK — \`npm run cf -- …\` works on “${account.name}”.`);

@@ -45,7 +45,7 @@ npm run rehearse:migration [-- --run]    # rehearse an old branch's merge in a s
 
 # Cloudflare, Picture Twirl account — NEVER `wrangler login`/`logout` on this machine
 # (its login belongs to another project). A per-command API token instead:
-npm run cf:token                         # store the token (COMMANDS.md → Cloudflare)
+npm run cf:token                         # check the token in cloudflare-token.txt (gitignored; COMMANDS.md → Cloudflare)
 npm run cf -- whoami                     # wrangler against the Picture Twirl account only
 
 # Local database

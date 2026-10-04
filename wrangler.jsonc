@@ -5,9 +5,12 @@
     //
     // LOCAL-ONLY until cutover (PROPOSAL.md §9.2): `npm run dev` simulates D1/R2
     // on this machine and needs no Cloudflare login. Do NOT `wrangler deploy`
-    // from this branch before cutover — the logged-in account may not be the
-    // Picture Twirl one. `account_id` gets pinned here at cutover.
+    // from this branch before cutover. Cloudflare commands go through
+    // `npm run cf -- …` (the Picture Twirl token in cloudflare-token.txt) —
+    // never a machine's own wrangler login, which may be another account.
     "name": "picture-twirl",
+    // The Picture Twirl Cloudflare account (`npm run cf:token` checks the token reaches it).
+    "account_id": "8a0bee3d189bc0c27a9761646193595e",
     "main": "./worker/index.js",
     // Newest date the bundled workerd supports; bump when wrangler is upgraded.
     "compatibility_date": "2026-10-01",

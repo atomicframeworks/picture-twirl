@@ -21,6 +21,7 @@
     "rehearse:migration": "node scripts/rehearse-migration.mjs",
     "cf": "node scripts/cf.mjs",
     "cf:token": "node scripts/cf-token.mjs",
+    "cf:secrets": "node scripts/cf-secrets.mjs",
     "content:sheet": "node tools/content/cli.mjs sheet",
     "content:discover": "node tools/content/cli.mjs discover",
     "lint": "eslint .",

@@ -2,14 +2,15 @@
 // scripts/cf-token.mjs — `npm run cf:token`
 //
 // Checks the Picture Twirl Cloudflare API token in cloudflare-token.txt (the
-// project folder; scripts/lib/cfToken.mjs): is it active, which account does it
-// reach, and is that the account wrangler.jsonc pins (`account_id`) — the one
-// `npm run cf` works on. Read-only; never prints the token. Handles user tokens
-// and account-owned tokens (`cfat_…`).
+// project folder; scripts/lib/cloudflare.mjs): is it active, which account does it
+// reach, is that the account wrangler.jsonc pins (`account_id`) — the one
+// `npm run cf` works on — and what's its workers.dev subdomain (the site's
+// address before a custom domain). Read-only; never prints the token. Handles
+// user tokens and account-owned tokens (`cfat_…`).
 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readToken, tokenHelp } from './lib/cfToken.mjs';
+import { readToken, tokenHelp } from './lib/cloudflare.mjs';
 import { readWranglerConfig } from './lib/wranglerConfig.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,7 +21,8 @@ if (!found.token) {
     console.error(tokenHelp(found));
     process.exit(1);
 }
-const pinned = readWranglerConfig(ROOT).account_id || null;
+const config = readWranglerConfig(ROOT);
+const pinned = config.account_id || null;
 
 async function cf(p) {
     const res = await fetch(`${API}${p}`, { headers: { Authorization: `Bearer ${found.token}` } });
@@ -64,4 +66,9 @@ if (!account) {
     console.error(`This token doesn't reach the pinned account ${pinned} — wrong token, or wrong account_id.`);
     process.exit(1);
 }
+
+const sub = await cf(`/accounts/${account.id}/workers/subdomain`);
+console.log(sub.ok && sub.body.result?.subdomain
+    ? `workers.dev subdomain: ${sub.body.result.subdomain} → the site is https://${config.name}.${sub.body.result.subdomain}.workers.dev`
+    : `workers.dev subdomain: none yet (or the token can't see it: ${sub.body.errors?.map(e => e.message).join('; ') || 'no details'}) — set one under Workers & Pages before the first deploy.`);
 console.log(`OK — \`npm run cf -- …\` works on “${account.name}”.`);

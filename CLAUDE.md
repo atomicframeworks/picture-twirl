@@ -47,6 +47,7 @@ npm run rehearse:migration [-- --run]    # rehearse an old branch's merge in a s
 # (its login belongs to another project). A per-command API token instead:
 npm run cf:token                         # check the token in cloudflare-token.txt (gitignored; COMMANDS.md → Cloudflare)
 npm run cf -- whoami                     # wrangler against the Picture Twirl account only
+npm run cf:secrets                       # production Worker secrets in one go (never printed)
 
 # Local database
 npm run db:setup:local     # migrate + seed (runs automatically before dev/share)
@@ -586,6 +587,8 @@ scripts/
 ├── migrate-code.mjs           # npm run migrate:code — Firebase imports → src/realtime/ (--check)
 ├── measure-realtime.mjs       # npm run measure:realtime — latency through a GameRoom
 ├── rehearse-migration.mjs     # npm run rehearse:migration — Lu's cutover merge in a sandbox (fresh Claude session)
+├── cf.mjs, cf-token.mjs, cf-secrets.mjs  # npm run cf / cf:token / cf:secrets — the Picture Twirl Cloudflare account (COMMANDS.md)
+├── lib/cloudflare.mjs         # token from cloudflare-token.txt (gitignored), wrangler env, which secrets to set
 └── lib/wranglerConfig.mjs     # wrangler.jsonc from Node; a no-Durable-Objects copy for getPlatformProxy tools
 tests/                         # See TESTING.md
 ├── unit/*.test.mjs            # node --test: pure logic

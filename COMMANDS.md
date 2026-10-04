@@ -106,21 +106,29 @@ Screenshots → `screenshots/`
 ## Cloudflare (the Picture Twirl account) — never `wrangler login`/`logout` here
 This machine's own wrangler login belongs to another project that deploys from
 it. Picture Twirl commands carry their own **API token** instead (wrangler uses
-`CLOUDFLARE_API_TOKEN` over its login, for that one command):
+`CLOUDFLARE_API_TOKEN` over its login, for that one command) and the account
+pinned in `wrangler.jsonc` (`account_id`). The token lives in
+`cloudflare-token.txt` in the project folder: **gitignored, never committed**
+(GitHub refuses pushes that contain Cloudflare tokens); Dropbox shares it between
+the team's machines. Day to day nobody needs it: pushing to `main` deploys
+through Workers Builds.
 ```bash
-npm run cf:token                       # store the token: reads cloudflare-token.txt (dropped in the project folder),
-                                       # checks it, moves it to ~/.config/picture-twirl/cloudflare.env, deletes the file
+npm run cf:token                       # check the token: active? which account? the pinned one? workers.dev subdomain?
 npm run cf -- whoami                   # wrangler against the Picture Twirl account only
-npm run cf -- <any wrangler command>   # e.g. d1 list, deploy, secret put … (refuses if wrangler.jsonc names another account)
+npm run cf -- <any wrangler command>   # e.g. d1 list, deploy, secret put … (never the machine's own login)
+npm run cf:secrets                     # production secrets in one go, never printed: ADMIN_PASSWORD (the team's,
+                                       # from .dev.vars), IMPORT_TOKEN (saved as IMPORT_TOKEN_PROD in .env.local),
+                                       # SESSION_SECRET (made once; --new-session-secret signs everyone out)
 ```
 Making the token (works from a phone browser): dash.cloudflare.com → log in to
-the **Picture Twirl** account → My Profile → **API Tokens** → Create Token →
-template **Edit Cloudflare Workers** → add **Account · D1 · Edit**, **Account ·
-Workers R2 Storage · Edit**, **Account · Account Settings · Read** → Account
-Resources: only the Picture Twirl account → set an expiry (TTL) → Create → copy.
-Save it as a plain text file `cloudflare-token.txt` in the `picture-twirl`
-folder (Dropbox app works), then `npm run cf:token`. Revoke it in the dashboard
-when it's no longer needed (day to day, deploys come from Workers Builds).
+the **Picture Twirl** account → Manage Account → **Account API Tokens** (or My
+Profile → API Tokens) → Create Token → template **Edit Cloudflare Workers** →
+add **Account · D1 · Edit**, **Account · Workers R2 Storage · Edit**,
+**Account · Account Settings · Read** → Create → copy. Save it as a plain text
+file `cloudflare-token.txt` in the `picture-twirl` folder (the Dropbox app works;
+pasting everything Cloudflare shows — token, R2 keys, endpoint — is fine too, the
+scripts pick the API token), then `npm run cf:token`. If it ever leaks beyond the
+team: dashboard → the token → Roll, and replace the file.
 
 ## Live games (GameRoom Durable Objects)
 ```bash

@@ -865,20 +865,23 @@ changes merge cleanly; the predictable conflicts are import lines.
    switch this machine's wrangler login** — another project deploys from it with
    that login (decided 2026-10-03). Picture Twirl commands carry their own token:
    - In the **new Picture Twirl account**'s dashboard (a phone browser is fine):
-     set the `workers.dev` subdomain (Workers & Pages → Your subdomain), make an
-     API token (COMMANDS.md → Cloudflare), drop it into the project as
-     `cloudflare-token.txt`, then `npm run cf:token` and `npm run cf -- whoami`
-     to confirm the account. Every later step runs as `npm run cf -- …`.
+     make an API token (COMMANDS.md → Cloudflare) and save it in the project
+     folder as `cloudflare-token.txt`. It stays there — gitignored, shared with
+     the team through Dropbox (decided 2026-10-03: the account is the team's) —
+     and `npm run cf:token` checks it: the account, and its `workers.dev`
+     subdomain (none yet → set one under Workers & Pages). Every later step runs
+     as `npm run cf -- …`.
    - **Hosting:** the free `workers.dev` URL first; a custom domain later.
-   - Pin `account_id` in `wrangler.jsonc`.
-   - Create production + staging D1/R2 and write their ids into the config.
-   - Apply D1 migrations remotely, seed, and set the secrets (`ADMIN_PASSWORD`,
-     `SESSION_SECRET`, `IMPORT_TOKEN`).
-   - First deploy, then connect GitHub in the dashboard (Workers Builds, with
-     previews bound to staging).
+   - Pin `account_id` in `wrangler.jsonc` (done 2026-10-03).
+   - Create the production D1 + R2 and write the database id into the config
+     (a staging database for branch previews: later).
+   - Apply D1 migrations remotely.
+   - First deploy (`npm run build && npm run cf -- deploy`), then the secrets:
+     `npm run cf:secrets` (`ADMIN_PASSWORD`, `SESSION_SECRET`, `IMPORT_TOKEN` —
+     never printed). Then connect GitHub in the dashboard (Workers Builds).
    - Run `content:sheet --site prod` (boards land in *Imports* for review).
-   - Revoke the setup token afterwards (or keep a short-lived one for remote
-     D1 maintenance). Day to day nobody needs it: deploys come from Workers Builds.
+   - Day to day nobody needs the token: deploys come from Workers Builds. If it
+     ever leaks beyond the team, roll it in the dashboard and replace the file.
 4. **Merge** `cloudflare` → `main` as one merge commit, tagged
    **`cloudflare-cutover`**. Workers Builds deploys production.
 5. **Smoke test production:** create a game, join from two phones, play a few

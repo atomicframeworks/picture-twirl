@@ -2,6 +2,8 @@
 
 Multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite and vanilla JavaScript on one Cloudflare Worker (branch `cloudflare`): D1 + R2 serve the game's content (Boards), and every live game is a GameRoom Durable Object that keeps all players in sync over WebSockets. The switch-over plan is in [PROPOSAL.md](PROPOSAL.md); tests in [TESTING.md](TESTING.md).
 
+**Live:** https://picture-twirl.k-m-mcginty.workers.dev · admin at [`/admin/`](https://picture-twirl.k-m-mcginty.workers.dev/admin/) (team password; guide in [ADMIN.md](ADMIN.md)).
+
 ## Prerequisites
 
 - **Node.js 22+** on the host (recommended): macOS 13.5+, Windows 11 or a glibc

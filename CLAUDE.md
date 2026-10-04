@@ -462,6 +462,9 @@ Snapshot shape (what `/api/boards/:id` returns):
 
 ## Configuration
 
+- **Production:** https://picture-twirl.k-m-mcginty.workers.dev (admin: `/admin/`; workers.dev until a
+  custom domain). Account, D1 database id and R2 bucket are pinned in
+  `wrangler.jsonc`; pushes to `main` deploy via Workers Builds.
 - Live games need `SESSION_SECRET` (signs player identities; `.dev.vars` locally,
   a Worker secret in production). The admin also needs `ADMIN_PASSWORD`; content
   imports `IMPORT_TOKEN` (`.dev.vars.example`).

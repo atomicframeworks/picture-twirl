@@ -28,7 +28,7 @@ import { normalizeImage } from './lib/images.mjs';
 import { createImportApi } from './lib/importApi.mjs';
 import { fallbackSheetPlan, planMarkdown, tidyPlan } from './lib/plan.mjs';
 import { CHECK_SCHEMA, CHECK_SYSTEM, checkPrompt, DISCOVER_SYSTEM, discoverPrompt, flagsFromCheck, PLAN_SCHEMA, PLAN_SYSTEM, sheetPrompt } from './lib/prompts.mjs';
-import { openRun } from './lib/run.mjs';
+import { openRun, siteState } from './lib/run.mjs';
 import { byCategory, DEFAULT_SHEET, readContentTracker } from './lib/sheet.mjs';
 import { rank, resolveLink, searchFree } from './lib/sources.mjs';
 
@@ -53,6 +53,7 @@ export async function runPipeline(opts) {
     const run = openRun({ kind, resume: opts.resume });
     if (run.kind !== kind) throw new Error(`${run.dir} is a ${run.kind} run — resume it with content:${run.kind}.`);
     run.state.options ??= { boards: opts.boards, theme: opts.theme || null, sheet: opts.sheet || DEFAULT_SHEET };
+    const site = siteState(run.state, settings.siteName); // this site's uploads (ids differ per site)
     run.save();
     const folder = path.relative(ROOT, run.dir);
     run.log(`${KIND_LABEL[kind]} → ${folder}${opts.resume ? ' (resumed)' : ''}`);
@@ -115,12 +116,12 @@ export async function runPipeline(opts) {
     // 5. submit
     const summary = summarize(plan, run.state, { ai, settings, folder });
     if (opts.live) {
-        await submit({ plan, run, api, settings, kind, existing, summary });
-        await api.finishRun(run.state.runId, summary);
+        await submit({ plan, run, api, settings, kind, existing, summary, site });
+        await api.finishRun(site.runId, summary);
     }
 
     // 6. report
-    run.writeText('report.md', reportMarkdown({ plan, run, kind, settings, summary, live: !!opts.live, sheet }));
+    run.writeText('report.md', reportMarkdown({ plan, run, kind, settings, summary, live: !!opts.live, sheet, site }));
     run.log(`Done: ${summary.boards} boards · ${summary.tilesWithPictures}/${summary.tiles} tiles with pictures · ⚠️ ${summary.flagged} flagged · ${summary.missing} without a picture · ${summary.errors} errors`);
     run.log(`Report: ${folder}/report.md`);
     if (opts.live) run.log(`Review them: ${settings.site}/admin#/boards?status=import`);
@@ -395,10 +396,10 @@ function describePick(pick) {
 
 // ── submit ───────────────────────────────────────────────────────────────────
 
-async function submit({ plan, run, api, settings, kind, existing, summary }) {
-    if (!run.state.runId) {
+async function submit({ plan, run, api, settings, kind, existing, summary, site }) {
+    if (!site.runId) {
         const created = await api.createRun(kind, settings.actor, { ...summary, status: 'uploading' });
-        run.state.runId = created.id;
+        site.runId = created.id;
         run.save();
     }
     const byExternalKey = new Map(existing.filter(b => b.external_key).map(b => [b.external_key, b]));
@@ -406,7 +407,7 @@ async function submit({ plan, run, api, settings, kind, existing, summary }) {
         const prior = byExternalKey.get(board.externalKey);
         if (prior && prior.status !== 'import') {
             // A person took it from here (drafted / published / archived it) — never overwrite their work.
-            run.state.boards[board.key] = { id: prior.id, action: 'kept', title: prior.title, status: prior.status };
+            site.boards[board.key] = { id: prior.id, action: 'kept', title: prior.title, status: prior.status };
             run.save();
             run.log(`✋ Kept “${prior.title}” as is (it's ${prior.status} now).`);
             continue;
@@ -416,25 +417,25 @@ async function submit({ plan, run, api, settings, kind, existing, summary }) {
             const tiles = [];
             for (const [r, tile] of cat.tiles.entries()) {
                 const pick = tile.answer ? run.state.tiles[tileKey(board, c, r)] : null;
-                const imageId = pick?.status === 'picked' ? await uploadPick(pick, { run, api, settings }) : null;
+                const imageId = pick?.status === 'picked' ? await uploadPick(pick, { run, api, settings, site }) : null;
                 tiles.push({ answer: tile.answer, imageId, notes: tileNotes(tile, pick) });
             }
             categories.push({ title: cat.title, tiles });
         }
         const res = await api.upsertBoard({
-            externalKey: board.externalKey, runId: run.state.runId,
+            externalKey: board.externalKey, runId: site.runId,
             source: kind === 'sheet' ? 'ai-sheet' : 'ai-discover', actor: settings.actor,
             title: board.title, emoji: board.emoji, description: board.description,
             draft: { points: [...DEFAULT_POINTS], categories },
         });
-        run.state.boards[board.key] = { id: res.board.id, action: res.action, title: res.board.title, status: res.board.status };
+        site.boards[board.key] = { id: res.board.id, action: res.action, title: res.board.title, status: res.board.status };
         run.save();
         run.log(`${{ created: '✨ Created', updated: '🔁 Updated', kept: '✋ Kept' }[res.action] || res.action} “${res.board.title}”`);
     }
 }
 
-async function uploadPick(pick, { run, api, settings }) {
-    if (run.state.uploads[pick.sha256]) return run.state.uploads[pick.sha256];
+async function uploadPick(pick, { run, api, settings, site }) {
+    if (site.uploads[pick.sha256]) return site.uploads[pick.sha256];
     const read = (f) => readFileSync(path.join(run.dir, pick.dir, f));
     const image = await api.uploadImage(
         { display: read('display.webp'), thumb: read('thumb.webp'), archive: read('archive.webp'), evidence: pick.evidence ? read(pick.evidence) : null },
@@ -446,7 +447,7 @@ async function uploadPick(pick, { run, api, settings }) {
             notes: `Content tools · ${path.basename(run.dir)} · ${pick.via}${pick.title ? ` · “${pick.title}”` : ''}`.slice(0, LIMITS.NOTES),
         },
     );
-    run.state.uploads[pick.sha256] = image.id;
+    site.uploads[pick.sha256] = image.id;
     run.save();
     return image.id;
 }
@@ -492,7 +493,7 @@ function summarize(plan, state, { ai, settings, folder }) {
 
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
 
-function reportMarkdown({ plan, run, kind, settings, summary, live, sheet }) {
+function reportMarkdown({ plan, run, kind, settings, summary, live, sheet, site }) {
     const out = [
         `# ${KIND_LABEL[kind]} — ${path.basename(run.dir)}`,
         '',
@@ -504,7 +505,7 @@ function reportMarkdown({ plan, run, kind, settings, summary, live, sheet }) {
         '',
     ];
     for (const b of plan.boards) {
-        const sub = run.state.boards[b.key];
+        const sub = site.boards[b.key];
         out.push(`## ${b.emoji} ${b.title}`, '', `${b.description || ''}  `,
             `\`${b.externalKey}\`${sub ? ` → **${sub.action}** ${sub.id}` : ''}`, '');
         b.categories.forEach((cat, c) => {

@@ -63,8 +63,10 @@ npm run content:sheet -- --help                # every option
 - A spreadsheet run takes ~15–30 min (≈7 boards, 175 tiles); a discovery run
   ~5–10 min per board. Uses your Claude usage: ~1 planning call plus one
   short picture check per tile (Unsplash pictures are never shown to the AI).
-- After cutover: `--site prod` with `CONTENT_SITE_PROD` + `IMPORT_TOKEN_PROD`
-  in `.env.local`.
+- `--site prod` = the live site (https://picture-twirl.k-m-mcginty.workers.dev): `CONTENT_SITE_PROD` +
+  `IMPORT_TOKEN_PROD` in `.env.local` (`npm run cf:secrets` writes the token).
+  A run remembers what it uploaded **per site**, so a reviewed run can go to the
+  local site first and to production later: `--resume <run> --live --site prod`.
 
 ## Share mode (dev here, test on another device)
 ```bash

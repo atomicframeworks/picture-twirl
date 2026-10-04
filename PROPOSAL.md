@@ -655,6 +655,16 @@ tools/content/                                 ← the local pipeline (Node, ESM
 - **Workers Paid ($5/mo) at beta:** it removes the daily request cap and the 10 ms
   CPU ceiling, which matters for large uploads and future server work. Free is
   fine while building.
+- **No surprise bills (decided 2026-10-04).** R2 needs a card on file, and it's
+  the only pay-as-you-go piece while the account stays on Workers Free: Workers,
+  D1 and Durable Objects stop at their daily limits instead of billing (D1 emails
+  when it hits one). R2 stays inside its free tier by design: every picture goes
+  through the Worker (≤100k requests/day ≈ 3M reads/month, under the 10M free),
+  and only the team uploads (~1 MB per tile against 10 GB free). So **never give
+  the bucket a public URL** (r2.dev or a custom domain on the bucket), and a
+  **$1 budget alert** emails the owner if anything is ever billed (Manage Account
+  → Billing → Billable Usage → Set Budget Alert). Moving to Workers Paid is the
+  owner's call, never a side effect.
 - Resizing runs in the browser (admin) and in Node (tools), not in the Worker.
   The car-wash site learned that image work blows the free CPU limit, and this
   way we avoid paying for Cloudflare Images.

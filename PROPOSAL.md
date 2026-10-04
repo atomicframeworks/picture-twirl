@@ -56,8 +56,8 @@
    plan (what you're on) caps at **100 simultaneous connections**, about 12
    eight-player games, which is why beta waits for the replacement.
 8. **Lu needs no Cloudflare account to develop.** The local runtime needs no
-   login. Deploys happen on push via **Workers Builds**, with a preview URL per
-   branch or PR. An optional invite gives dashboard and log access (§8.5).
+   login. Deploys happen on push via **Workers Builds** (a preview URL per
+   branch or PR once staging exists, §8.2). An optional invite gives dashboard and log access (§8.5).
 
 ---
 
@@ -672,10 +672,12 @@ tools/content/                                 ← the local pipeline (Node, ESM
 ### 8.2 Environments
 - **Local:** `npm run dev`, with local D1/R2/DO simulated by the Vite plugin.
   Seeded automatically. No login.
-- **Previews (from cutover on):** every branch or PR gets a URL via Workers Builds. Durable Objects
-  are isolated per preview automatically, but **D1/R2 are shared unless we bind
-  previews to a separate staging DB and bucket**, which we will, so previews
-  never touch production content.
+- **Previews (after cutover; not set up yet):** every branch or PR can get a URL
+  via Workers Builds (Worker Previews, `npx wrangler preview`). Durable Objects
+  are isolated per preview automatically, but **D1/R2 must be bound to a separate
+  staging DB and bucket** (the `previews` block in `wrangler.jsonc`) so previews
+  never touch production content. Until then **Builds for Preview branches stays
+  off** (decided 2026-10-04: production first).
 - **Production:** custom domain (TBD), `account_id` pinned in `wrangler.jsonc`.
 
 ### 8.3 Secrets
@@ -805,7 +807,8 @@ deploy with wrangler.**
     `node:24-bookworm-slim`, because the runtime doesn't support Alpine. That's
     handy for a Windows 10 machine, which the runtime doesn't officially support.
 - **Workers Builds** (Cloudflare's GitHub integration): a push to `main` deploys
-  production, and every branch or PR gets a preview URL commented on the PR.
+  production. Every branch or PR can get a preview URL commented on the PR
+  once previews have their own staging data (§8.2).
   Neither of you runs `wrangler deploy` day to day.
 - **Optional seat on the new account for Lu.** Lu signs up for a free Cloudflare
   login, and you send the per-Worker **Invite** with **Editor** access (update
@@ -868,7 +871,7 @@ changes merge cleanly; the predictable conflicts are import lines.
    that comes over through MIGRATION.md like any in-progress work.
 2. **Final sync:** merge `main` into `cloudflare`, then run `npm run lint`,
    `npm run build`, the e2e suite (now fully local, no production Firebase), and
-   multi-device play on the branch preview. Re-run the handoff rehearsal on the
+   multi-device play (`npm run share`; branch previews come later, §8.2). Re-run the handoff rehearsal on the
    synced branch: `npm run rehearse:migration -- --run` (a fresh Claude session
    merges a Firebase-era branch following only the docs).
 3. **Set up production** (the first time anything touches Cloudflare). **Don't
@@ -929,8 +932,8 @@ What ships inside the merge:
      `npm run share` for phones. Delete the Firebase `.env.local`. No Cloudflare
      login needed. Docker users: rebuild (the image changed).
   4. **Cloudflare access (optional):** free Cloudflare login → accept the invite →
-     dashboard, logs, previews. Deploys happen by pushing to `main`; PRs get a
-     preview URL.
+     dashboard and logs. Deploys happen by pushing to `main`; PR preview URLs
+     come once staging exists (§8.2).
   5. **Bringing in-flight work over:** `git merge main`, then resolve conflicts
      with the old→new map, then `npm run migrate:code`, then `npm run lint`, then
      `npm test`. The codemod rewrites `firebase/database` and `../firebase.js`
@@ -963,9 +966,10 @@ Every milestone ships with tests and docs, or it isn't done:
 - The rules live in [TESTING.md](TESTING.md).
 
 ### 9.4 After cutover (beta polish)
-Credits page, play/recognition stats, image library, optional Cloudflare Access,
-monitoring, Workers Paid ($5/mo), and the custom domain if it isn't attached
-yet. Then beta.
+Branch previews (staging D1 + R2, the `previews` block, then preview builds on —
+§8.2), credits page, play/recognition stats, image library, optional Cloudflare
+Access, monitoring, Workers Paid ($5/mo — the owner's call, §8.1), and the custom
+domain if it isn't attached yet. Then beta.
 
 ### Repo layout after the switch-over
 ```

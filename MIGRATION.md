@@ -112,8 +112,10 @@ see README → "This repo lives in Dropbox".
 
 - Make a free Cloudflare account and accept the invite to the Picture Twirl
   account. You get the dashboard: logs, deploys, preview links.
-- **Deploys happen by pushing to `main`** (Workers Builds); every pull request
-  gets its own **preview URL** (on staging data).
+- **Deploys happen by pushing to `main`** (Workers Builds). Pull-request
+  **preview URLs** come later, once a separate staging database exists
+  (PROPOSAL.md §8.2). Until then, try changes locally: `npm run dev`, and
+  `npm run share` for phones.
 - Day to day you never need `wrangler login`, and nobody runs `wrangler deploy`
   by hand.
 
@@ -147,8 +149,9 @@ Claude: do these one at a time with the user, explaining each.
 6. **`npm test`**, then **`npm run test:e2e`**.
 7. **Play it:** `npm run dev`, two windows. If something you added doesn't
    sync or shows `PERMISSION_DENIED` in the console → §6.
-8. **Commit the merge**, push your branch, open a pull request (it gets a
-   preview URL). Merge to `main` when it's green — that deploys.
+8. **Commit the merge**, push your branch, open a pull request. Merge to
+   `main` when it's green — that deploys. (Preview URLs per pull request come
+   later — §4.)
 
 ---
 
@@ -223,8 +226,7 @@ answer to players must wait for the reveal.
   secrets — admin password, `SESSION_SECRET`, `IMPORT_TOKEN` (set as Worker
   secrets; never in git). The old Firebase project stays untouched for about
   two weeks after cutover as a reference, then gets deleted.
-- **Lu:** game features — branches, pull requests (preview URLs), merging to
-  `main` (deploys).
+- **Lu:** game features — branches, pull requests, merging to `main` (deploys).
 - **Both:** boards in `/admin/` (ADMIN.md) and the content tools
   (`npm run content:*`, COMMANDS.md).
 - **Where things are written down:** CLAUDE.md (architecture, file map),

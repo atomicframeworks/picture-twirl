@@ -31,6 +31,7 @@ import { burstConfetti } from '../ui/confetti.js';
 import { playBuzz, playCorrect, playReveal, unlockAudio } from '../ui/sound.js';
 import { openHowToPlay } from '../ui/howToPlay.js';
 import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer, DOUBLE_TAKE } from '../config.js';
+import { initGMGameTour } from './gmGameTour.js';
 
 export async function renderGameUI(gameId) {
     const app = document.getElementById('app');
@@ -75,6 +76,7 @@ export async function renderGameUI(gameId) {
     let boardCache = {};          // mirror of board tiles for Double Take eligibility checks
     let doubleTakeBannerEl = null; // injected banner element for Double Take visual
     let prevDoubleTakeId = null;  // last Double Take question id that played its ding — prevents replay on rerenders
+    let gameTour = null;          // GM Running-the-Game coaching (Phase 2); null for players
 
     // Cancel any onDisconnect().remove() registered by the lobby so that
     // a player disconnecting during a live game does NOT lose their participant node
@@ -100,6 +102,7 @@ export async function renderGameUI(gameId) {
         teardownBoardCompact();
         if (swirlCtrl?.cancel) swirlCtrl.cancel();
         swirlCtrl = null;
+        gameTour?.dispose();
     }
 
     // ─── Tray exit links: wire BEFORE async work so they always attach ─────────
@@ -258,7 +261,7 @@ export async function renderGameUI(gameId) {
 
         boardLocked = true;
         root.classList.add('is-reveal-locked');
-        showCoinFlip(reveal.team, remainingMs);
+        showCoinFlip(reveal.team, remainingMs, () => gameTour?.onBoardUnlocked());
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/selectedTile`), (s) => {
@@ -267,6 +270,7 @@ export async function renderGameUI(gameId) {
         updateStatusMessage();
         updateOkButton();
         updateTurnGlow();
+        gameTour?.onGameStateChanged();
     }));
 
     // ─── Current question (drives the viewer) ──────────────────────────────────
@@ -275,6 +279,7 @@ export async function renderGameUI(gameId) {
         renderQuestionViewer();
         updateStatusMessage();
         updateActiveTurnDisplay(); // question start clears border; question end restores turn border
+        gameTour?.onGameStateChanged();
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/swirlStartTime`), (s) => {
@@ -357,6 +362,8 @@ export async function renderGameUI(gameId) {
         updateStatusMessage();
         updateBuzzButton();
         updateActiveTurnDisplay(); // Resume clears buzz-adjudication border; manual pause keeps it clear
+        if (isGM && swirlPausedByGM && activeBuzzerUid) gameTour?.onBuzzAdjudicating();
+        gameTour?.onGameStateChanged();
     }));
 
     // Pause/resume based solely on the shared swirlPaused RTDB flag.
@@ -587,7 +594,8 @@ export async function renderGameUI(gameId) {
     // ─── Coin flip overlay (synchronized reveal phase) ─────────────────────────
     // durationMs is the remaining window computed from the shared revealAt timestamp,
     // so all clients stay in the reveal for the same wall-clock duration.
-    function showCoinFlip(team, durationMs) {
+    // onCleared (optional) is called once the overlay is removed and boardLocked is false.
+    function showCoinFlip(team, durationMs, onCleared) {
         const teamName = titleCase(teams[team]?.name || `Team ${team}`);
         const overlay = document.createElement('div');
         overlay.className = 'coin-flip-overlay';
@@ -605,6 +613,7 @@ export async function renderGameUI(gameId) {
             boardLocked = false;
             root.classList.remove('is-reveal-locked');
             updateStatusMessage(); // refresh now that the board is open
+            onCleared?.();
         };
         setTimeout(cleanup, durationMs);
         track(() => { overlay.classList.remove('is-visible'); overlay.remove(); });
@@ -1039,6 +1048,14 @@ export async function renderGameUI(gameId) {
     // ─── Initialize: pick a random starting player (GM only, once) ─────────────
     if (isGM) initializeStartingTurn(gameId);
 
+    // ─── GM Running-the-Game coaching (Phase 2) ─────────────────────────────────
+    if (isGM) {
+        function getGameTourState() {
+            return { boardLocked, currentQuestion, selectedTile, activeBuzzerUid, swirlPausedByGM };
+        }
+        gameTour = initGMGameTour(refs, root, getGameTourState);
+    }
+
     // ─── Board ─────────────────────────────────────────────────────────────────
     try {
         const boardEl = await createBoard(gameId, {
@@ -1243,6 +1260,7 @@ export async function renderGameUI(gameId) {
             });
             await clearBuzzQueue(gameId);
             await advanceTurn(gameId, awardedTeam);
+            gameTour?.onQuestionResolved();
         }));
     }
 

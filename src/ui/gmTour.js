@@ -18,7 +18,7 @@ const PAD     = 8;   // px padding around each spotlight hole
 const GAP     = 14;  // px gap from spotlight edge to card
 const MARGIN  = 12;  // min px from viewport edge to card
 
-export function openGMTour({ steps, scrollContainer, onComplete, onSkip }) {
+export function openGMTour({ steps, scrollContainer, blockRoot, alwaysShowSkip, onComplete, onSkip }) {
     if (!steps || !steps.length) return () => {};
 
     let stepIndex      = 0;
@@ -32,7 +32,7 @@ export function openGMTour({ steps, scrollContainer, onComplete, onSkip }) {
     let scrollFrozen    = false;
 
     const prevFocus = document.activeElement;
-    const lobbyRoot = document.querySelector('.lobby-root');
+    const lobbyRoot = blockRoot || document.querySelector('.lobby-root');
 
     // ── Block lobby interaction ──────────────────────────────────────────────
     const inertSupported  = 'inert' in HTMLElement.prototype;
@@ -228,7 +228,9 @@ export function openGMTour({ steps, scrollContainer, onComplete, onSkip }) {
         const raw = step.spotlightTargets
             ? step.spotlightTargets
             : (Array.isArray(step.targetEl) ? step.targetEl : [step.targetEl]);
-        return raw.filter(t => t && document.contains(t));
+        // Exclude hidden elements — getBoundingClientRect() returns all-zeros for them,
+        // which would produce a zero-size hole in the top-left corner of the viewport.
+        return raw.filter(t => t && document.contains(t) && !t.hidden);
     }
 
     // Which rect the card and caret orient toward (always one element)
@@ -280,8 +282,10 @@ export function openGMTour({ steps, scrollContainer, onComplete, onSkip }) {
             cautionEl.hidden = true;
         }
 
-        // Skip: visible in header on all steps except the final one
-        skipHeaderBtn.hidden = isLast;
+        // Skip: visible in header on all steps except the final one.
+        // alwaysShowSkip overrides this for single-step or multi-step tours
+        // where the GM should always be able to dismiss remaining coaching.
+        skipHeaderBtn.hidden = isLast && !alwaysShowSkip;
 
         // Nav: spacer always present so Next stays right-aligned on step 1
         navRow.innerHTML = '';

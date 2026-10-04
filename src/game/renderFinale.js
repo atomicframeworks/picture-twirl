@@ -4,8 +4,8 @@
 // Replaces the game/lobby view when state.phase becomes 'ended'.
 // GM controls Play Again / End Session; players cast a yes/no vote.
 
-import { rtdb, getCurrentUser } from '../firebase.js';
-import { ref, onValue, get, update, serverTimestamp } from 'firebase/database';
+import { rtdb, getCurrentUser } from '../realtime/client.js';
+import { ref, onValue, get, update, serverTimestamp } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { getSession, setSession } from '../session.js';
 import { collectRefs } from '../ui/templates.js';

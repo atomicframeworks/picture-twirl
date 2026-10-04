@@ -3,7 +3,7 @@
 // Picture Twirl — App Bootstrap
 // -----------------------------------------------------------------------------
 // Responsibilities
-// - Initialize Firebase and wait for Anonymous Auth to settle (avoids race bugs).
+// - Set up the realtime client (live games: src/realtime/) and the player identity.
 // - Find & cache root DOM elements once.
 // - Centralize view switching (Home / Create / Join) via ui/views.js.
 // - Wire the Create and Join flows (form validation, actions).
@@ -11,13 +11,13 @@
 // -----------------------------------------------------------------------------
 //
 // Dependencies (unchanged):
-// - firebase.js: initializeFirebase, waitForAuthReady, requireAuth, gameExists
+// - realtime/client.js: initializeRealtime, waitForAuthReady, requireAuth, getRoomInfo, reserveGameCode
 // - ui/dom.js: byId, enable, disable, on
 // - ui/views.js: createViewController
 // - flows/createFlow.js: initCreateFlow
 // - flows/joinFlow.js: initJoinFlow
 // - session.js: setSession (for seed state)
-// - predefinedGames.js: predefinedGames (for the selector)
+// - (boards come from /api/boards — see flows/createFlow.js + ui/boardPicker.js)
 //
 // Notes:
 // - This file does NOT reach into RTDB directly; flows/services handle that.
@@ -25,16 +25,16 @@
 // -----------------------------------------------------------------------------
 
 import {
-    initializeFirebase,
+    initializeRealtime,
     waitForAuthReady,
     requireAuth,
     gameExists,
-    rtdb,
-} from '../firebase.js';
-import { ref, get } from 'firebase/database';
-import * as P from '../data/paths.js';
+    getRoomInfo,
+    reserveGameCode,
+    realtimeStats,
+    simulateDrop,
+} from '../realtime/client.js';
 
-import { predefinedGames } from '../predefinedGames.js';
 import { createGameShell } from '../game/createGame.js';
 import { renderLobby } from '../game/lobby.js';
 import { renderLateJoin } from '../game/renderLateJoin.js';
@@ -52,9 +52,11 @@ export async function boot() {
 
     try {
         // -------------------------------------------------------------------------
-        // Firebase initialization + Anonymous Auth gate
+        // Realtime client + anonymous player identity (src/realtime/client.js)
+        // window.PictureTwirl.realtime.stats() → connection, round-trip times, clock offset
         // -------------------------------------------------------------------------
-        await initializeFirebase();
+        await initializeRealtime();
+        window.PictureTwirl = Object.assign(window.PictureTwirl || {}, { realtime: { stats: realtimeStats, simulateDrop } });
 
         // -------------------------------------------------------------------------
         // Cache DOM roots once (tolerant of optional nodes)
@@ -97,7 +99,7 @@ export async function boot() {
         const step2BackBtn = byId('step2BackBtn');
         const step2NextBtn = byId('step2NextBtn');
 
-        const setListEl = byId('setList');        // where set cards are rendered
+        const setListEl = byId('setList');        // where board cards are rendered
         const headerTitleEl = byId('create2Title'); // fixed header title (game name)
 
         // -------------------------
@@ -127,7 +129,7 @@ export async function boot() {
         if (confirmJoin) disable(confirmJoin);
 
         await waitForAuthReady();
-        console.log('Anonymous Auth ready');
+        console.log('Player identity ready');
 
         // -------------------------------------------------------------------------
         // View controller — single source of truth for Home/Create/GameReady/Join visibility
@@ -159,17 +161,17 @@ export async function boot() {
         const generateGameId = () => Math.random().toString(36).substring(2, 8);
 
         // -------------------------------------------------------------------------
-        // Initialize Create flow (2-step: details → set selection → game ready)
+        // Initialize Create flow (2-step: details → pick a board → game ready)
         // -------------------------------------------------------------------------
         const { startCreateFlow } = initCreateFlow({
             services: {
                 requireAuth,
-                predefinedGames,
                 createGameShell,
                 renderLobby,
                 setSession,
                 showView,
                 generateGameId,
+                reserveGameCode,
             },
             els: {
                 // Step 1 (details)
@@ -209,10 +211,8 @@ export async function boot() {
             services: {
                 requireAuth,
                 gameExists,
-                getGamePhase: async (id) => {
-                    const snap = await get(ref(rtdb, P.phase(id)));
-                    return snap.val() || null;
-                },
+                getGamePhase: async (id) => (await getRoomInfo(id)).phase,
+                getRoomInfo,
                 renderLobby,
                 renderLateJoin,
                 setSession,

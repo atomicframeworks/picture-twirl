@@ -6,8 +6,8 @@
 // the GM picks tiles on behalf of whatever team is up.
 // -----------------------------------------------------------------------------
 
-import { rtdb } from '../firebase.js';
-import { ref, get, update, serverTimestamp } from 'firebase/database';
+import { rtdb } from '../realtime/client.js';
+import { ref, get, update, serverTimestamp } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { TEAM } from '../config.js';
 

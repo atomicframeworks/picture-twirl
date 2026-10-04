@@ -13,8 +13,8 @@
 //   endGame(gameId)                       → write state.phase = 'ended'
 // -----------------------------------------------------------------------------
 
-import { rtdb } from '../firebase.js';
-import { ref, remove, update, serverTimestamp } from 'firebase/database';
+import { rtdb } from '../realtime/client.js';
+import { ref, remove, update, serverTimestamp } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { setSession } from '../session.js';
 import { modal } from '../ui/modal.js';

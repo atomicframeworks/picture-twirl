@@ -1,0 +1,168 @@
+# Testing
+
+> How Picture Twirl is tested, what each layer covers, and the rules for keeping
+> it that way. Started 2026-10-03 with the Cloudflare switch-over (PROPOSAL.md
+> §9). If a change breaks a test, fix the code or update the test **in the same
+> commit**, never later.
+
+## TL;DR
+
+```bash
+npm test             # lint + unit + API + realtime (no browser, ~25 s) — run before every commit
+npm run test:e2e     # browser flows in Chromium (~1 min, fully local — no accounts needed)
+npm run test:all     # both
+```
+
+Setup is automatic (`scripts/ensure-setup.mjs` runs first): dependencies are
+installed/refreshed when needed, `.dev.vars` is created, and `npm run test:e2e`
+downloads Playwright's Chromium (~90 MB, outside the repo) on first use.
+
+## The layers
+
+| Layer | Command | Runs in | Speed | Covers |
+|---|---|---|---|---|
+| **Lint** | `npm run lint` | ESLint | 2 s | Undefined names, unused code. Must be **0 errors** (warnings are tolerated, but don't add new ones) |
+| **Unit** | `npm run test:unit` | `node --test` | 1 s | Pure logic: board shape + snapshot (`src/shared/boards.js`), license rules (`src/shared/rights.js`), the Worker router, snapshot → live board (`toBoardSet` + `buildBoardFromSet`), the content tools' plan/license/spreadsheet logic |
+| **API** | `npm run test:api` | `node --test` + real local D1/R2 | 12 s | The real Worker (`worker/index.js`) answering real requests against a throwaway database: routes, status codes, cache headers, media privacy, uniqueness, rights, revisions, audit log |
+| **Realtime** | `npm run test:realtime` | `node --test` + real Worker with GameRoom Durable Objects in local workerd (wrangler `createTestHarness`), real WebSockets | 7 s | Live games: identities, game codes, the room rules on the wire, answers hidden from players, buzz order, atomic increments, re-sent writes applied once, disconnects (clean vs dropped + grace), hibernation, idle clean-up — and the browser's realtime layer (`src/realtime/`) running in Node against it |
+| **E2E** | `npm run test:e2e` | Playwright + Chromium (Pixel 7 emulation; admin at desktop size) | ~70 s | Whole flows in a browser: create → pick a board → lobby → join → start → swirl → buzz → award → reveal; Wi-Fi drop + rejoin, the same buzz order and swirl progress on every screen, host rejoin, no answers before the reveal; board picker states; GM tour; the admin end to end; component gallery |
+
+### Realtime — `tests/realtime/*.test.mjs`
+`tests/realtime/_harness.mjs` boots the real Worker — GameRoom Durable Objects
+included — in local workerd with wrangler's `createTestHarness`, using a config
+derived from `wrangler.jsonc` at runtime (no static assets, throwaway secrets,
+`ROOM_GRACE_MS=400` so disconnect tests don't wait 30 s):
+
+```js
+const rt = await startRealtime();                 // fresh storage; { vars } to override timers
+const amy = await rt.player();                    // { uid, token }
+const code = await rt.reserve(amy);
+const ws = await rt.connect(code, amy);           // speaks the room protocol (see GameRoom.js)
+await ws.next(m => m.t === 'init');
+await ws.write([{ p: '', v: { hostUid: amy.uid } }]);   // → { t: 'ack', ok }
+await rt.worker().evictDurableObject('ROOMS', { name: code, webSockets: 'hibernate' });
+await rt.close();
+```
+
+- `rooms.test.mjs` talks to rooms over raw WebSockets; `client.test.mjs` runs the
+  browser's `src/realtime/client.js` + `db.js` in Node against the same Worker.
+- Messages queue in an inbox; `ws.next(pred)` takes the first match (so check
+  for the *latest* state, not just any patch about a path).
+- Patches carry whole subtrees (`participants/<uid>`, `board/<tile>`,
+  `currentQuestion`), not single fields.
+
+### Unit — `tests/unit/*.test.mjs`
+Plain functions with no I/O. Use `node:test` + `node:assert/strict`, nothing else.
+Put a unit test next to any rule that decides something (validation, rights,
+shapes, math). Fast enough to run on every save.
+
+### API — `tests/api/*.test.mjs`
+`tests/api/_harness.mjs` does the heavy lifting:
+
+```js
+const t = await startTestEnv();          // fresh folder under .wrangler/, real migrations applied
+const res = await t.fetch('/api/boards'); // calls worker/index.js directly — no server
+await t.env.DB.prepare('SELECT …').all(); // direct checks on D1 / R2 (t.env.MEDIA)
+await t.dispose();                        // closes bindings, deletes the folder
+```
+
+- Each test **file** gets its own database, so files are independent; tests
+  inside a file share it (create what you need in `before()` or per test).
+- Helpers: `storeTestImage(env, seed, meta)` makes a distinct generated picture
+  and stores it through the real code; `fullDraft(imageIds)` builds a 5×5 draft.
+- Runs with `--test-concurrency=1` (one local runtime at a time keeps it calm on
+  laptops).
+
+### E2E — `tests/*.spec.js`
+- `playwright.config.js` starts its **own** server, `npm run dev:e2e`
+  (`scripts/e2e-server.mjs`): port **3100**, local database in
+  `.wrangler/e2e-state`, **wiped + migrated + seeded on every start** — so runs
+  are repeatable and your dev data on :3000 is never touched. (If an e2e server
+  is already running, Playwright reuses it and its data carries over.) The
+  internal test board **Pop Culture Icons** is always published.
+- Admin specs sign in with the `ADMIN_PASSWORD` from your `.dev.vars` (read by
+  `tests/devVars.mjs` — the servers and the API harness run with that file, and
+  the real password never appears in a test) and run at
+  desktop size; they build complete boards quickly through the admin API
+  (`apiReadyBoard`) and use the UI for what they actually test.
+- Shared flows live in `tests/helpers.js` (`createGameAsGM`, `joinAsPlayer`, …);
+  `tests/fixtures.js` provides a `gm` fixture (a fresh game per test, ended in
+  teardown).
+- The `gm` fixture starts with the **GM onboarding tour dismissed**
+  (`skipGMTour`), because its overlay would block lobby clicks. The tour itself
+  is tested in `tour.spec.js`.
+- `gallery.spec.js` runs at desktop size (the gallery is a desktop dev page).
+- Screenshots land in `screenshots/` (gitignored) for eyeballing.
+
+**Everything is local since M4:** live games run on GameRoom Durable Objects
+inside the same local Worker, so e2e games never touch an outside service and
+each run starts from an empty database.
+
+## Specs and what they protect
+
+| File | Protects |
+|---|---|
+| `tests/unit/boards.test.mjs` | Title uniqueness key, slugs, blank 5×5 drafts, "tile ready" rule, counts, snapshot URLs + credits |
+| `tests/unit/rights.test.mjs` | License decisions: free = ok, CC BY = credit, BY-SA = flagged, NC/ND = blocked, unknown = flagged; flag reasons exist |
+| `tests/unit/router.test.mjs` | `:params`, `*` rest, HEAD → GET, literal dots, JSON no-store default |
+| `tests/unit/boardsApi.test.mjs` | Snapshot → live game board (25 tiles keyed `col-row`, points by row) |
+| `tests/unit/validation.test.mjs` | `normalizeDraft` (exact 5×5, caps, bad ids dropped, keeps mid-typing spaces) and the publish gate (problems vs warnings, tile-pointing messages) |
+| `tests/unit/media.test.mjs` | Magic-byte sniffing, WebP/JPEG/PNG header sizes, private-host + URL guards, og:image extraction, session token sign/verify/tamper/expiry, constant-time compare, cookie parsing |
+| `tests/api/admin.test.mjs` | Admin sign-in (wrong password, name required, cookie flags, rate limit, tampered cookie), auth on every route, Origin check, logout, create/title rules, autosave + stale rev + rename, publish gate → publish → players see it, unpublished changes, unpublish/archive/restore rules, duplicate, bulk with skips, stats + audit, uploads (dedupe, disguised/oversized files), link guard, rights edits → ⚠️ recount / ❌ blocks |
+| `tests/api/public.test.mjs` | `/api/health`, `/api/boards` (published only, no-store), `/api/boards/:id` (id or slug, 404s), `/media/*` (WebP, immutable cache, 304, HEAD, private prefixes 404) |
+| `tests/api/content.test.mjs` | Picture dedupe, rights assessment on store, unique titles (case/space-insensitive) + slugs, counts, publish → snapshot + revision + audit |
+| `tests/api/import.test.mjs` | The content tools' API: bearer token (401s), runs (create/finish + summary), picture upload with provenance + rights + private evidence/archive, board upsert (`created` → `updated` on re-run, `kept` once a person took over), taken titles get “(2)”, `externalKey` required, the boards listing |
+| `tests/unit/contentPlan.test.mjs` | Content tools' plan clean-up: exact 5×5 padding, duplicate answers, text limits, spreadsheet links kept across renames/typos but dropped for mismatched ids, unique keys + external keys, name clashes with the site, the no-AI spreadsheet plan, `plan.md`, AI-check flags |
+| `tests/unit/contentSources.test.mjs` | License text → our codes (CC variants, PD, CC0), Commons restrictions → ⚠️ flags + attribution, Openverse NC/ND → blocked, ranking (blocked never taken), the committed spreadsheet export reads cleanly, `.env` parsing |
+| `tests/smoke.spec.js` | Home loads; entry buttons enable after auth |
+| `tests/create.spec.js` | Create wizard end to end |
+| `tests/boards.spec.js` | Board list comes from the API; Next gated on selection; error + retry; titles rendered as text (no HTML injection) |
+| `tests/lobby.spec.js` | GM lobby code; a player joins and picks a team |
+| `tests/tour.spec.js` | First-time GM sees the lobby tour; Skip dismisses it for good |
+| `tests/unit/adminImageTools.test.mjs` | Recognizing our own `/media` picture links (reused, never re-downloaded); links out of drops |
+| `tests/unit/tree.test.mjs` | The live-game tree model shared by room and browser: paths, set/delete/prune, normalize, `serverTimestamp`/`increment` sentinels, update semantics, equality |
+| `tests/unit/roomCore.test.mjs` | The room rules: create only as host (and not on someone else's reserved code), host powers, players limited to their own row's whitelisted fields (no `isGM`, no points, no self-approval, teams only in the lobby, late join = pending), buzz rules (one per open question, right shape, host clears), arrival-order clock, what players see (no answers/upcoming pictures before the reveal), patch roots, limits |
+| `tests/realtime/rooms.test.mjs` | GameRoom over WebSockets: signed identities (forged → 4401), codes (6 unambiguous chars, reserved for the creator), host vs player views, the reveal, refused writes stay private, buzz order = arrival, atomic increments from two tabs, re-sent writes applied once, clean close runs disconnect actions at once, a dropped connection gets a grace period (back in time → nothing), hibernation, deleting a game, idle rooms delete themselves |
+| `tests/realtime/client.test.mjs` | The browser realtime layer against the real room: identity, `set`/`get`/`onValue` (only fires for its own location), `update`/`remove`/`push` (time-ordered keys) / `increment`, refusals reject, `onDisconnect` + `cancel`, `.info/connected`, clock offset, reconnect with writes made while offline |
+| `tests/realtime.spec.js` | M4 acceptance in browsers: a player's Wi-Fi drop mid-question → seamless rejoin + buzz; the same buzz order and swirl progress (±4 %) on three screens; the host gets the GM seat back in a new tab (AUDIT M15); a player's WebSocket never carries an answer before the reveal (AUDIT M7) |
+| `tests/unit/migrateCode.test.mjs` | The Firebase → realtime codemod (`npm run migrate:code`): named / multi-line / namespace / re-export / dynamic imports rewritten with correct relative paths, idempotent, unconvertible names and SDKs reported (never silently dropped), other files named firebase.js untouched |
+| `tests/unit/realtimeClient.test.mjs` | The browser client's connection handling with a fake WebSocket the test controls: clock-sync pings never touch the next socket while it connects (the M5 rehearsal bug), writes queued while reconnecting go out after init in order (ack resolves, refusal rejects), close 4404 stops reconnecting and fails pending writes |
+| `tests/unit/draftOps.test.mjs` | Editor moves: insert-and-shift within a category, cross-category swap, move a category, immutability |
+| `tests/admin.spec.js` | Admin in a browser: sign-in (wrong/right password, sign-out clears the cookie), new-board dialog + live name check, editor (category name, file-chooser upload, answers, autosave, ▼ move with picture, ◀▶ category move, undo, persisted after reload), paste a picture, drag a tile by its picture (swap, no link import), drop one of our own pictures (reused, not re-downloaded), publish gate → publish → listed in the game's Pick a Board, tile drawer (preview twirl, rights edit → reasons + badges), boards table (search, bulk archive with confirm, archived filter + URL, select-all, bulk restore) |
+| `tests/game.spec.js` | Live game: board, picture served from `/media`, swirl + pause/resume, buzz, award (score + confetti), continue, reveal-without-award |
+| `tests/gallery.spec.js` | Component gallery renders; modal opens |
+
+**Not in any automated suite:** the content tools' network + AI steps
+(`npm run content:*` — real web APIs and your Claude usage). Check them by
+hand with a small run, e.g. `npm run content:discover -- --boards 1 --theme "dogs"`,
+then read its `report.md`.
+
+## Rules (definition of done)
+
+Every change — and every switch-over milestone — ships with:
+
+1. `npm test` green and `npm run test:e2e` green (or a written reason in the
+   commit message if a flow can't run here).
+2. **New behavior → new test** at the lowest layer that can see it: a rule →
+   unit; an endpoint/DB behavior → API; a user flow → e2e.
+3. **Bug fix → a test that failed before the fix.**
+4. Changed UI text or flow → update the affected spec in the same commit. Prefer
+   stable hooks (`data-ref`, `data-*` state attributes like `data-paused`) over
+   visible wording.
+5. Docs updated: CLAUDE.md (architecture/file map), COMMANDS.md (commands),
+   this file (new layers/specs), REFACTOR.md change log.
+
+## Troubleshooting
+
+- **`Executable doesn't exist … ms-playwright`** → `npm run setup -- --e2e`
+  (or `npx playwright install chromium`).
+- **"Cannot find module" / platform binary errors** → `npm run setup` (or
+  `npm install`); `node_modules` is per machine.
+- **E2E hangs on the lobby** → a new overlay/tour is covering controls; dismiss it
+  in the fixture (see `skipGMTour`) and test it separately.
+- **API tests: `no such table`** → the harness applies migrations itself; if you
+  added a migration, make sure it's in `migrations/` and valid SQL.
+- **Port 3000 busy** → e2e reuses whatever answers on :3000; stop stray dev
+  servers if results look stale.
+- **Local data looks wrong** → stop the dev server, delete `.wrangler/state`,
+  `npm run dev` (migrates + reseeds).

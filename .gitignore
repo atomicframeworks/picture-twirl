@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Cloudflare: local Worker secrets + local D1/R2 state (per machine)
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.wrangler
+
+# Content tools: per-run work folders (downloads, evidence, reports)
+/content/runs
+
+# Prompt drafts can contain secrets (e.g. the admin password) — keep local
+/prompt-samples
+
 # Editor crash/temp artifacts
 *.tmp.*
 
@@ -34,3 +46,7 @@ Thumbs.db
 *.sln
 *.sw?
 .claude/settings.json
+
+# The Picture Twirl Cloudflare API token (npm run cf / cf:token). Shared via Dropbox, never committed:
+# GitHub refuses pushes that contain Cloudflare tokens.
+/cloudflare-token.txt

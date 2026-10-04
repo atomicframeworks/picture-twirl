@@ -22,7 +22,7 @@
 //   clearBuzzQueue(gameId)             → Promise<void> (host-only by rules)
 // -----------------------------------------------------------------------------
 
-import { rtdb, getCurrentUser } from '../firebase.js';
+import { rtdb, getCurrentUser } from '../realtime/client.js';
 import {
     ref,
     get,
@@ -30,7 +30,7 @@ import {
     push,
     update,
     serverTimestamp,
-} from 'firebase/database';
+} from '../realtime/db.js';
 import * as P from '../data/paths.js';
 
 /**

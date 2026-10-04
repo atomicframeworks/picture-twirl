@@ -1,173 +1,159 @@
 # Picture Twirl
 
-Multiplayer trivia game where players guess images as they gradually "unswirl" from distorted to clear. Built with Vite and vanilla JavaScript on one Cloudflare Worker (branch `cloudflare`): D1 + R2 serve the game's content (Boards), and every live game is a GameRoom Durable Object that keeps all players in sync over WebSockets. The switch-over plan is in [PROPOSAL.md](PROPOSAL.md); tests in [TESTING.md](TESTING.md).
+A multiplayer trivia game: a picture starts swirled and slowly "unswirls"; teams
+buzz in to name it. A host (GM) picks tiles from a **Board** (5 categories × 5
+pictures, 100–500 points), players join from their phones with a game code.
 
-**Live:** https://play.picture-twirl.workers.dev · admin at [`/admin/`](https://play.picture-twirl.workers.dev/admin/) (team password; guide in [ADMIN.md](ADMIN.md)).
+| | |
+|---|---|
+| **Play (live)** | https://play.picture-twirl.workers.dev |
+| **Admin (live)** | https://play.picture-twirl.workers.dev/admin/ — team password; guide: [ADMIN.md](ADMIN.md) |
+| **Staging** | https://staging-play.picture-twirl.workers.dev (staging data — [WORKFLOW.md](WORKFLOW.md)) |
+| **Code** | https://github.com/atomicframeworks/picture-twirl — pushing to `main` deploys |
 
-## Prerequisites
+## Docs
 
-- **Node.js 22+** on the host (recommended): macOS 13.5+, Windows 11 or a glibc
-  Linux — what the local Cloudflare runtime supports
-- Or **Docker Desktop** as a fallback (e.g. on Windows 10) — see below
-- Nothing else: no accounts or cloud services are needed to run, test or play locally
+| Read | For |
+|---|---|
+| **README** (this) | what it is, tech stack, getting started, the commands you'll use daily |
+| [WORKFLOW.md](WORKFLOW.md) | **how we work:** local → staging → live, branches + pull requests, what triggers a deploy, database changes, rollbacks, secrets, who can do what |
+| [COMMANDS.md](COMMANDS.md) | every command, with options |
+| [CLAUDE.md](CLAUDE.md) | architecture, data model, file map (Claude Code loads it automatically) |
+| [ADMIN.md](ADMIN.md) | using `/admin/`: boards, pictures, rights, publishing |
+| [TESTING.md](TESTING.md) | the test layers and when to run which |
+| [MIGRATION.md](MIGRATION.md) | bringing work from before the Cloudflare switch-over (Firebase days) over |
+| [PROPOSAL.md](PROPOSAL.md) | the switch-over plan, decisions and as-built notes |
+| [REFACTOR.md](REFACTOR.md) / [AUDIT.md](AUDIT.md) | change log / code audit |
 
-## Quick start
+## Tech stack
+
+| Part | What | Where |
+|---|---|---|
+| Game + admin UI | Vite 7, vanilla JavaScript (ES modules), CSS design tokens; the swirl is a Canvas animation | `index.html`, `src/`, `admin/` + `src/admin/` |
+| Server | **one Cloudflare Worker**: serves the static site, `/api/*` and `/media/*` | `worker/`, `wrangler.jsonc` |
+| Boards + pictures | **D1** (SQLite: boards, revisions, pictures + rights, audit log) and **R2** (picture files) | `migrations/`, `worker/lib/` |
+| Live games | **Durable Objects** — one GameRoom per game, WebSockets with hibernation; the browser uses a Firebase-shaped API | `worker/rooms/`, `src/realtime/` |
+| Content tools | Node scripts + headless Claude Code (your subscription): boards from the team spreadsheet or the web, free-license pictures (Wikimedia Commons, Openverse), `sharp` | `tools/content/` |
+| Tests | `node --test` (unit, API and live-game tests on the real Workers runtime) + Playwright (browser) | `tests/`, [TESTING.md](TESTING.md) |
+| Hosting + deploys | Cloudflare Workers (free plan), Workers Builds from GitHub: `main` → production, other branches → staging previews | [WORKFLOW.md](WORKFLOW.md) |
+| Local dev | `@cloudflare/vite-plugin` runs the Worker, D1, R2 and Durable Objects on your machine — no account needed | `vite.config.js`, `.wrangler/` |
+
+## Getting started
+
+**You need:** Node.js 22+ and git, on macOS 13.5+, Windows 11 or a glibc Linux
+(what the local Cloudflare runtime supports) — or Docker Desktop (below). No
+accounts or cloud services to run, test or play locally.
 
 ```bash
-npm run dev                       # → http://localhost:3000
-npm test                          # lint + unit + API tests
+git clone https://github.com/atomicframeworks/picture-twirl.git
+cd picture-twirl
+npm run dev            # → http://localhost:3000
 ```
 
-Setup is automatic: before `dev`/`share`/`build`/tests, `scripts/ensure-setup.mjs`
-runs `npm install` when needed (missing, other OS, or `package-lock.json`
-changed), creates `.dev.vars` from `.dev.vars.example`, and installs the e2e
-browser when you run `npm run test:e2e`.
+That's all: setup is automatic. Before `dev`, `share`, `build` and the tests,
+`scripts/ensure-setup.mjs` runs `npm install` when needed (missing, another
+OS, or `package-lock.json` changed), creates `.dev.vars` (local secrets — with
+this machine's own random keys) and, for browser tests, installs Chromium.
+`npm run dev` runs the Worker with a local database and picture bucket under
+`.wrangler/`, migrated and seeded with an internal test board.
 
-`npm run dev` runs Vite **and** the Worker in the local Cloudflare runtime, with
-a local D1 database and R2 bucket under `.wrangler/` — migrated and seeded with
-the internal test board automatically. No Cloudflare account or login needed.
+- **Admin locally:** http://localhost:3000/admin/ — put the team password in
+  `.dev.vars` as `ADMIN_PASSWORD=…` (gitignored; never commit it).
+- **Try it on phones:** `npm run share` → a temporary public HTTPS link.
+- **Before committing:** `npm test` (~25 s).
+- **Next:** [WORKFLOW.md](WORKFLOW.md) — how a change gets to the live game.
 
-The **admin** (manage boards, pictures and rights) is at
-http://localhost:3000/admin/ — local password = `ADMIN_PASSWORD` in your `.dev.vars` (we use the team password; never commit it). How to use
-it: [ADMIN.md](ADMIN.md).
+## Daily commands
 
-## Quick start (Docker fallback)
+```bash
+npm run dev                # the app on http://localhost:3000 (admin: /admin/, components: /gallery.html)
+npm run share              # same + a public HTTPS link for phones / other computers
+npm test                   # lint + unit + API + live-game tests + docs check (~25 s) — before every commit
+npm run test:e2e           # browser tests (Playwright) — when you changed something people click
+npm run build              # production build → dist/ (Cloudflare does this on deploy)
+
+git switch -c my-change    # work on a branch …
+git push -u origin my-change   # … → a staging preview: https://my-change-play.picture-twirl.workers.dev
+                               # merge the pull request into main → live in ~1 min
+```
+Everything else — content tools, the Cloudflare commands, database migrations,
+latency checks — is in [COMMANDS.md](COMMANDS.md).
+
+## Docker (fallback, e.g. Windows 10)
 
 ```powershell
-docker compose up
+docker compose up              # → http://localhost:3000 (npm install + npm run dev -- --host inside)
+docker compose down            # stop
+docker compose down -v; docker compose up   # rebuild dependencies after editing package.json
+docker exec -it picture-twirl-app-1 sh      # a shell inside the container
 ```
+Source files are bind-mounted (edits hot-reload); `node_modules` lives in a
+volume inside the container. The image is Debian (`node:24-bookworm-slim`), not
+Alpine — the local Workers runtime needs glibc.
 
-Vite will be available at **http://localhost:3000**.
+## ⚠️ This repo lives in Dropbox — don't sync `node_modules` or `.wrangler`
 
-The container runs `npm install && npm run dev -- --host` on every start. Source files are bind-mounted, so edits on your host hot-reload in the browser. `node_modules` lives in an anonymous volume inside the container — don't expect your host's `node_modules` to match.
-
-To stop:
+Native dependencies (Rollup, `sharp`, the Workers runtime) ship **per-OS
+binaries**, and `.wrangler/` holds the local database files. Synced between
+machines, they break (`Cannot find module '@rollup/rollup-win32-x64-msvc'`) or
+corrupt. Tell Dropbox to ignore both, once per device:
 
 ```powershell
-docker compose down
+# Windows (PowerShell), from the project root:
+Set-Content -Path "$PWD\node_modules:com.dropbox.ignored" -Value 1
+Set-Content -Path "$PWD\.wrangler:com.dropbox.ignored" -Value 1
 ```
-
-To rebuild dependencies (after editing `package.json`), remove the named volume:
-
-```powershell
-docker compose down -v
-docker compose up
+```bash
+# macOS:
+xattr -w com.dropbox.ignored 1 node_modules
+xattr -w com.dropbox.ignored 1 .wrangler
+# Linux:
+attr -s com.dropbox.ignored -V 1 node_modules
+attr -s com.dropbox.ignored -V 1 .wrangler
 ```
-
-### Running commands inside the container
-
-```powershell
-docker exec -it picture-twirl-app-1 sh
-```
-
-From inside the container you can run `npm install <pkg>`, `npm run build`, etc.
-
-The image is Debian-based (`node:24-bookworm-slim`), not Alpine: the local
-Workers runtime needs glibc.
-
-> **Each machine installs its own `node_modules`.** Run `npm install` once per
-> environment (Windows host, Linux host, container). They are not interchangeable.
-
-### ⚠️ This repo lives in Dropbox — do not sync `node_modules`
-
-Native dependencies (e.g. Rollup, which powers Vite) ship **per-OS binaries**.
-If Dropbox syncs `node_modules` between a Windows host and the Linux/Alpine
-container, you'll hit errors like:
-
-```
-Cannot find module '@rollup/rollup-win32-x64-msvc'
-```
-
-…because the folder holds the *other* platform's binary. Fix / prevention:
-
-1. **Tell Dropbox to ignore `node_modules` and `.wrangler`** on each device
-   (keeps a separate local copy per machine, syncs nothing). `.wrangler/` holds
-   the local database files — syncing those between machines can corrupt them.
-
-   ```powershell
-   # Windows (PowerShell), from the project root:
-   Set-Content -Path "$PWD\node_modules:com.dropbox.ignored" -Value 1
-   Set-Content -Path "$PWD\.wrangler:com.dropbox.ignored" -Value 1
-   ```
-   ```bash
-   # macOS:
-   xattr -w com.dropbox.ignored 1 node_modules
-   xattr -w com.dropbox.ignored 1 .wrangler
-   # Linux:
-   attr -s com.dropbox.ignored -V 1 node_modules
-   ```
-   (Ignoring a folder that already synced removes it from Dropbox on your
-   other devices — they then need their own `npm install`, which they need
-   anyway.)
-
-2. **Reinstall for the current OS:** `npm install` (regenerates the correct
-   native binary; the committed `package-lock.json` already lists every
-   platform, so this is safe on all OSes).
-
-The Docker path is unaffected — it keeps `node_modules` in an anonymous volume
-inside the container, never touching the host folder.
-
-## Other scripts
-
-```powershell
-npm run build      # production build → dist/
-npm run preview    # serve dist/ locally
-npm run content:sheet      # AI: boards from the team spreadsheet → ✨ To review (dry run; see COMMANDS.md)
-npm run content:discover   # AI: brand-new board ideas with free pictures
-```
+Then `npm install` on each machine (setup does it for you when it notices).
 
 ## Configuration
 
-- `.dev.vars` (created automatically from `.dev.vars.example`, gitignored): the
-  local Worker's secrets — `SESSION_SECRET` (signs player identities and admin
-  sessions), `ADMIN_PASSWORD`, `IMPORT_TOKEN`.
-- `.env.local` (optional, gitignored): content-tool settings — see
-  `.env.local.example`. Firebase is no longer used; old `VITE_FIREBASE_*` lines
-  can be deleted.
+- `.dev.vars` (gitignored, created automatically): the local Worker's secrets —
+  `ADMIN_PASSWORD`, `SESSION_SECRET`, `IMPORT_TOKEN`.
+- `.env.local` (gitignored, optional): content-tool settings and the staging /
+  production import keys — `.env.local.example`.
+- `cloudflare-token.txt` (gitignored, owner): the Picture Twirl Cloudflare API
+  token for setup and maintenance commands (`npm run cf …`).
+- Where each secret lives in staging and production: [WORKFLOW.md](WORKFLOW.md).
 
 ## Working with Claude Code
 
-Project-specific context for Claude lives in [`CLAUDE.md`](./CLAUDE.md) (architecture, data layer, file map). Open Claude Code in this directory and it loads automatically.
-
-**Coming from the Firebase days** (a branch from before the Cloudflare
-switch-over)? Read [`MIGRATION.md`](./MIGRATION.md) — or just ask Claude: "bring
-`main` into my branch, follow CLAUDE.md". It reads MIGRATION.md and walks you
-through it (rehearsed in M5: PROPOSAL.md §9.3).
-
-Useful commands inside Claude Code:
-
-- `! docker compose up` — start the dev container (interactive, output streams into chat)
-- `/model` — switch model (e.g. Opus for harder refactors)
-- `/loop 5m <task>` — re-run a task on an interval
+[CLAUDE.md](CLAUDE.md) holds the project context (architecture, data model,
+file map); Claude Code loads it automatically. **Coming from the Firebase days**
+(a branch from before the switch-over)? Ask Claude: "bring `main` into my
+branch, follow CLAUDE.md" — it walks you through [MIGRATION.md](MIGRATION.md).
 
 ## Components & gallery
 
-Reusable UI components live in [`src/components/`](./src/components/) — plain
-factory functions that return DOM elements, styled by the app's existing CSS
-(`Button`, `IconButton`, `Field`, `Pill`, `Card`, `Heading`, `SectionHeader`,
-`GameHeader`, `ActionsTray`, `ScoreboardCard`, `SetCard`, `BoardTile`, …).
+Reusable UI components live in `src/components/` — factory functions that
+return DOM elements (`Button`, `Field`, `Card`, `ScoreboardCard`, `BoardTile`, …):
 
 ```js
 import { Button, Field } from './components/index.js';
 app.append(Button({ label: 'Start', onClick: go }));
 ```
-
-A live showcase of every component is at **`/gallery.html`** (run `npm run dev`,
-then open http://localhost:3000/gallery.html). It needs no game or server
-state, so it's a fast place to build and visually verify components. The Playwright suite
-screenshots it (`tests/gallery.spec.js`).
+A live showcase is at http://localhost:3000/gallery.html (`npm run dev`); the
+browser tests screenshot it (`tests/gallery.spec.js`).
 
 ## Project structure
 
-See `CLAUDE.md` for the full file map and architecture notes. Top-level:
-
 ```
-src/         # app source (flows, game, ui, data, shared rules)
-worker/      # Cloudflare Worker: /api/* and /media/* (boards + pictures)
-migrations/  # D1 database schema
-content/     # content sources (the Google Sheet export) + local seed board
-tools/       # content tools: AI board import from the spreadsheet / discovery (npm run content:*)
-tests/       # unit + API (node --test) and browser (Playwright) — TESTING.md
-public/      # static assets (favicon, home pattern, sounds)
-index.html   # entry + templates (tpl-lobby, tpl-game)
+index.html   # the game: entry + templates (lobby, game)
+admin/       # the admin page (/admin/) → src/admin/
+src/         # browser code: flows, game, realtime (live games), ui, admin, shared rules
+worker/      # the Cloudflare Worker: API, pictures, admin, content import, GameRoom
+migrations/  # database schema (D1)
+content/     # the team spreadsheet export + the local test board
+tools/       # content tools (npm run content:*)
+scripts/     # dev, setup, Cloudflare and migration helpers
+tests/       # unit, API, live-game and browser tests — TESTING.md
+public/      # static files (favicon, sounds, background)
 ```
+Full file map: [CLAUDE.md](CLAUDE.md).

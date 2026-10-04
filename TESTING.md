@@ -22,7 +22,7 @@ downloads Playwright's Chromium (~90 MB, outside the repo) on first use.
 | Layer | Command | Runs in | Speed | Covers |
 |---|---|---|---|---|
 | **Lint** | `npm run lint` | ESLint | 2 s | Undefined names, unused code. Must be **0 errors** (warnings are tolerated, but don't add new ones) |
-| **Unit** | `npm run test:unit` | `node --test` | 1 s | Pure logic: board shape + snapshot (`src/shared/boards.js`), license rules (`src/shared/rights.js`), the Worker router, snapshot → live board (`toBoardSet` + `buildBoardFromSet`), the content tools' plan/license/spreadsheet logic |
+| **Unit** | `npm run test:unit` | `node --test` | 1 s | Pure logic: board shape + snapshot (`src/shared/boards.js`), license rules (`src/shared/rights.js`), the Worker router, snapshot → live board (`toBoardSet` + `buildBoardFromSet`), the room rules, the content tools' plan/license/spreadsheet logic and per-site upload records, the Cloudflare helpers (token file, which secrets go where), per-machine local secrets — and the **docs check** (below) |
 | **API** | `npm run test:api` | `node --test` + real local D1/R2 | 12 s | The real Worker (`worker/index.js`) answering real requests against a throwaway database: routes, status codes, cache headers, media privacy, uniqueness, rights, revisions, audit log |
 | **Realtime** | `npm run test:realtime` | `node --test` + real Worker with GameRoom Durable Objects in local workerd (wrangler `createTestHarness`), real WebSockets | 7 s | Live games: identities, game codes, the room rules on the wire, answers hidden from players, buzz order, atomic increments, re-sent writes applied once, disconnects (clean vs dropped + grace), hibernation, idle clean-up — and the browser's realtime layer (`src/realtime/`) running in Node against it |
 | **E2E** | `npm run test:e2e` | Playwright + Chromium (Pixel 7 emulation; admin at desktop size) | ~70 s | Whole flows in a browser: create → pick a board → lobby → join → start → swirl → buzz → award → reveal; Wi-Fi drop + rejoin, the same buzz order and swirl progress on every screen, host rejoin, no answers before the reveal; board picker states; GM tour; the admin end to end; component gallery |
@@ -55,6 +55,14 @@ await rt.close();
 Plain functions with no I/O. Use `node:test` + `node:assert/strict`, nothing else.
 Put a unit test next to any rule that decides something (validation, rights,
 shapes, math). Fast enough to run on every save.
+
+**Docs check — `tests/unit/docs.test.mjs`.** Every Markdown doc (repo root +
+`.claude/`) is checked for `npm run <script>` mentions that don't exist in
+`package.json`, links to local files that don't exist, and repo paths in
+backticks (`src/…`, `worker/…`, `scripts/…`) that don't exist. Placeholders
+(`<run>`, `*`, `…`) are skipped; AUDIT/REFACTOR/PROPOSAL are records of the past
+(only their scripts and links are checked). When it fails, fix the doc — or the
+code — in the same commit.
 
 ### API — `tests/api/*.test.mjs`
 `tests/api/_harness.mjs` does the heavy lifting:
@@ -150,7 +158,20 @@ Every change — and every switch-over milestone — ships with:
    stable hooks (`data-ref`, `data-*` state attributes like `data-paused`) over
    visible wording.
 5. Docs updated: CLAUDE.md (architecture/file map), COMMANDS.md (commands),
-   this file (new layers/specs), REFACTOR.md change log.
+   WORKFLOW.md (process), this file (new layers/specs), REFACTOR.md change log.
+   The docs check in `npm test` catches names that no longer exist.
+
+## Checking staging and production
+
+The suites run locally. On a deployed site — a branch preview, `staging`, or
+production after a merge — check:
+
+```bash
+curl https://play.picture-twirl.workers.dev/api/health          # {"ok":true,"boards":N}
+npm run measure:realtime -- --url https://play.picture-twirl.workers.dev --n 50   # live games: ping / write / delivery
+```
+…then play a round on two phones. Before merging something risky, do the same
+against its preview (`https://<branch>-play.picture-twirl.workers.dev`).
 
 ## Troubleshooting
 

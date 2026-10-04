@@ -14,10 +14,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > **Claude: before writing code, read [MIGRATION.md](MIGRATION.md) and help the
 > user through it.** If the user has work from before the switch-over (Firebase
 > imports, `predefinedGames.js`, `public/images`, …) and isn't ready to bring it
-> over, follow MIGRATION.md §2 and don't merge `main` into it yet. Nobody runs
-> `wrangler deploy` by hand — `main` deploys through Workers Builds, and before
-> cutover nothing is deployed at all. Testing rules: [TESTING.md](TESTING.md).
-> *(Remove this banner about a month after cutover.)*
+> over, follow MIGRATION.md §2 and don't merge `main` into it yet.
+> **How changes ship — [WORKFLOW.md](WORKFLOW.md):** branches → staging previews
+> (`https://<branch>-play.picture-twirl.workers.dev`, staging data); merging into
+> `main` deploys production (https://play.picture-twirl.workers.dev) through
+> Workers Builds. Nobody runs `wrangler deploy` by hand; Claude never pushes to
+> `main` without the user asking (it's a production deploy). Testing rules:
+> [TESTING.md](TESTING.md). *(Remove this banner about a month after cutover, ~2026-11-04.)*
 
 ## Project Overview
 
@@ -47,7 +50,9 @@ npm run rehearse:migration [-- --run]    # rehearse an old branch's merge in a s
 # (its login belongs to another project). A per-command API token instead:
 npm run cf:token                         # check the token in cloudflare-token.txt (gitignored; COMMANDS.md → Cloudflare)
 npm run cf -- whoami                     # wrangler against the Picture Twirl account only
-npm run cf:secrets                       # production Worker secrets in one go (never printed)
+npm run cf:secrets [-- --previews]       # production (or staging) secrets in one go (never printed)
+npm run db:migrate:staging               # new migrations → the staging database (WORKFLOW.md → Database changes)
+npm run db:migrate:prod                  # new migrations → production (BEFORE merging code that needs them)
 
 # Local database
 npm run db:setup:local     # migrate + seed (runs automatically before dev/share)
@@ -447,7 +452,7 @@ Snapshot shape (what `/api/boards/:id` returns):
   them with Worker vars `ROOM_GRACE_MS`, `ROOM_IDLE_MS`, `ROOM_CLAIM_MS`.
 - **Room rules** (`worker/rooms/roomCore.js` — pure, unit-tested; ported from and
   tighter than the old Firebase rules, kept for reference in
-  `worker/rooms/firebase-rules.legacy.jsonc` until cutover):
+  `worker/rooms/firebase-rules.legacy.jsonc` until the Firebase project is deleted, ~2026-10-18):
   - creating: only into an empty room, as its host (`hostUid` = you), and not a
     code reserved for someone else
   - the host: anything except giving the game away (deleting it is allowed)
@@ -463,11 +468,20 @@ Snapshot shape (what `/api/boards/:id` returns):
 ## Configuration
 
 - **Production:** https://play.picture-twirl.workers.dev (admin: `/admin/`; workers.dev until a
-  custom domain). Account, D1 database id and R2 bucket are pinned in
-  `wrangler.jsonc`; pushes to `main` deploy via Workers Builds.
+  custom domain) — Worker `play` on the account subdomain `picture-twirl`.
+  Account, D1 database id and R2 bucket are pinned in `wrangler.jsonc`; pushes
+  to `main` deploy via Workers Builds.
+- **Staging:** Worker Previews (`wrangler.jsonc` → `previews`: D1
+  `picture-twirl-staging`, R2 `picture-twirl-media-staging`; Durable Objects are
+  per preview). Every pushed branch → `https://<branch>-play.picture-twirl.workers.dev`;
+  the long-lived preview `staging` → https://staging-play.picture-twirl.workers.dev.
+  Staging migrations use `wrangler.preview-migrations.jsonc` (`npm run db:migrate:staging`).
 - Live games need `SESSION_SECRET` (signs player identities; `.dev.vars` locally,
-  a Worker secret in production). The admin also needs `ADMIN_PASSWORD`; content
-  imports `IMPORT_TOKEN` (`.dev.vars.example`).
+  a Worker secret in production, the Preview base config in staging). The admin
+  also needs `ADMIN_PASSWORD`; content imports `IMPORT_TOKEN`. Where each lives:
+  WORKFLOW.md → Where the secrets live. Setup gives each machine its own random
+  local `SESSION_SECRET` / `IMPORT_TOKEN` (`scripts/lib/localSecrets.mjs`) — the
+  example values are public.
 - No Firebase config anymore — `VITE_FIREBASE_*` lines in an old `.env.local`
   can be deleted. `.env.local` now only holds optional content-tool settings
   (`.env.local.example`).
@@ -479,7 +493,8 @@ index.html                     # App shell: Home/Create/Ready/Join views + <temp
 admin/index.html               # The admin page (/admin/) → src/admin/main.js
 gallery.html                   # Dev-only component showcase (src/gallery.js)
 public/_headers                # Production response headers (noindex/no-frame for /admin)
-wrangler.jsonc                 # Cloudflare Worker config: assets, D1 (DB), R2 (MEDIA)
+wrangler.jsonc                 # Cloudflare Worker `play`: assets, D1 (DB), R2 (MEDIA), Durable Objects; `previews` = staging
+wrangler.preview-migrations.jsonc  # only for `npm run db:migrate:staging` (Cloudflare's documented pattern)
 vite.config.js                 # Vite + @cloudflare/vite-plugin (runs the Worker in dev)
 
 src/
@@ -558,7 +573,7 @@ worker/                        # Cloudflare Worker (runs only for /api/* and /me
 └── rooms/
     ├── GameRoom.js            # The Durable Object: storage, sockets (hibernation), disconnects, alarms
     ├── roomCore.js            # Room rules + player views + patches (pure, unit-tested)
-    └── firebase-rules.legacy.jsonc  # The old Firebase rules (reference; delete at cutover)
+    └── firebase-rules.legacy.jsonc  # The old Firebase rules (reference; delete with the Firebase project ~2026-10-18)
 
 migrations/0001_init.sql       # D1 schema (applied by `npm run db:migrate:local`)
 migrations/0002_admin_login_attempts.sql  # login rate-limit table
@@ -592,6 +607,7 @@ scripts/
 ├── rehearse-migration.mjs     # npm run rehearse:migration — Lu's cutover merge in a sandbox (fresh Claude session)
 ├── cf.mjs, cf-token.mjs, cf-secrets.mjs  # npm run cf / cf:token / cf:secrets — the Picture Twirl Cloudflare account (COMMANDS.md)
 ├── lib/cloudflare.mjs         # token from cloudflare-token.txt (gitignored), wrangler env, which secrets to set
+├── lib/localSecrets.mjs       # each machine's own random local SESSION_SECRET / IMPORT_TOKEN (used by ensure-setup)
 └── lib/wranglerConfig.mjs     # wrangler.jsonc from Node; a no-Durable-Objects copy for getPlatformProxy tools
 tests/                         # See TESTING.md
 ├── unit/*.test.mjs            # node --test: pure logic
@@ -657,4 +673,6 @@ tests/                         # See TESTING.md
 See [TESTING.md](TESTING.md). `npm test` (lint + unit + API + realtime, no browser) before
 every commit; `npm run test:e2e` for browser flows. New behavior ships with a
 test at the lowest layer that can see it; bug fixes ship with a test that
-failed before the fix.
+failed before the fix. `tests/unit/docs.test.mjs` fails when a doc names an
+`npm run` script, a linked file or a repo path that doesn't exist — fix the doc
+(or the code) in the same commit.

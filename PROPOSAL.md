@@ -200,7 +200,7 @@ Key choices:
 - **Admin is a second Vite entry** (`admin/index.html`) in the same vanilla-JS
   style as the game, plus two small libraries (§5.9). The Worker gates `/admin`
   and `/api/admin/*`.
-- **Shared rules module** (`src/shared/boardRules.js`) holds the publish checks
+- **Shared rules module** (as built: `src/shared/boards.js`, `validateForPublish`) holds the publish checks
   and limits. It is used by the admin UI and the Worker, so there is one source
   of truth.
 
@@ -589,8 +589,8 @@ npm run content:sheet                                  # dry run: plan + picture
 npm run content:sheet -- --live --site local           # → your local dev admin (Imports)
 npm run content:sheet -- --live --site prod            # → production admin, status "import"
 npm run content:discover -- --theme "90s toys" --boards 2      # AI ideation → same pipeline
-npm run content:discover -- --auto --boards 3                  # AI picks themes not already covered
-npm run content:verify -- --board brd_123              # re-check links + licenses of an existing board
+npm run content:discover -- --boards 3                         # AI picks themes not already covered
+# content:verify (re-check links + licenses of a stored board): deferred, not built (§7.3)
 ```
 The tools need only `IMPORT_TOKEN` (site) in `.env.local`, plus a logged-in
 `claude` CLI (your subscription). Pixabay/Pexels keys are optional extras.
@@ -672,12 +672,13 @@ tools/content/                                 ← the local pipeline (Node, ESM
 ### 8.2 Environments
 - **Local:** `npm run dev`, with local D1/R2/DO simulated by the Vite plugin.
   Seeded automatically. No login.
-- **Previews (after cutover; not set up yet):** every branch or PR can get a URL
-  via Workers Builds (Worker Previews, `npx wrangler preview`). Durable Objects
-  are isolated per preview automatically, but **D1/R2 must be bound to a separate
-  staging DB and bucket** (the `previews` block in `wrangler.jsonc`) so previews
-  never touch production content. Until then **Builds for Preview branches stays
-  off** (decided 2026-10-04: production first).
+- **Previews = staging (set up 2026-10-04):** every pushed branch gets a URL via
+  Workers Builds (Worker Previews, `npx wrangler preview`). Durable Objects are
+  isolated per preview automatically; D1/R2 are bound to the staging database
+  `picture-twirl-staging` + bucket `picture-twirl-media-staging` (the `previews`
+  block in `wrangler.jsonc`), so previews never touch production content. A
+  long-lived preview `staging` (https://staging-play.picture-twirl.workers.dev)
+  holds a copy of the 11 imported boards. How to use it: WORKFLOW.md.
 - **Production:** custom domain (TBD), `account_id` pinned in `wrangler.jsonc`.
 
 ### 8.3 Secrets
@@ -981,8 +982,7 @@ Every milestone ships with tests and docs, or it isn't done:
 - The rules live in [TESTING.md](TESTING.md).
 
 ### 9.4 After cutover (beta polish)
-Branch previews (staging D1 + R2, the `previews` block, then preview builds on —
-§8.2), credits page, play/recognition stats, image library, optional Cloudflare
+Credits page, play/recognition stats, image library, optional Cloudflare
 Access, monitoring, Workers Paid ($5/mo — the owner's call, §8.1), and the custom
 domain if it isn't attached yet. Then beta.
 
@@ -991,8 +991,8 @@ domain if it isn't attached yet. Then beta.
 admin/index.html            Vite entry → /admin
 src/admin/…                 admin app (views, dataTable, editor, imageIntake, emojiField)
 src/realtime/…              Firebase-shaped shim over the GameRoom WebSocket
-src/identity.js             signed anonymous player identity (replaces Firebase auth)
-src/shared/boardRules.js    publish gate + limits (browser + Worker)
+src/realtime/client.js      signed anonymous player identity (replaces Firebase auth) + room sockets
+src/shared/boards.js        publish gate + limits (browser + Worker)
 src/data/boardsApi.js       game-side fetch of boards
 worker/…                    API, media, admin gate, import, rooms/GameRoom.js
 migrations/0001_init.sql    D1 schema (wrangler d1 migrations)

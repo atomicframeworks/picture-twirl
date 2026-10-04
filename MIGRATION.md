@@ -108,14 +108,14 @@ see README → "This repo lives in Dropbox".
 
 ---
 
-## 4. Cloudflare access (optional)
+## 4. Cloudflare access (optional) and how changes ship
 
-- Make a free Cloudflare account and accept the invite to the Picture Twirl
-  account. You get the dashboard: logs, deploys, preview links.
-- **Deploys happen by pushing to `main`** (Workers Builds). Pull-request
-  **preview URLs** come later, once a separate staging database exists
-  (PROPOSAL.md §8.2). Until then, try changes locally: `npm run dev`, and
-  `npm run share` for phones.
+- Accept the invite to the Picture Twirl Cloudflare account (a free Cloudflare
+  login): **Editor** on the `play` Worker — logs, builds, deployments, rollback.
+- **Merging into `main` deploys production** (https://play.picture-twirl.workers.dev,
+  Workers Builds, ~1 min). **Pushing any other branch builds a staging preview**
+  at `https://<branch>-play.picture-twirl.workers.dev` with staging data —
+  production is never touched. The whole process: [WORKFLOW.md](WORKFLOW.md).
 - Day to day you never need `wrangler login`, and nobody runs `wrangler deploy`
   by hand.
 
@@ -149,9 +149,8 @@ Claude: do these one at a time with the user, explaining each.
 6. **`npm test`**, then **`npm run test:e2e`**.
 7. **Play it:** `npm run dev`, two windows. If something you added doesn't
    sync or shows `PERMISSION_DENIED` in the console → §6.
-8. **Commit the merge**, push your branch, open a pull request. Merge to
-   `main` when it's green — that deploys. (Preview URLs per pull request come
-   later — §4.)
+8. **Commit the merge**, push your branch (→ its staging preview, §4), open a
+   pull request. Merge to `main` when it's green — that deploys.
 
 ---
 

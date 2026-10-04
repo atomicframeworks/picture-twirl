@@ -1,8 +1,11 @@
 # Admin guide — managing Boards
 
-> For the people running Picture Twirl. The admin lives at **`/admin/`**
-> (locally: http://localhost:3000/admin/). Technical details: CLAUDE.md
-> ("Admin API"), PROPOSAL.md §5.
+> For the people running Picture Twirl. The admin lives at **`/admin/`** on every site:
+> **live** https://play.picture-twirl.workers.dev/admin/ · **staging**
+> https://staging-play.picture-twirl.workers.dev/admin/ (staging data — safe to
+> experiment) · **local** http://localhost:3000/admin/. Each site has its own
+> boards: publishing in staging doesn't change the live game (WORKFLOW.md).
+> Technical details: CLAUDE.md ("Admin API"), PROPOSAL.md §5.
 
 ## Signing in
 - Enter **your name** (it appears in the Activity log next to everything you

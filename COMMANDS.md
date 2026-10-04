@@ -2,6 +2,11 @@
 
 <!-- repo: github.com/atomicframeworks/picture-twirl -->
 
+Every command, by topic. **How the pieces fit together** (local → staging →
+live, branches, deploys, migrations): [WORKFLOW.md](WORKFLOW.md). Sites:
+production https://play.picture-twirl.workers.dev · staging
+https://staging-play.picture-twirl.workers.dev.
+
 ```bash
 npm run dev                     # that's it — setup runs automatically first
 ```
@@ -33,8 +38,15 @@ npm run db:seed:local           # add the test board if missing (dev server stop
 npx wrangler d1 execute DB --local --command "SELECT slug, status FROM boards"
 ```
 Start fresh: stop the dev server, delete `.wrangler/state`, run `npm run dev`.
-No Cloudflare login is needed for any of this. **Don't run `wrangler deploy`**
-on the `cloudflare` branch before cutover (PROPOSAL.md §9.2).
+No Cloudflare login is needed for any of this.
+
+**Staging and production databases** (need the Cloudflare token — WORKFLOW.md →
+Database changes):
+```bash
+npm run db:migrate:staging      # apply new migrations/*.sql to the staging database (before pushing the branch)
+npm run db:migrate:prod         # … to the production database (before merging the code that needs them)
+npm run cf -- d1 execute DB --remote -c wrangler.jsonc --command "SELECT slug, status FROM boards"   # read production
+```
 
 ## Content tools (AI import → ✨ To review in /admin)
 ```bash
@@ -46,6 +58,8 @@ npm run content:sheet -- --resume last --redo missing   # retry every tile still
 npm run content:sheet -- --resume last --live  # upload that reviewed dry run to the local site (npm run dev must be running)
 npm run content:discover -- --boards 3         # brand-new boards; the AI searches the web for themes
 npm run content:discover -- --theme "space" --boards 1 --live
+npm run content:sheet -- --resume <run> --live --site staging   # upload a reviewed run to staging
+npm run content:sheet -- --resume <run> --live --site prod      # … or to the live site
 npm run content:sheet -- --help                # every option
 ```
 - Each run is a folder in `content/runs/` (not in git): `plan.md`, `report.md`
@@ -63,10 +77,11 @@ npm run content:sheet -- --help                # every option
 - A spreadsheet run takes ~15–30 min (≈7 boards, 175 tiles); a discovery run
   ~5–10 min per board. Uses your Claude usage: ~1 planning call plus one
   short picture check per tile (Unsplash pictures are never shown to the AI).
-- `--site prod` = the live site (https://play.picture-twirl.workers.dev): `CONTENT_SITE_PROD` +
-  `IMPORT_TOKEN_PROD` in `.env.local` (`npm run cf:secrets` writes the token).
-  A run remembers what it uploaded **per site**, so a reviewed run can go to the
-  local site first and to production later: `--resume <run> --live --site prod`.
+- `--site staging` / `--site prod` = the staging / live site: `CONTENT_SITE_STAGING`
+  + `IMPORT_TOKEN_STAGING` / `CONTENT_SITE_PROD` + `IMPORT_TOKEN_PROD` in
+  `.env.local` (`npm run cf:secrets [-- --previews]` writes the tokens). A run
+  remembers what it uploaded **per site**, so a reviewed run can go to the local
+  site first and to staging or production later.
 
 ## Share mode (dev here, test on another device)
 ```bash
@@ -121,7 +136,15 @@ npm run cf -- <any wrangler command>   # e.g. d1 list, deploy, secret put … (n
 npm run cf:secrets                     # production secrets in one go, never printed: ADMIN_PASSWORD (the team's,
                                        # from .dev.vars), IMPORT_TOKEN (saved as IMPORT_TOKEN_PROD in .env.local),
                                        # SESSION_SECRET (made once; --new-session-secret signs everyone out)
+npm run cf:secrets -- --previews       # the same for staging (the Preview base config; IMPORT_TOKEN_STAGING)
+npm run cf -- tail                     # live log stream from production (Ctrl+C to stop)
+npm run cf -- deployments list         # recent production deployments (Workers Builds or manual)
+npm run build && npm run cf -- preview --name staging   # refresh the stable staging site with this code
+npm run cf -- preview delete --name <branch>            # remove a branch's preview
 ```
+Production deploys happen by pushing to `main` (Workers Builds) — nobody runs
+`npm run cf -- deploy` day to day. Rollback: dashboard → Workers & Pages →
+**play** → Deployments → Rollback.
 Making the token (works from a phone browser): dash.cloudflare.com → log in to
 the **Picture Twirl** account → Manage Account → **Account API Tokens** (or My
 Profile → API Tokens) → Create Token → template **Edit Cloudflare Workers** →
@@ -135,7 +158,7 @@ team: dashboard → the token → Roll, and replace the file.
 ## Live games (GameRoom Durable Objects)
 ```bash
 npm run measure:realtime               # latency through a room: ping / write confirmed / delivered to another player
-npm run measure:realtime -- --url https://<site> --n 300   # against a deployed site (after cutover)
+npm run measure:realtime -- --url https://play.picture-twirl.workers.dev --n 300   # production (or the staging URL)
 npm run migrate:code                   # code written against Firebase (older branches) → src/realtime/ imports
 npm run migrate:code -- --check        # exit 1 if any Firebase import is left
 npm run rehearse:migration             # sandbox: "Lu's" Firebase-era branch + a simulated cutover (prints the Claude command)
@@ -168,17 +191,21 @@ Re-run `npm install` after a pull that changed `package.json`.
 ```bash
 git clone https://github.com/atomicframeworks/picture-twirl.git
 cd picture-twirl
-npm install
+npm run dev                            # installs everything it needs first
 ```
 
-## Git — send changes up
+## Git — send changes up (WORKFLOW.md)
 ```bash
+git switch -c my-change                # a branch (its name becomes the preview's address)
 git status                             # what's changed
-git diff                               # review before staging
-git add -A                             # stage everything
-git commit -m "message"                # commit
-git push                               # push (first push: git push -u origin main)
+git diff                               # review
+git add src/game/buzz.js tests/…       # stage by name — `git add -A` also grabs stray personal files
+git commit -m "message"                # commit: stays on your computer, deploys nothing
+git push -u origin my-change           # → staging preview https://my-change-play.picture-twirl.workers.dev
 ```
+Then open a pull request on GitHub; **merging it into `main` deploys
+production** (~1 min). Pushing straight to `main` deploys too — fine for docs
+and tiny fixes.
 
 ## Gotcha
 Build error `Cannot find module @rollup/rollup-win32-...` (or a `sharp` /

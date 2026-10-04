@@ -905,8 +905,11 @@ changes merge cleanly; the predictable conflicts are import lines.
    update the docs); secrets set with `npm run cf:secrets`; a live-game check
    from the owner's Mac measured ping 25 ms and a write reaching another player
    in 62 ms (medians); the 11 imported boards (259 pictures) uploaded as ✨ To
-   review with 0 errors; a $1 budget alert is set. Left: Workers Builds (Worker
-   `play`, preview builds off), merge + tag + push, phones, Lu.
+   review with 0 errors; a $1 budget alert is set. Workers Builds connected
+   (Worker `play`, preview builds off); `cloudflare` merged into `main` as
+   `555b103`, tagged `cloudflare-cutover` and pushed — Workers Builds had it live
+   ~60 s later; 5 boards published; Lu invited as Editor on the `play` Worker.
+   Left: steps 5–7 (phones, telling Lu, Firebase in ~2 weeks ≈ 2026-10-18).
 4. **Merge** `cloudflare` → `main` as one merge commit, tagged
    **`cloudflare-cutover`**. Workers Builds deploys production.
 5. **Smoke test production:** create a game, join from two phones, play a few

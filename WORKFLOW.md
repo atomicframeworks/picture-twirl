@@ -53,10 +53,11 @@ branch costs nothing, though, and gets you a staging link.
 | `npm run db:migrate:prod` | Changes the live database's structure — see "Database changes" |
 
 ### Pushing docs without a rebuild
-By default every push to `main` rebuilds. To skip pushes that only touch docs:
-Cloudflare dashboard → Workers & Pages → **play** → Settings → Builds →
-**Build watch paths** → Include `*` (as is), Exclude `*.md`, `screenshots/*`,
-`content/sources/*`. A push that also changes code still builds. Rebuilds are
+Pushes that only touch docs don't rebuild: the Worker's **Build watch paths**
+(Cloudflare dashboard → Workers & Pages → **play** → Settings → Builds) are set
+to Include `*`, Exclude `*.md`, `screenshots/*`, `content/sources/*` (since
+2026-10-04). A push that also changes code still builds — and so a branch that
+changes only docs gets no staging preview either. Rebuilds are
 harmless anyway: same code, about a minute, and the free plan includes 3,000
 build minutes a month.
 
@@ -78,8 +79,9 @@ build minutes a month.
 - **Passwords + keys:** the Preview base config, set with
   `npm run cf:secrets -- --previews` (the admin password is the team's; the other
   keys differ from production's).
-- **Branch previews on/off:** dashboard → **play** → Settings → Builds →
-  **Builds for Preview branches** (Preview command `npx wrangler preview`).
+- **Branch previews are on** (since 2026-10-04): dashboard → **play** →
+  Settings → Builds → **Builds for Preview branches** (Preview command
+  `npx wrangler preview`) — switch them off there if ever needed.
 - **Refresh the `staging` site with your current code** (needs the Cloudflare
   token): `npm run build && npm run cf -- preview --name staging`. Pushing a branch
   named `staging` does the same.

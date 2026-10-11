@@ -1,0 +1,17 @@
+# Line endings: LF everywhere. The repo is used from macOS and Windows — one
+# working copy is even shared through Dropbox — so a Windows checkout must not
+# rewrite files with CRLF (they'd all show as changed on the Mac).
+* text=auto eol=lf
+
+# Binary files: never converted
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.wav binary
+*.mp3 binary
+*.xlsx binary
+*.woff binary
+*.woff2 binary

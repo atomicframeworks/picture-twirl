@@ -1,0 +1,17 @@
+{
+    "$schema": "./node_modules/wrangler/config-schema.json",
+    // Only for applying D1 migrations to the STAGING database that Worker
+    // Previews use (wrangler.jsonc → previews.d1_databases) — Cloudflare's
+    // documented pattern. Keep database_name/database_id in sync with that block.
+    //   npm run db:migrate:staging
+    // Never deploy with this file.
+    "account_id": "8a0bee3d189bc0c27a9761646193595e",
+    "d1_databases": [
+        {
+            "binding": "PREVIEW_DB",
+            "database_name": "picture-twirl-staging",
+            "database_id": "b69ca697-5674-4176-8a44-cd3ec52e6860",
+            "migrations_dir": "migrations"
+        }
+    ]
+}

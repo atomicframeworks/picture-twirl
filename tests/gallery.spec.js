@@ -1,5 +1,10 @@
 // tests/gallery.spec.js — screenshot the component gallery (no Firebase needed)
-import { test, expect } from '@playwright/test';
+import { test, expect, devices } from '@playwright/test';
+
+// The gallery is a desktop dev showcase. Under the suite's phone emulation
+// (Pixel 7) a neighboring demo frame wins the hit-test over the modal buttons,
+// so run this one spec at desktop size.
+test.use({ ...devices['Desktop Chrome'] });
 
 test('component gallery renders all sections', async ({ page }) => {
     await page.goto('/gallery.html');

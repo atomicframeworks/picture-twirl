@@ -8,7 +8,7 @@
 // - Log helpful errors without crashing the page.
 // -----------------------------------------------------------------------------
 //
-// Depends on: src/startup/boot.js (which wires Firebase + flows/views)
+// Depends on: src/startup/boot.js (which wires the realtime client + flows/views)
 
 import { boot } from './startup/boot.js';
 

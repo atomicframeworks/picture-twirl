@@ -15,6 +15,6 @@ export const currentQuestion = (id) => `games/${id}/currentQuestion`;
 export const swirlPaused = (id) => `games/${id}/swirlPaused`;
 export const buzzQueue = (id) => `games/${id}/buzzQueue`;
 export const settings = (id) => `games/${id}/settings`;
-export const setId = (id) => `games/${id}/settings/setId`;
+export const boardId = (id) => `games/${id}/settings/boardId`;
 export const index = (id) => `gameIndex/${id}`;
 export const startingTeamReveal = (id) => `games/${id}/startingTeamReveal`;

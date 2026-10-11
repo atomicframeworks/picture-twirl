@@ -1,0 +1,63 @@
+{
+    "slug": "pop-icons",
+    "title": "Pop Culture Icons",
+    "emoji": "🎤",
+    "description": "Test board · 90s stars, TV, memes, music & cartoons",
+    "rights": {
+        "license": "unknown",
+        "flags": ["rights_unknown"],
+        "note": "Internal test board: pictures were collected for testing and their rights were never checked."
+    },
+    "categories": [
+        {
+            "title": "90s Stars",
+            "tiles": [
+                { "answer": "Britney Spears", "file": "britney.jpeg" },
+                { "answer": "NSYNC", "file": "nsync.jpeg" },
+                { "answer": "Backstreet Boys", "file": "backstreet.jpeg" },
+                { "answer": "Usher", "file": "usher.jpeg" },
+                { "answer": "Rihanna", "file": "rihanna.jpg" }
+            ]
+        },
+        {
+            "title": "00s TV",
+            "tiles": [
+                { "answer": "Friends", "file": "friends.jpeg" },
+                { "answer": "The Office", "file": "theoffice.jpeg" },
+                { "answer": "Lost", "file": "lost.jpeg" },
+                { "answer": "Gilmore Girls", "file": "gilmore.jpeg" },
+                { "answer": "Glee", "file": "glee.jpeg" }
+            ]
+        },
+        {
+            "title": "Viral Memes",
+            "tiles": [
+                { "answer": "Doge", "file": "doge.jpeg" },
+                { "answer": "Charlie Bit Me", "file": "charlie.jpeg" },
+                { "answer": "Numa Numa", "file": "numa.jpeg" },
+                { "answer": "Rick Astley", "file": "rickroll.jpeg" },
+                { "answer": "Grumpy Cat", "file": "grumpycat.jpeg" }
+            ]
+        },
+        {
+            "title": "Music Legends",
+            "tiles": [
+                { "answer": "Michael Jackson", "file": "mj.jpeg" },
+                { "answer": "Madonna", "file": "madonna.jpeg" },
+                { "answer": "Beyoncé", "file": "beyonce.jpeg" },
+                { "answer": "Prince", "file": "prince.jpeg" },
+                { "answer": "Elvis Presley", "file": "elvis.jpeg" }
+            ]
+        },
+        {
+            "title": "Animated",
+            "tiles": [
+                { "answer": "SpongeBob SquarePants", "file": "sponge.jpeg" },
+                { "answer": "Bugs Bunny", "file": "bugs.jpeg" },
+                { "answer": "Homer Simpson", "file": "homer.png" },
+                { "answer": "Stewie Griffin", "file": "stewie.png" },
+                { "answer": "Pikachu", "file": "pikachu.jpeg" }
+            ]
+        }
+    ]
+}

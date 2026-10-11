@@ -9,8 +9,8 @@
 //   phase: 'ended'    → disposeAll + renderFinale
 // -----------------------------------------------------------------------------
 
-import { rtdb } from '../firebase.js';
-import { ref, onValue } from 'firebase/database';
+import { rtdb } from '../realtime/client.js';
+import { ref, onValue } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { createDisposer, exitToHome } from './controllerKit.js';
 import { renderGameUI } from './renderGame.js';

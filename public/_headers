@@ -1,0 +1,7 @@
+# Response headers for static assets (Cloudflare Workers Static Assets).
+# Applied in production; the Vite dev server ignores this file.
+
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+  X-Frame-Options: DENY
+  Referrer-Policy: same-origin

@@ -25,6 +25,8 @@ import { resolvePlayerName, savePlayerName } from '../prefs.js';
  * @property {Function} requireAuth
  * @property {(gameId: string) => Promise<boolean>} gameExists
  * @property {(gameId: string) => Promise<string|null>} getGamePhase
+ * @property {(gameId: string) => Promise<{ exists: boolean, phase: string|null, host: boolean }>} [getRoomInfo]
+ *   one call for all three; host = this browser created the game (AUDIT M15)
  * @property {Function} renderLobby
  * @property {Function} renderLateJoin
  * @property {Function} setSession
@@ -50,6 +52,7 @@ export function initJoinFlow({ services, els }) {
         requireAuth,
         gameExists,
         getGamePhase,
+        getRoomInfo,
         renderLobby,
         renderLateJoin,
         setSession,
@@ -189,15 +192,24 @@ export function initJoinFlow({ services, els }) {
             if (elConfirmJoin) elConfirmJoin.dataset.busy = '1';
             disable(elConfirmJoin);
 
-            const exists = await gameExists(id);
-            if (!exists) {
+            const info = getRoomInfo
+                ? await getRoomInfo(id)
+                : { exists: await gameExists(id), phase: getGamePhase ? await getGamePhase(id) : null, host: false };
+            if (!info.exists) {
                 showJoinError('Sorry, game not found. Please check with your host.');
                 validateJoinForm(); // re-enable if fields still filled
                 return;
             }
+            const { phase } = info;
 
-            // Check whether the game is in lobby, live, or ended
-            const phase = getGamePhase ? await getGamePhase(id) : null;
+            // The game's own host coming back (closed the tab, new tab, rejoined by code):
+            // they get the GM seat back instead of joining as a player (AUDIT M15).
+            // The lobby forwards to the live game or the finale by phase.
+            if (info.host && phase !== 'sessionEnded') {
+                setSession({ gameId: id, isGM: true, displayName: playerName });
+                await renderLobby(id);
+                return;
+            }
 
             if (phase === 'ended' || phase === 'sessionEnded') {
                 showJoinError('This game has already ended.');

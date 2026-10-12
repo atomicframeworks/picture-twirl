@@ -33,7 +33,10 @@ export async function renderLobby(gameId) {
     const { isGM } = getSession();
 
     const app = document.getElementById('app');
+
     const root = mountTemplate(app, 'tpl-lobby');
+    window.scrollTo(0, 0);
+
     const refs = collectRefs(root);
 
     refs.codeEl.textContent = gameId.toUpperCase();
@@ -64,6 +67,24 @@ export async function renderLobby(gameId) {
         window.removeEventListener('resize', syncTrayHeight);
         window.removeEventListener('orientationchange', syncTrayHeight);
     });
+
+    // Recalculate player roster disclosure when the container width changes
+    // (e.g. orientation change). Only fires on width changes so that hiding pills
+    // (which changes lobby-main height) cannot create an observer loop.
+    if (!isGM && 'ResizeObserver' in window && refs.lobbyMain) {
+        let lastWidth = 0;
+        const pillRo = new ResizeObserver(entries => {
+            const w = entries[0]?.contentBoxSize?.[0]?.inlineSize
+                   ?? entries[0]?.contentRect?.width
+                   ?? 0;
+            if (Math.abs(w - lastWidth) < 1) return;
+            lastWidth = w;
+            applyPlayerOverflow(refs.teamAList, lastPillsA, teamAExpanded, v => { teamAExpanded = v; });
+            applyPlayerOverflow(refs.teamBList, lastPillsB, teamBExpanded, v => { teamBExpanded = v; });
+        });
+        pillRo.observe(refs.lobbyMain);
+        track(() => pillRo.disconnect());
+    }
 
     if (uid) track(attachPresence(gameId, uid));
 
@@ -124,6 +145,12 @@ export async function renderLobby(gameId) {
     let selectedName = '';
     let participantsCache = {}; // pid -> {team, displayName,...}
     let tourTriggered = false;
+
+    // Player-only roster disclosure state (width-aware: shows max pills that fit one row).
+    let teamAExpanded = false;
+    let teamBExpanded = false;
+    let lastPillsA = [];
+    let lastPillsB = [];
 
     function updateInstruction(message, isSuccess = false) {
         const instructionEl = root.querySelector('.lobby-instruction');
@@ -194,6 +221,76 @@ export async function renderLobby(gameId) {
         }
     };
 
+    // Roster expand/collapse for player view.
+    // Measures how many pills fit on one row (leaving room for the toggle button),
+    // hides the rest, and adds a disclosure toggle. Preserves expanded state across
+    // observer re-fires and recalculates on container-width changes.
+    function applyPlayerOverflow(listEl, pills, isExpanded, setExpanded) {
+        // Always remove any previous toggle before re-evaluating.
+        listEl.querySelector('.player-expand-btn')?.remove();
+
+        const allPillEls = Array.from(listEl.querySelectorAll('.pill'));
+        if (allPillEls.length <= 1) {
+            // 0 or 1 pill: never truncate; ensure any previously hidden pill is shown.
+            allPillEls.forEach(p => { p.hidden = false; });
+            return;
+        }
+
+        // Expanded: show everything + "Show less" toggle.
+        if (isExpanded) {
+            allPillEls.forEach(p => { p.hidden = false; });
+            listEl.appendChild(buildToggle(0, true, setExpanded, allPillEls, allPillEls.length));
+            return;
+        }
+
+        // Collapsed: measure how many pills fit on a single row, reserving space for the toggle.
+        // Unhide all pills first so getBoundingClientRect reports real widths (synchronous reflow,
+        // but this runs before paint so the user sees only the final truncated result).
+        allPillEls.forEach(p => { p.hidden = false; });
+
+        const GAP = 8;        // matches CSS gap on .pill-row / team-body
+        const TOGGLE_W = 72;  // px reserved for "+N more" text + chevron
+        const containerW = listEl.getBoundingClientRect().width;
+
+        let usedW = 0;
+        let fitCount = 0;
+        for (let i = 0; i < allPillEls.length; i++) {
+            const pillW = allPillEls[i].getBoundingClientRect().width;
+            const newUsed = fitCount === 0 ? pillW : usedW + GAP + pillW;
+            const hasMore = i < allPillEls.length - 1;
+            // Only reserve toggle space when there are pills after this one.
+            if (newUsed + (hasMore ? GAP + TOGGLE_W : 0) <= containerW) {
+                usedW = newUsed;
+                fitCount++;
+            } else {
+                break;
+            }
+        }
+
+        if (fitCount >= allPillEls.length) return; // all fit — no truncation needed
+        if (fitCount < 1) fitCount = 1;            // always show at least one pill
+
+        allPillEls.forEach((p, i) => { p.hidden = i >= fitCount; });
+        const extra = allPillEls.length - fitCount;
+        listEl.appendChild(buildToggle(extra, false, setExpanded, allPillEls, fitCount));
+    }
+
+    function buildToggle(extra, isExpanded, setExpanded, allPillEls, fitCount) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'player-expand-btn';
+        btn.setAttribute('aria-expanded', String(isExpanded));
+        btn.textContent = isExpanded ? 'Show less' : `+${extra} more`;
+        btn.addEventListener('click', () => {
+            const next = btn.getAttribute('aria-expanded') !== 'true';
+            setExpanded(next);
+            allPillEls.forEach((p, i) => { p.hidden = !next && i >= fitCount; });
+            btn.textContent = next ? 'Show less' : `+${extra} more`;
+            btn.setAttribute('aria-expanded', String(next));
+        });
+        return btn;
+    }
+
     // Status helper
     let lastCanStart = false;
     function statusText(flag) {
@@ -234,6 +331,12 @@ export async function renderLobby(gameId) {
         renderList(pool, refs.poolList);
         renderList(A, refs.teamAList);
         renderList(B, refs.teamBList);
+        if (!isGM) {
+            lastPillsA = A;
+            lastPillsB = B;
+            applyPlayerOverflow(refs.teamAList, A, teamAExpanded, v => { teamAExpanded = v; });
+            applyPlayerOverflow(refs.teamBList, B, teamBExpanded, v => { teamBExpanded = v; });
+        }
         if (refs.poolCount) refs.poolCount.textContent = counts.none;
         if (refs.teamACount) refs.teamACount.textContent = `${counts.A}`;
         if (refs.teamBCount) refs.teamBCount.textContent = `${counts.B}`;

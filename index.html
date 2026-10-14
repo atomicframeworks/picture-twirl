@@ -228,29 +228,29 @@
         </div>
       </header>
 
-      <!-- Section header for assign players -->
-      <header class="section-header">
-        <h2 class="section-header-title">Assign Players</h2>
-      </header>
-
-      <!-- Instruction text -->
-      <div class="lobby-instruction">Tap player to assign to a team.</div>
-
-      <!-- Unassigned players -->
-      <section class="unassigned-section">
-        <div class="unassigned-header">
-          <span class="unassigned-icon">⊘</span>
-          <span class="unassigned-label">Unassigned</span>
-          <span class="unassigned-count" data-ref="poolCount">0</span>
-        </div>
-        <div class="pill-row" data-ref="poolList" aria-label="Players not on a team"></div>
-      </section>
-
       <!-- Player heading (outside scroll container so it can't hide behind the sticky header) -->
       <h2 class="player-lobby-heading">Choose Your Team</h2>
 
-      <!-- Teams -->
+      <!-- Teams + GM scrollable content -->
       <main class="lobby-main" data-ref="lobbyMain">
+        <!-- Section header for assign players (sticky within .lobby-main for GM) -->
+        <header class="section-header">
+          <h2 class="section-header-title">Assign Players</h2>
+        </header>
+
+        <!-- Instruction text -->
+        <div class="lobby-instruction">Tap player to assign to a team.</div>
+
+        <!-- Unassigned players -->
+        <section class="unassigned-section">
+          <div class="unassigned-header">
+            <span class="unassigned-icon">⊘</span>
+            <span class="unassigned-label">Unassigned</span>
+            <span class="unassigned-count" data-ref="poolCount">0</span>
+          </div>
+          <div class="pill-row" data-ref="poolList" aria-label="Players not on a team"></div>
+        </section>
+
         <div class="teams-grid">
           <section class="team-card" data-team="A">
             <div class="team-head">

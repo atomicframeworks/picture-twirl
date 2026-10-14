@@ -253,6 +253,24 @@
     display: none;
 }
 
+/* Constrain GM lobby to the viewport so .lobby-main becomes the scroll owner.
+   min-height: 0 resets the base rule; height: 100dvh (with 100vh fallback for
+   older engines) gives the flex column a definite height so .lobby-main shrinks
+   to its computed share and gains overflow. overflow: hidden prevents flex
+   children from overflowing the container into the document scroll. */
+.lobby-root.is-gm {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* The actions-tray is now a flex sibling below .lobby-main (not overlapping it),
+   so .lobby-main no longer needs to reserve tray height as bottom padding. */
+.lobby-root.is-gm .lobby-main {
+    padding-bottom: var(--space-4);
+}
+
 /* Join Random Team — lavender fill so it reads as a button on the white tray */
 [data-ref="joinRandom"] {
     background: var(--pill, #F1ECFE);

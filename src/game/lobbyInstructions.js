@@ -34,18 +34,24 @@ export function createInstructionController({ isGM, teamNames, setText, getParts
     let timer = null;
     let showingAssignSuccess = false;  // GM: suppress observer default while success shows
     let lastPlayerTeam = null;         // player: detect "just joined a team"
+    let savedCanStart = false;         // GM: last known canStart, used by revert after success
 
     const nameOf = (team) => (team === TEAM.A ? teamNames.A : teamNames.B);
     const clearTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
 
     // GM's default line, derived from the latest participants snapshot.
+    // canStart is stored in savedCanStart so the 3-second success revert uses the current value.
     function gmDefault(parts) {
+        if (savedCanStart) {
+            setText('Ready to start!', true);
+            return;
+        }
         const keys = Object.keys(parts || {});
         const unassigned = keys.filter((k) => (parts[k]?.team || TEAM.NONE) === TEAM.NONE).length;
         if (unassigned === 0 && keys.length > 0) {
             setText('Yay! All players assigned to teams.', true);
         } else {
-            setText('Tap player to assign to a team.');
+            setText('Tap a player to assign them. Each team needs at least 1 player.');
         }
     }
 
@@ -69,9 +75,10 @@ export function createInstructionController({ isGM, teamNames, setText, getParts
 
         /**
          * React to a participants snapshot.
-         * @param {{ counts: {none:number}, parts: object, myTeam: string, editing: boolean }} s
+         * @param {{ counts: {none:number}, parts: object, myTeam: string, editing: boolean, canStart: boolean }} s
          */
-        sync({ parts, myTeam, editing }) {
+        sync({ parts, myTeam, editing, canStart }) {
+            if (isGM) savedCanStart = !!canStart;  // always keep current, even during editing/success
             if (editing) return;            // instruction owned by editing()
             if (isGM) {
                 if (showingAssignSuccess) return;  // don't clobber the success message

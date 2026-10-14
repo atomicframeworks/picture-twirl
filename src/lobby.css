@@ -253,6 +253,11 @@
     display: none;
 }
 
+/* Status row is GM-lobby only: its message is now shown via .lobby-instruction */
+.lobby-root.is-gm .status-row {
+    display: none;
+}
+
 /* Constrain GM lobby to the viewport so .lobby-main becomes the scroll owner.
    min-height: 0 resets the base rule; height: 100dvh (with 100vh fallback for
    older engines) gives the flex column a definite height so .lobby-main shrinks

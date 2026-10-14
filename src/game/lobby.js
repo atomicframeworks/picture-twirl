@@ -341,14 +341,14 @@ export async function renderLobby(gameId) {
         if (refs.teamACount) refs.teamACount.textContent = `${counts.A}`;
         if (refs.teamBCount) refs.teamBCount.textContent = `${counts.B}`;
 
-        // Update instruction message based on role and state
-        instr.sync({ counts, parts, myTeam, editing: !!selectedPid });
-
         // Start readiness
         const totalPlaying = counts.A + counts.B;
         const totalAll = totalPlaying + counts.none;
         lastCanStart = teamsEnabled ? counts.A >= 1 && counts.B >= 1 && totalPlaying >= 2 : totalAll >= 1;
         if (isGM && refs.gmStart) refs.gmStart.disabled = !lastCanStart;
+
+        // Update instruction message based on role and state (after canStart is known)
+        instr.sync({ counts, parts, myTeam, editing: !!selectedPid, canStart: lastCanStart });
 
         // Inline MY join/leave chips
         const showInline = !!teamsEnabled;

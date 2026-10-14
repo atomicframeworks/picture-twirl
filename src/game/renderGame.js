@@ -221,8 +221,9 @@ export async function renderGameUI(gameId) {
                 }
             }
 
-            // Show/update the pending-join approval banner
-            updateApprovalBanner();
+            // Show/update the pending-join notification; sync review panel if open
+            renderLateJoinBanner();
+            if (reviewIsOpen) updateReviewForParticipantChange();
 
             // Promote tile requests (only when no active question/tile)
             if (!currentQuestion && !selectedTile) {
@@ -440,16 +441,13 @@ export async function renderGameUI(gameId) {
         return { a, b };
     }
 
-    let joinApprovalEl = null;
-
-    function getApprovalEl() {
-        if (joinApprovalEl) return joinApprovalEl;
-        joinApprovalEl = document.createElement('div');
-        joinApprovalEl.className = 'join-request-toast';
-        joinApprovalEl.hidden = true;
-        root.appendChild(joinApprovalEl);
-        return joinApprovalEl;
-    }
+    // ─── Late-join notification + sequential review panel (GM only) ─────────────
+    // Pure local presentation state — no Firebase writes beyond approveJoiner/remove.
+    let reviewDialogEl = null;
+    let reviewSequence = [];   // [{uid, name}] — built at open time, extended on new arrivals
+    let reviewIndex = 0;       // current position in reviewSequence
+    let reviewDone = new Map();// uid → { action: 'approved'|'denied'|'withdrawn', teamName? }
+    let reviewIsOpen = false;  // true while the review dialog is open
 
     async function approveJoiner(pendingUid, team) {
         const pendingName = participants[pendingUid]?.displayName || 'Player';
@@ -467,52 +465,285 @@ export async function renderGameUI(gameId) {
         }
     }
 
-    function updateApprovalBanner() {
-        if (!isGM) return;
-        const pending = Object.entries(participants)
+    async function denyJoiner(pendingUid) {
+        await update(ref(rtdb, P.participant(gameId, pendingUid)), { status: 'denied' });
+    }
+
+    // Returns the live ordered list of pending late-join requests.
+    function getPending() {
+        return Object.entries(participants)
             .filter(([, p]) => p.status === 'pending')
             .map(([uid, p]) => ({ uid, name: p.displayName || 'Player' }));
+    }
 
-        const el = getApprovalEl();
-
+    // Shows the amber banner when pending requests exist; hides it when none remain.
+    // CSS (.game-root.is-in-question .late-join-banner { display:none }) hides it during questions.
+    function renderLateJoinBanner() {
+        if (!isGM || !refs.lateJoinBanner) return;
+        const pending = getPending();
         if (!pending.length) {
-            el.hidden = true;
-            el.innerHTML = '';
+            refs.lateJoinBanner.hidden = true;
+            return;
+        }
+        refs.lateJoinBanner.hidden = false;
+        if (refs.lateJoinBannerText) {
+            refs.lateJoinBannerText.textContent = pending.length === 1
+                ? `${pending[0].name} wants to join`
+                : `${pending.length} players waiting to join`;
+        }
+    }
+
+    // Opens the sequential review dialog for pending late-join requests.
+    function openReviewPanel() {
+        const pending = getPending();
+        if (!pending.length) return;
+
+        reviewSequence = pending.slice();
+        reviewIndex = 0;
+        reviewDone = new Map();
+        reviewIsOpen = true;
+
+        if (!reviewDialogEl) {
+            reviewDialogEl = document.createElement('dialog');
+            reviewDialogEl.className = 'review-dialog';
+            reviewDialogEl.setAttribute('aria-modal', 'true');
+            reviewDialogEl.setAttribute('aria-label', 'Review players waiting to join');
+            // Escape key: close without admitting (native cancel event)
+            reviewDialogEl.addEventListener('cancel', (e) => {
+                e.preventDefault();
+                closeReviewPanel();
+            });
+            document.body.appendChild(reviewDialogEl);
+            track(() => {
+                if (reviewDialogEl?.open) reviewDialogEl.close();
+                reviewDialogEl?.remove();
+                reviewDialogEl = null;
+                reviewIsOpen = false;
+            });
+        }
+
+        renderReviewStep();
+        reviewDialogEl.showModal();
+    }
+
+    // Closes the dialog without admitting or denying anyone.
+    function closeReviewPanel() {
+        if (reviewDialogEl?.open) reviewDialogEl.close();
+        reviewIsOpen = false;
+        // Return focus to the Review button so keyboard users are not stranded.
+        refs.lateJoinReviewBtn?.focus?.();
+    }
+
+    // Renders the current step inside the review dialog.
+    function renderReviewStep() {
+        if (!reviewDialogEl) return;
+
+        // Merge any new arrivals into the sequence (append-only; never reorders).
+        getPending().forEach(p => {
+            if (!reviewSequence.find(s => s.uid === p.uid)) {
+                reviewSequence.push(p);
+            }
+        });
+
+        const livePendingSet = new Set(getPending().map(p => p.uid));
+        const total = reviewSequence.length;
+        const entry = reviewSequence[reviewIndex];
+
+        const isResolved = !!entry && reviewDone.has(entry.uid);
+        const isWithdrawn = !!entry && !livePendingSet.has(entry.uid) && !reviewDone.has(entry.uid);
+        const isHandled = isResolved || isWithdrawn;
+        const hasMore = reviewIndex < total - 1;
+
+        // Progress text (always in DOM; hidden when only 1 player).
+        const progressText = total > 1 ? `Player ${reviewIndex + 1} of ${total}` : '';
+
+        // Heading changes to reflect the current state.
+        let stateTitle = 'Player wants to join';
+        if (isWithdrawn) {
+            stateTitle = hasMore ? 'Player no longer waiting' : 'No players waiting';
+        } else if (isResolved) {
+            const o = reviewDone.get(entry?.uid);
+            if (o?.action === 'approved') stateTitle = 'Player added';
+            else if (o?.action === 'denied') stateTitle = 'Request declined';
+            else stateTitle = hasMore ? 'Player no longer waiting' : 'No players waiting';
+        }
+
+        // Inline SVG icons (decorative; descriptive text follows each).
+        const checkSvg = `<svg class="rp-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>`;
+        const denySvg  = `<svg class="rp-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+
+        // Body content.
+        let bodyHtml;
+        if (!entry) {
+            bodyHtml = '<p class="rp-withdrawn-text">No pending requests.</p>';
+        } else if (isWithdrawn) {
+            bodyHtml = `<p class="rp-withdrawn-text">${escapeHtml(entry.name)} is no longer waiting.</p>`;
+        } else if (isResolved) {
+            const outcome = reviewDone.get(entry.uid);
+            if (outcome?.action === 'approved') {
+                const teamLabel = escapeHtml(outcome.teamName || 'a team');
+                bodyHtml = `<div class="rp-confirm-row">${checkSvg}<p class="rp-confirm-text">${escapeHtml(entry.name)} added to ${teamLabel}.</p></div>`;
+            } else if (outcome?.action === 'denied') {
+                bodyHtml = `<div class="rp-confirm-row">${denySvg}<p class="rp-confirm-text">${escapeHtml(entry.name)} was not admitted.</p></div>`;
+            } else {
+                bodyHtml = `<p class="rp-withdrawn-text">${escapeHtml(entry.name)} is no longer waiting.</p>`;
+            }
+        } else {
+            const teamAName = escapeHtml(teams.A?.name || 'Team A');
+            const teamBName = escapeHtml(teams.B?.name || 'Team B');
+            const { a: countA, b: countB } = activeTeamCounts();
+            const labelA = `Assign to ${escapeHtml(teams.A?.name || 'Team A')}, ${countA} player${countA !== 1 ? 's' : ''}`;
+            const labelB = `Assign to ${escapeHtml(teams.B?.name || 'Team B')}, ${countB} player${countB !== 1 ? 's' : ''}`;
+            bodyHtml = `
+                <p class="rp-player-name">${escapeHtml(entry.name)}</p>
+                <p class="rp-subheading">Choose a team</p>
+                <div class="rp-teams">
+                    <button class="btn rp-team-btn" data-team="A" type="button" aria-label="${labelA}">
+                        <span class="rp-team-label">${teamAName}</span>
+                        <span class="rp-count-badge" aria-hidden="true">${countA}</span>
+                    </button>
+                    <button class="btn rp-team-btn" data-team="B" type="button" aria-label="${labelB}">
+                        <span class="rp-team-label">${teamBName}</span>
+                        <span class="rp-count-badge" aria-hidden="true">${countB}</span>
+                    </button>
+                    <button class="rp-random-btn" type="button">Random Team</button>
+                </div>`;
+        }
+
+        // Footer: Deny while actionable; Next/Done once handled.
+        const footerHtml = isHandled
+            ? `<button class="btn primary ${hasMore ? 'rp-next-btn' : 'rp-done-btn'}" type="button">${hasMore ? 'Next Player →' : 'Done'}</button>`
+            : `<button class="btn rp-deny-btn" type="button">Deny</button>`;
+
+        reviewDialogEl.innerHTML = `
+            <div class="rp-header">
+                <h2 class="rp-title">${escapeHtml(stateTitle)}</h2>
+                <button class="rp-close-btn" type="button" aria-label="Close without deciding" autofocus>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="rp-separator" aria-hidden="true"></div>
+            <div class="rp-body">
+                <p class="rp-progress"${progressText ? '' : ' hidden'}>${escapeHtml(progressText)}</p>
+                ${bodyHtml}
+            </div>
+            <div class="rp-separator" aria-hidden="true"></div>
+            <div class="rp-footer">${footerHtml}</div>`;
+
+        reviewDialogEl.querySelector('.rp-close-btn')?.addEventListener('click', closeReviewPanel);
+
+        // Wire decision buttons only while the player is still actionable.
+        if (entry && !isHandled) {
+            const pendingUid = entry.uid;
+
+            function lockDecisions() {
+                reviewDialogEl.querySelectorAll('.rp-team-btn, .rp-random-btn, .rp-deny-btn')
+                    .forEach(b => { b.disabled = true; });
+            }
+
+            function showAdmitError(msg) {
+                let errEl = reviewDialogEl.querySelector('.rp-error');
+                if (!errEl) {
+                    errEl = document.createElement('p');
+                    errEl.className = 'rp-error';
+                    reviewDialogEl.querySelector('.rp-body')?.appendChild(errEl);
+                }
+                errEl.textContent = msg;
+                reviewDialogEl.querySelectorAll('.rp-team-btn, .rp-random-btn, .rp-deny-btn')
+                    .forEach(b => { b.disabled = false; });
+            }
+
+            async function handleApprove(team) {
+                lockDecisions();
+                const current = participants[pendingUid];
+                if (!current || current.status !== 'pending') {
+                    reviewDone.set(pendingUid, { action: 'withdrawn' });
+                    renderReviewStep();
+                    return;
+                }
+                try {
+                    await approveJoiner(pendingUid, team);
+                    const teamName = teams[team]?.name || (team === 'A' ? 'Team A' : 'Team B');
+                    reviewDone.set(pendingUid, { action: 'approved', teamName });
+                    renderReviewStep();
+                } catch (err) {
+                    console.error('[late-join] Admission failed:', err);
+                    showAdmitError('Could not admit player. Please try again.');
+                }
+            }
+
+            async function handleDeny() {
+                lockDecisions();
+                const current = participants[pendingUid];
+                if (!current || current.status !== 'pending') {
+                    reviewDone.set(pendingUid, { action: 'withdrawn' });
+                    renderReviewStep();
+                    return;
+                }
+                try {
+                    await denyJoiner(pendingUid);
+                    reviewDone.set(pendingUid, { action: 'denied' });
+                    renderReviewStep();
+                } catch (err) {
+                    console.error('[late-join] Denial failed:', err);
+                    showAdmitError('Could not deny player. Please try again.');
+                }
+            }
+
+            reviewDialogEl.querySelectorAll('.rp-team-btn').forEach(btn => {
+                btn.addEventListener('click', () => handleApprove(btn.dataset.team));
+            });
+            reviewDialogEl.querySelector('.rp-random-btn')?.addEventListener('click', () => {
+                const { a, b } = activeTeamCounts();
+                handleApprove(a <= b ? TEAM.A : TEAM.B);
+            });
+            reviewDialogEl.querySelector('.rp-deny-btn')?.addEventListener('click', handleDeny);
+        }
+
+        reviewDialogEl.querySelector('.rp-next-btn')?.addEventListener('click', () => {
+            reviewIndex++;
+            renderReviewStep();
+        });
+        reviewDialogEl.querySelector('.rp-done-btn')?.addEventListener('click', closeReviewPanel);
+    }
+
+    // Called from the participants observer while review panel is open.
+    // Handles new arrivals (minor update) and current-player withdrawal (rebuild).
+    function updateReviewForParticipantChange() {
+        if (!reviewIsOpen || !reviewDialogEl?.open) return;
+
+        // Add new arrivals to sequence
+        getPending().forEach(p => {
+            if (!reviewSequence.find(s => s.uid === p.uid)) {
+                reviewSequence.push(p);
+            }
+        });
+
+        const livePendingSet = new Set(getPending().map(p => p.uid));
+        const entry = reviewSequence[reviewIndex];
+        if (!entry) return;
+
+        const currentWithdrawn = !livePendingSet.has(entry.uid) && !reviewDone.has(entry.uid);
+        if (currentWithdrawn) {
+            // Current player withdrew — rebuild so GM sees the "no longer waiting" message
+            renderReviewStep();
             return;
         }
 
-        const { uid: pendingUid, name: pendingName } = pending[0];
-        const teamAName = escapeHtml(teams.A?.name || 'Team A');
-        const teamBName = escapeHtml(teams.B?.name || 'Team B');
-
-        const { a: countA, b: countB } = activeTeamCounts();
-        const labelA = `Assign to ${teams.A?.name || 'Team A'}, ${countA} player${countA !== 1 ? 's' : ''}`;
-        const labelB = `Assign to ${teams.B?.name || 'Team B'}, ${countB} player${countB !== 1 ? 's' : ''}`;
-
-        el.hidden = false;
-        el.innerHTML = `
-            <div class="jrt-body">
-                <span class="jrt-text"><strong>${escapeHtml(pendingName)}</strong> wants to join</span>
-                <div class="jrt-actions">
-                    <button class="btn ghost jrt-deny">Deny</button>
-                    <button class="btn ghost jrt-team" data-team="A" aria-label="${escapeHtml(labelA)}">${teamAName} · ${countA}</button>
-                    <button class="btn ghost jrt-team" data-team="B" aria-label="${escapeHtml(labelB)}">${teamBName} · ${countB}</button>
-                    <button class="btn primary jrt-random">Random</button>
-                </div>
-            </div>`;
-
-        el.querySelector('.jrt-deny').addEventListener('click', () => {
-            remove(ref(rtdb, P.participant(gameId, pendingUid))).catch(console.error);
-        });
-
-        el.querySelectorAll('.jrt-team').forEach(btn => {
-            btn.addEventListener('click', () => approveJoiner(pendingUid, btn.dataset.team).catch(console.error));
-        });
-
-        el.querySelector('.jrt-random').addEventListener('click', () => {
-            const { a, b } = activeTeamCounts();
-            approveJoiner(pendingUid, a <= b ? TEAM.A : TEAM.B).catch(console.error);
-        });
+        // Non-critical update: refresh only the progress text (preserves focus).
+        // .rp-progress is always in the DOM (see renderReviewStep), just shown/hidden.
+        const progressEl = reviewDialogEl.querySelector('.rp-progress');
+        if (progressEl) {
+            const total = reviewSequence.length;
+            if (total > 1) {
+                progressEl.textContent = `Player ${reviewIndex + 1} of ${total}`;
+                progressEl.hidden = false;
+            } else {
+                progressEl.hidden = true;
+            }
+        }
     }
 
     // Small ephemeral toast shown to GM when a player leaves.
@@ -526,6 +757,10 @@ export async function renderGameUI(gameId) {
         el.textContent = msg;
         root.appendChild(el);
         setTimeout(() => el.remove(), 4000);
+    }
+
+    if (isGM && refs.lateJoinReviewBtn) {
+        track(listen(refs.lateJoinReviewBtn, 'click', openReviewPanel));
     }
 
     // Unified buzz button presenter. Three states:

@@ -89,57 +89,352 @@
     .game-join-toast { animation: none; }
 }
 
-/* ── GM join-request approval banner ────────────────────────────────────── */
-.join-request-toast {
-    position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 200;
-    background: var(--surface);
-    border: 1.5px solid var(--brand-1);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 6px 24px rgba(0,0,0,.18);
-    padding: 14px 16px 12px;
-    width: min(340px, calc(100vw - 32px));
-    animation: jrt-slide-up 0.22s ease;
+/* ── Late-join notification banner (in-flow flex item between game-top/game-main) */
+.late-join-banner {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    min-height: 50px;
+    background: #FFFBEB;
+    border-bottom: 1px solid rgba(245, 158, 11, 0.45);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 500;
 }
 
-@keyframes jrt-slide-up {
-    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* Banner is intentionally fixed-light — approved design uses cream regardless of OS theme.
+   Dark-mode overrides are intentionally absent. */
+
+/* Hide banner during active question — shown again on return to board */
+.game-root.is-in-question .late-join-banner {
+    display: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .join-request-toast { animation: none; }
+.ljb-text {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.jrt-body {
+/* Review button: solid purple (overrides the purple-to-pink gradient from .btn.primary) */
+.ljb-review-btn {
+    flex-shrink: 0;
+    padding: 5px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+    min-height: 30px;
+    white-space: nowrap;
+    background: #7C3AED;
+    box-shadow: none;
+}
+
+/* ── Late-join review dialog ─────────────────────────────────────────────── */
+.review-dialog {
+    border: none;
+    border-radius: var(--radius-xl, 20px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+    padding: 0;
+    max-width: min(480px, calc(100vw - 32px));
+    max-height: min(85dvh, 600px);
+    overflow-y: auto;
+    width: 100%;
+    background: var(--surface, #fff);
+    color: var(--ink);
+}
+
+.review-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+}
+
+/* Header */
+.rp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px 20px 16px;
+}
+
+.rp-title {
+    font-family: var(--font-display, 'Fredoka', sans-serif);
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--brand-1, #7C3AED);
+}
+
+.rp-close-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    /* Expand tap target to 44px without changing visual size */
+    margin: -4px -4px -4px 0;
+    padding: 4px;
+    border-radius: 50%;
+    border: none;
+    background: #EDE9FE;
+    color: var(--ink, #111);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.rp-close-btn:hover { background: #DDD6FE; }
+.rp-close-btn:focus-visible { outline: 2px solid var(--brand-1, #7C3AED); outline-offset: 2px; }
+
+/* Horizontal separators between header/body/footer */
+.rp-separator {
+    height: 1px;
+    background: var(--line, #F0F0F0);
+    flex-shrink: 0;
+}
+
+/* Body */
+.rp-body {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Progress */
+.rp-progress {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--muted, #888);
+    margin: 0;
+}
+
+/* Player name */
+.rp-player-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.2;
+    margin: 0;
+    word-break: break-word;
+}
+
+/* Choose a team label */
+.rp-subheading {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink, #111);
+    margin: 0;
+}
+
+/* Team buttons: stacked full-width */
+.rp-teams {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.jrt-text {
-    font-size: 14px;
-    color: var(--ink);
-}
-
-.jrt-actions {
+.rp-team-btn {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 16px;
+    min-height: 52px;
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+    border-color: transparent;
+    border-radius: var(--radius-lg, 14px);
+    color: #fff;
 }
 
-.jrt-actions .btn {
+.rp-team-btn[data-team="A"] {
+    background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+}
+.rp-team-btn[data-team="B"] {
+    background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
+}
+.rp-team-btn[data-team]:hover  { filter: brightness(1.08); }
+.rp-team-btn[data-team]:active { filter: brightness(0.95); }
+.rp-team-btn[data-team]:disabled { opacity: 0.6; filter: none; cursor: not-allowed; }
+
+.rp-team-label {
+    font-size: 15px;
+    font-weight: 700;
     flex: 1;
-    min-width: 64px;
-    font-size: 13px;
-    padding: 6px 10px;
+    min-width: 0;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
 }
 
-.jrt-actions .jrt-team {
-    white-space: nowrap;
+/* Circular player-count badge */
+.rp-count-badge {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Random Team: outlined */
+.rp-random-btn {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--surface, #fff);
+    color: var(--ink, #111);
+    border: 1.5px solid rgba(0, 0, 0, 0.22);
+    border-radius: var(--radius-lg, 14px);
+    text-align: center;
+    cursor: pointer;
+}
+.rp-random-btn:hover  { border-color: rgba(0, 0, 0, 0.4); }
+.rp-random-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Footer: Deny (decision) or Next Player / Done (handled) */
+.rp-footer {
+    padding: 14px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.rp-deny-btn {
+    background: none;
+    border: none;
+    color: #DC2626;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 20px;
+    min-height: 44px;
+    border-radius: var(--radius-md, 10px);
+    -webkit-tap-highlight-color: transparent;
+}
+.rp-deny-btn:hover { background: rgba(220, 38, 38, 0.06); }
+.rp-deny-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.rp-deny-btn:focus-visible { outline: 2px solid #DC2626; outline-offset: 2px; }
+
+/* Next / Done button fills footer width */
+.rp-footer .btn.primary {
+    width: 100%;
+    font-size: 15px;
+    padding: 13px 20px;
+}
+
+/* Confirmation row: icon + text inline */
+.rp-confirm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.rp-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.rp-confirm-text {
+    font-size: 15px;
+    color: var(--ink);
+    line-height: 1.45;
+    flex: 1;
+    word-break: break-word;
+    margin: 0;
+}
+
+/* Neutral withdrawal text (no icon, no color treatment) */
+.rp-withdrawn-text {
+    font-size: 15px;
+    color: var(--muted, #666);
+    margin: 0;
+    line-height: 1.45;
+}
+
+/* Error feedback */
+.rp-error {
+    font-size: 13px;
+    color: #B91C1C;
+    background: #FEF2F2;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: var(--radius-md, 10px);
+    padding: 8px 12px;
+    margin: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .rp-random-btn {
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    :root:not([data-theme="light"]) .rp-random-btn:hover {
+        border-color: rgba(255, 255, 255, 0.4);
+    }
+    :root:not([data-theme="light"]) .rp-error {
+        background: #450A0A; color: #FCA5A5; border-color: rgba(220, 38, 38, 0.4);
+    }
+}
+:root[data-theme="dark"] .rp-random-btn {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+:root[data-theme="dark"] .rp-random-btn:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+:root[data-theme="dark"] .rp-error {
+    background: #450A0A; color: #FCA5A5; border-color: rgba(220, 38, 38, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .review-dialog { animation: none; }
+}
+
+/* ── Cancel request / denied state (player waiting screen) ──────────────── */
+.late-join-cancel-btn {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--muted, #888);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px 4px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+}
+.late-join-cancel-btn:hover { color: var(--ink); }
+.late-join-cancel-btn:focus-visible {
+    outline: 2px solid var(--brand-1, #7C3AED);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.late-join-error {
+    font-size: 13px;
+    color: #B91C1C;
+    margin: 0;
+}
+
+.late-join-denied-icon {
+    font-size: 40px;
+    line-height: 1;
+    margin: 0;
 }
 
 /* ── GM leave-notification toast ─────────────────────────────────────────── */

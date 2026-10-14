@@ -365,6 +365,12 @@
         </div>
       </div>
 
+      <!-- Late-join notification (GM only; shown when pending requests exist, hidden during questions) -->
+      <div class="late-join-banner" data-ref="lateJoinBanner" hidden aria-live="polite" role="status">
+        <span class="ljb-text" data-ref="lateJoinBannerText"></span>
+        <button class="btn primary ljb-review-btn" data-ref="lateJoinReviewBtn" type="button">Review</button>
+      </div>
+
       <!-- Scrollable main area (image and board scroll here; nothing above can bleed through) -->
       <main class="game-main" data-ref="gameMain">
         <!-- Board grid (visible when no active question) -->

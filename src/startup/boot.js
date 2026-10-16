@@ -27,6 +27,7 @@
 import {
     initializeRealtime,
     waitForAuthReady,
+    getCurrentUser,
     requireAuth,
     gameExists,
     getRoomInfo,
@@ -48,6 +49,7 @@ import { openHowToPlay } from '../ui/howToPlay.js';
 
 import { initCreateFlow } from '../flows/createFlow.js';
 import { initJoinFlow } from '../flows/joinFlow.js';
+import { initAnalytics, capturePageview } from '../analytics.js';
 
 export async function boot() {
     console.log('Main.js Loaded');
@@ -150,6 +152,11 @@ export async function boot() {
 
         await waitForAuthReady();
         console.log('Player identity ready');
+
+        // Initialise analytics once the anonymous identity is available.
+        // No-op when VITE_POSTHOG_KEY is absent (local dev without a key set).
+        initAnalytics(getCurrentUser()?.uid);
+        capturePageview();
 
         // -------------------------------------------------------------------------
         // View controller — single source of truth for Home/Create/GameReady/Join visibility

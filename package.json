@@ -52,6 +52,7 @@
   "dependencies": {
     "emoji-picker-element": "^1.29.1",
     "emoji-picker-element-data": "^1.8.0",
+    "posthog-js": "^1.438.12",
     "sortablejs": "^1.15.7"
   }
 }

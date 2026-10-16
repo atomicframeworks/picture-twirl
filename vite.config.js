@@ -29,6 +29,11 @@ export default {
             hmr: { protocol: 'wss', clientPort: 443 },
         }),
     },
+    // Inject the Cloudflare Pages commit SHA at build time so every analytics
+    // event carries the deployed build version. Falls back to 'dev' locally.
+    define: {
+        __BUILD_VERSION__: JSON.stringify(process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
+    },
     build: {
         // The Cloudflare plugin writes the site to dist/client and the Worker
         // (plus its generated wrangler.json) to dist/play (the Worker's name).

@@ -221,6 +221,8 @@ export async function createGameShell(
     // behind (AUDIT M8). The room accepts it only if it's empty and the code
     // was reserved for us (or not at all).
     await set(ref(rtdb, P.game(gameId)), gameData);
+
+    return { analyticsId, roundId, boardId: boardMeta.boardId, boardRev: boardMeta.boardRev };
 }
 
 

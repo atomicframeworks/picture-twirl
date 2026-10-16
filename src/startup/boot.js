@@ -260,7 +260,7 @@ export async function boot() {
         // -------------------------------------------------------------------------
         // Top-level nav buttons
         // -------------------------------------------------------------------------
-        on(newGameBtn, 'click', startCreateFlow);
+        on(newGameBtn, 'click', () => startCreateFlow('new'));
         on(joinGameBtn, 'click', () => startJoinFlow());
         on(howToPlayBtn, 'click', () => openHowToPlay({
             context: 'home',
@@ -280,7 +280,7 @@ export async function boot() {
             } catch { return null; }
         })();
         if (homeIntent === 'create') {
-            startCreateFlow();
+            startCreateFlow('play_again');
         } else if (homeIntent === 'join') {
             startJoinFlow();
         }

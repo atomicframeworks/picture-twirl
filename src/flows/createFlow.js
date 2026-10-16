@@ -41,6 +41,8 @@ import { rtdb } from '../realtime/client.js';
 import { ref, remove } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { modal } from '../ui/modal.js';
+import { capture } from '../analytics.js';
+import { generateId } from '../game/analyticsIds.js';
 
 export function initCreateFlow({ services, els }) {
     const {
@@ -51,6 +53,14 @@ export function initCreateFlow({ services, els }) {
         showView,
         generateGameId,
         reserveGameCode,   // the real, collision-free code (server-side, AUDIT M4)
+        // Injectable for tests; defaults to the real analytics capture.
+        capture: doCapture = capture,
+        // Injectable mock board picker for tests (bypasses mountBoardPicker + DOM).
+        boardPicker: pickerOverride = null,
+        // Injectable for tests; defaults to the modal.confirm() call below.
+        confirmDelete: confirmDeleteFn = null,
+        // Injectable for tests; defaults to the RTDB remove() call below.
+        removeGame: removeGameFn = null,
     } = services;
 
     const {
@@ -85,12 +95,27 @@ export function initCreateFlow({ services, els }) {
 
     // Internal state
     let currentGameId = null;
+    let attemptId = null;       // stable ID across all 4 analytics events for one attempt
+    let attemptOrigin = null;   // 'new' | 'play_again'
+    let attemptBoardMeta = null; // { boardId, boardRev } set at step-2 commit
+    let attemptGameMeta = null;  // { analyticsId, roundId } set after successful creation
+    let isBusy = false;          // prevents double-creates from rapid clicks
     const teamsOn = true; // Teams are always enabled in this version
 
     // Step 2 board list (loads from the API each time step 2 opens)
-    const boardPicker = setListEl
+    const mountedPicker = setListEl
         ? mountBoardPicker(setListEl, { onChange: () => updateStep2NextEnabled() })
         : null;
+    const pickerToUse = pickerOverride ?? mountedPicker;
+
+    // Default delete helpers — overridable for testing.
+    const doConfirmDelete = confirmDeleteFn ?? (() => modal.confirm({
+        title: 'End game?',
+        body: 'This will delete the game. You can\'t undo this.',
+        confirmText: 'End game',
+        variant: 'danger',
+    }));
+    const doRemoveGame = removeGameFn ?? ((id) => remove(ref(rtdb, P.game(id))));
 
     // ───────────────────────────────────────────────────────────────────────────
     // Helpers
@@ -105,7 +130,7 @@ export function initCreateFlow({ services, els }) {
     }
 
     function isStep2Valid() {
-        return !!boardPicker?.getSelected();
+        return !!pickerToUse?.getSelected();
     }
 
     function updateStep1NextEnabled() {
@@ -184,7 +209,7 @@ export function initCreateFlow({ services, els }) {
     function resetCreate() {
         createGameForm?.reset?.();
         prefillNames();
-        boardPicker?.reset();
+        pickerToUse?.reset();
         updateStep1NextEnabled();
         updateStep2NextEnabled();
         if (headerTitleEl) headerTitleEl.textContent = '';
@@ -242,7 +267,7 @@ export function initCreateFlow({ services, els }) {
         if (headerTitleEl) headerTitleEl.textContent = gameDisplayName || 'Picture Twirl';
 
         // Load the published boards (Next stays disabled until one is picked)
-        boardPicker?.load();
+        pickerToUse?.load();
         updateStep2NextEnabled();
         gotoStep(2);
     });
@@ -272,7 +297,23 @@ export function initCreateFlow({ services, els }) {
     // Step 2 Next (finalize → create → show Game Ready)
     on(step2NextBtn, 'click', async (e) => {
         e.preventDefault();
-        if (!isStep2Valid()) return;
+        if (!isStep2Valid() || isBusy) return;
+        isBusy = true;
+
+        // Capture board selection synchronously (before any await) so it's
+        // guaranteed to fire even if creation later fails.
+        const board = pickerToUse.getSelected();
+        const boardId = board?.slug ?? board?.id ?? null;
+        const boardRev = board?.rev ?? null;
+        attemptBoardMeta = { boardId, boardRev };
+
+        doCapture('pt_board_selected', {
+            create_attempt_id: attemptId,
+            board_id: boardId,
+            board_version: boardRev,
+            role: 'gm',
+            origin: attemptOrigin,
+        });
 
         try {
             await requireAuth(); // ensure auth.uid exists
@@ -286,18 +327,32 @@ export function initCreateFlow({ services, els }) {
 
             const gmDisplayName = (gmNameInput?.value || '').trim().slice(0, LIMITS.DISPLAY_NAME);
             const gameDisplayName = (gameNameInput?.value || '').trim().slice(0, LIMITS.GAME_TITLE);
-            const teamA = teamsOn ? (teamANameInput?.value.trim() || 'Team A') : '';
-            const teamB = teamsOn ? (teamBNameInput?.value.trim() || 'Team B') : '';
+            const teamA = teamsOn ? (teamANameInput?.value?.trim() || 'Team A') : '';
+            const teamB = teamsOn ? (teamBNameInput?.value?.trim() || 'Team B') : '';
 
             setSession({ displayName: gmDisplayName, isGM: true });
 
-            await createGameShell(currentGameId, {
-                boardId: boardPicker.getSelected().id,
+            const created = await createGameShell(currentGameId, {
+                boardId: pickerToUse.getSelected().id,
                 title: gameDisplayName,
                 gmName: gmDisplayName,
                 teamsEnabled: teamsOn,
                 teamA,
                 teamB,
+            });
+
+            attemptGameMeta = created
+                ? { analyticsId: created.analyticsId, roundId: created.roundId }
+                : null;
+
+            doCapture('pt_game_created', {
+                create_attempt_id: attemptId,
+                game_session_id: attemptGameMeta?.analyticsId ?? undefined,
+                round_id: attemptGameMeta?.roundId ?? undefined,
+                board_id: attemptBoardMeta?.boardId ?? undefined,
+                board_version: attemptBoardMeta?.boardRev ?? undefined,
+                role: 'gm',
+                origin: attemptOrigin,
             });
 
             // Show Game Ready screen
@@ -309,6 +364,8 @@ export function initCreateFlow({ services, els }) {
         } catch (err) {
             console.error('Create game failed:', err);
             alert('Could not create game. Make sure you are signed in and try again.');
+        } finally {
+            isBusy = false;
         }
     });
 
@@ -328,17 +385,21 @@ export function initCreateFlow({ services, els }) {
         e.preventDefault();
         if (!currentGameId) return;
 
-        const res = await modal.confirm({
-            title: 'End game?',
-            body: 'This will delete the game. You can\'t undo this.',
-            confirmText: 'End game',
-            variant: 'danger'
-        });
-
+        const res = await doConfirmDelete();
         if (res !== 'confirm') return;
 
         try {
-            await remove(ref(rtdb, P.game(currentGameId)));
+            await doRemoveGame(currentGameId);
+
+            doCapture('pt_game_create_abandoned', {
+                create_attempt_id: attemptId ?? undefined,
+                game_session_id: attemptGameMeta?.analyticsId ?? undefined,
+                round_id: attemptGameMeta?.roundId ?? undefined,
+                board_id: attemptBoardMeta?.boardId ?? undefined,
+                role: 'gm',
+                origin: attemptOrigin ?? undefined,
+            });
+
             resetCreate();
             showView('home');
         } catch (err) {
@@ -372,12 +433,27 @@ export function initCreateFlow({ services, els }) {
     // ───────────────────────────────────────────────────────────────────────────
     // Public entry
     // ───────────────────────────────────────────────────────────────────────────
-    function startCreateFlow() {
+
+    /**
+     * Enter the Create Game flow.
+     * @param {'new'|'play_again'} [origin] - How the user got here.
+     */
+    function startCreateFlow(origin = 'new') {
+        attemptId = generateId();
+        attemptOrigin = origin;
+        attemptBoardMeta = null;
+        attemptGameMeta = null;
+        isBusy = false;
         currentGameId = generateGameId();
         setSession({ gameId: currentGameId, isGM: true }); // keep role early for UI
         resetCreate();
         gotoStep(1);
         showView('create');
+        doCapture('pt_game_create_started', {
+            create_attempt_id: attemptId,
+            origin: attemptOrigin,
+            role: 'gm',
+        });
     }
 
     return { startCreateFlow };

@@ -33,12 +33,14 @@ import {
     reserveGameCode,
     realtimeStats,
     simulateDrop,
+    rtdb,
 } from '../realtime/client.js';
 
 import { createGameShell } from '../game/createGame.js';
 import { renderLobby } from '../game/lobby.js';
 import { renderLateJoin } from '../game/renderLateJoin.js';
-import { setSession } from '../session.js';
+import { getSession, setSession } from '../session.js';
+import { get, ref } from '../realtime/db.js';
 
 import { byId, enable, disable, on } from '../ui/dom.js';
 import { createViewController } from '../ui/views.js';
@@ -57,6 +59,24 @@ export async function boot() {
         // -------------------------------------------------------------------------
         await initializeRealtime();
         window.PictureTwirl = Object.assign(window.PictureTwirl || {}, { realtime: { stats: realtimeStats, simulateDrop } });
+
+        if (import.meta.env.DEV) {
+            // Dev-only: inspect analytics identifiers for the active game.
+            // Usage: await window.PictureTwirl.getAnalyticsIds()
+            // Returns { analyticsId, roundId } or null when no game is active.
+            const getAnalyticsIds = async () => {
+                const { gameId } = getSession();
+                if (!gameId) return null;
+                const snap = await get(ref(rtdb, `games/${gameId}`));
+                const data = snap.val();
+                if (!data) return null;
+                return {
+                    analyticsId: data.analyticsId ?? null,
+                    roundId: data.settings?.roundId ?? null,
+                };
+            };
+            window.PictureTwirl = Object.assign(window.PictureTwirl || {}, { getAnalyticsIds });
+        }
 
         // -------------------------------------------------------------------------
         // Cache DOM roots once (tolerant of optional nodes)

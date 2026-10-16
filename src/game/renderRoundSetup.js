@@ -15,6 +15,7 @@ import { ref, onValue, update, get, serverTimestamp } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { getSession } from '../session.js';
 import { loadBoardForGame } from './createGame.js';
+import { generateId } from './analyticsIds.js';
 import { createDisposer, leaveGame } from './controllerKit.js';
 import { mountBoardPicker } from '../ui/boardPicker.js';
 
@@ -180,6 +181,10 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
         const partsSnap = await get(ref(rtdb, P.participants(gameId)));
         const parts = partsSnap.val() || {};
 
+        // Fresh roundId for each Play Again round; analyticsId is left unchanged
+        // (it lives at the game root and is never written here).
+        const roundId = generateId();
+
         const writes = {
             // Scores reset
             [`${P.scores(gameId)}/A`]: 0,
@@ -193,9 +198,10 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
             [`${P.game(gameId)}/swirlPaused`]: null,
             [`${P.game(gameId)}/swirlStartTime`]: null,
             [`${P.game(gameId)}/buzzQueue`]: null,
-            // Record which board (and version) this round plays
+            // Record which board (and version) this round plays; replace roundId
             [P.boardId(gameId)]: boardMeta.boardId,
             [`${P.settings(gameId)}/boardRev`]: boardMeta.boardRev,
+            [`${P.settings(gameId)}/roundId`]: roundId,
             // Advance phase — triggers navigation on all clients
             [`${P.state(gameId)}/phase`]: 'live',
             [`${P.state(gameId)}/endedAt`]: null,

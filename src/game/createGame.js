@@ -37,6 +37,7 @@ import { ref, set, serverTimestamp } from '../realtime/db.js';
 import { getBoard, toBoardSet } from '../data/boardsApi.js';
 import { LIMITS, TEAM } from '../config.js';
 import * as P from '../data/paths.js';
+import { generateId } from './analyticsIds.js';
 
 /**
  * Fetch a published board and turn it into a live-game board.
@@ -195,13 +196,20 @@ export async function createGameShell(
     // leave a half-created game behind.
     const { board, boardMeta } = await loadBoardForGame(boardId, now);
 
+    // Opaque analytics identifiers — generated once at creation, never derived
+    // from the game code. analyticsId spans the entire session (all rounds);
+    // roundId changes on each Play Again start (renderRoundSetup.js startRound).
+    const analyticsId = generateId();
+    const roundId = generateId();
+
     const gameData = {
         hostUid: uid,
         isPublic: false,
         createdAt: now,
         title: safeTitle,
         gmName: safeGM,
-        settings: { boardId: boardMeta.boardId, boardRev: boardMeta.boardRev, teamsEnabled: teamsOn },
+        analyticsId,
+        settings: { boardId: boardMeta.boardId, boardRev: boardMeta.boardRev, teamsEnabled: teamsOn, roundId },
         state: { phase: 'lobby' },
         teams: { A: { name: safeTeamA }, B: { name: safeTeamB } },
         scores: { A: 0, B: 0 },

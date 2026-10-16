@@ -1238,7 +1238,8 @@ export async function renderGameUI(gameId) {
                     SWIRL.DURATION_MS,
                     SWIRL.STRENGTH,
                     elapsed,
-                    setSwirlProgress
+                    setSwirlProgress,
+                    SWIRL.EASE,
                 );
                 // Respect any pause state that's already active for this question.
                 applySwirlPause();

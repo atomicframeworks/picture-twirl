@@ -53,6 +53,38 @@ export function drawUnswirled(imgEl, canvasEl) {
 }
 
 /**
+ * Piecewise monotone cubic Hermite (Catmull-Rom tangents + Fritsch-Carlson
+ * monotonicity clamp) interpolation over sorted keyframes [[t,p], ...].
+ * Maps linear clock fraction t ∈ [0,1] to visual progress p ∈ [0,1].
+ * Endpoint tangents are extrapolated so the first and last segments are smooth.
+ *
+ * @param {number} t - Linear time fraction 0..1
+ * @param {Array<[number, number]>} kf - Sorted keyframes [[t0,p0], [t1,p1], ...]
+ * @returns {number} Eased progress 0..1
+ */
+function applyEasing(t, kf) {
+    const n = kf.length;
+    if (t <= kf[0][0]) return kf[0][1];
+    if (t >= kf[n - 1][0]) return kf[n - 1][1];
+    let i = 0;
+    while (i < n - 2 && t > kf[i + 1][0]) i++;
+    const [t0, p0] = kf[i], [t1, p1] = kf[i + 1];
+    const dt = t1 - t0, dp = p1 - p0, u = (t - t0) / dt;
+    const [tP, pP] = i > 0 ? kf[i - 1] : [t0 - dt, p0 - dp];
+    const [tN, pN] = i + 2 < n ? kf[i + 2] : [t1 + dt, p1 + dp];
+    let m0 = ((p1 - pP) / (t1 - tP)) * dt;
+    let m1 = ((pN - p0) / (tN - t0)) * dt;
+    if (Math.abs(dp) < 1e-10) {
+        m0 = m1 = 0;
+    } else {
+        const a = m0 / dp, b = m1 / dp, tau = a * a + b * b;
+        if (tau > 9) { const s = 3 / Math.sqrt(tau); m0 = a * s * dp; m1 = b * s * dp; }
+    }
+    const u2 = u * u, u3 = u2 * u;
+    return (2*u3 - 3*u2 + 1) * p0 + (u3 - 2*u2 + u) * m0 + (-2*u3 + 3*u2) * p1 + (u3 - u2) * m1;
+}
+
+/**
  * Starts a swirl animation on a canvas from a given image.
  *
  * @param {HTMLImageElement} imgEl - Source image (must be loaded)
@@ -60,10 +92,11 @@ export function drawUnswirled(imgEl, canvasEl) {
  * @param {number} duration - Total swirl duration in ms
  * @param {number} maxSwirl - Swirl strength, 1 (gentle) to 10 (extreme)
  * @param {number} [elapsedStart=0] - Elapsed time in ms already spent (server-aligned sync)
- * @param {(progress: number) => void} [onProgress] - Called each frame with progress 0..1
+ * @param {(progress: number) => void} [onProgress] - Called each frame with eased progress 0..1
+ * @param {Array<[number, number]>} [easeKeyframes] - Optional piecewise easing [[t,p],...]; linear if omitted
  * @returns {{pause: Function, resume: Function, cancel: Function, isPaused: Function}} Control object
  */
-export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl = 3.0, elapsedStart = 0, onProgress) {
+export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl = 3.0, elapsedStart = 0, onProgress, easeKeyframes) {
     const { size, drawW, drawH, offsetX, offsetY } = containLayout(imgEl);
 
     // Sample source pixels offscreen so the visible canvas never flashes the clear image.
@@ -139,6 +172,10 @@ export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl =
         if (typeof onProgress === 'function') onProgress(progress);
     }
 
+    const toEased = easeKeyframes
+        ? (t) => applyEasing(t, easeKeyframes)
+        : (t) => t;
+
     // Timeline (performance.now() based; rAF timestamps share the same origin).
     let startTime = performance.now() - elapsedStart;
     let pausedAt = null;
@@ -150,10 +187,10 @@ export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl =
         animationFrame = null;
         if (cancelled || pausedAt !== null) return;
 
-        const progress = Math.min(1, (performance.now() - startTime) / duration);
-        drawFrame(progress);
+        const t = Math.min(1, (performance.now() - startTime) / duration);
+        drawFrame(toEased(t));
 
-        if (progress < 1) {
+        if (t < 1) {
             animationFrame = requestAnimationFrame(tick);
         } else {
             done = true;
@@ -161,7 +198,7 @@ export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl =
     }
 
     // First frame now, at the synced position — never a clear flash, never a blank gap.
-    drawFrame(Math.min(1, elapsedStart / duration));
+    drawFrame(toEased(Math.min(1, elapsedStart / duration)));
     if (elapsedStart < duration) {
         animationFrame = requestAnimationFrame(tick);
     } else {

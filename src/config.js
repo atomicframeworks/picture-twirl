@@ -8,8 +8,20 @@ export const LIMITS = {
 
 // Swirl animation settings
 export const SWIRL = {
-    DURATION_MS: 30000,    // 30 seconds
-    STRENGTH: 2.0,         // Swirl intensity
+    DURATION_MS: 14000,    // 14 seconds total reveal duration
+    STRENGTH: 2.0,         // Swirl intensity (1=gentle, 10=extreme)
+    // Piecewise easing keyframes [t, p] — both normalized 0..1.
+    // t = elapsed / DURATION_MS; p = fraction unswirled (0=fully distorted, 1=clear).
+    // Edit these to tune the slow→accelerate→settle feel without touching swirl.js.
+    EASE: [
+        [0.000, 0.00],  // 0 s  — start fully distorted
+        [0.143, 0.10],  // 2 s  — slow anticipation
+        [0.357, 0.30],  // 5 s  — building speed
+        [0.571, 0.55],  // 8 s  — fast discovery
+        [0.786, 0.82],  // 11 s — recognition phase
+        [0.929, 0.96],  // 13 s — settling
+        [1.000, 1.00],  // 14 s — fully revealed
+    ],
 };
 
 // Starting-team reveal: how long the coin-flip overlay stays visible (all clients)

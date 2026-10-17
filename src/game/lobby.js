@@ -21,6 +21,7 @@ import { renderFinale } from './renderFinale.js';
 import { ensureParticipant, attachPresence, setTeam } from './participants.js';
 import { createInstructionController } from './lobbyInstructions.js';
 import { TEAM } from '../config.js';
+import { capture } from '../analytics.js';
 
 
 export async function renderLobby(gameId) {
@@ -95,10 +96,23 @@ export async function renderLobby(gameId) {
         document.title = `${name} — Picture Twirl`;
     }));
 
+    // Analytics context (cached from RTDB; analyticsId never changes, roundId changes per round)
+    let lobbyAnalyticsId = null;
+    let lobbyRoundId = null;
+    let lobbyBoardId = null;
+    let lobbyBoardRev = null;
+    get(ref(rtdb, `${P.game(gameId)}/analyticsId`))
+        .then(s => { lobbyAnalyticsId = s.val() ?? null; })
+        .catch(() => {});
+
     // Settings
     let teamsEnabled = true;
     track(onValue(ref(rtdb, P.settings(gameId)), (s) => {
-        const v = s.val() || {}; teamsEnabled = v.teamsEnabled !== false;
+        const v = s.val() || {};
+        teamsEnabled = v.teamsEnabled !== false;
+        lobbyRoundId = v.roundId ?? null;
+        lobbyBoardId = v.boardId ?? null;
+        lobbyBoardRev = v.boardRev ?? null;
     }));
 
     // Team names
@@ -515,9 +529,22 @@ export async function renderLobby(gameId) {
 
                 // Start the game
                 refs.gmStart.dataset.busy = '1';
-                try { await update(ref(rtdb, P.state(gameId)), { phase: 'live' }); }
-                catch (e) { console.error('Start failed', e); alert('Could not start the game.'); }
+                let started = false;
+                try {
+                    await update(ref(rtdb, P.state(gameId)), { phase: 'live' });
+                    started = true;
+                } catch (e) { console.error('Start failed', e); alert('Could not start the game.'); }
                 finally { refs.gmStart.dataset.busy = '0'; }
+                if (started) {
+                    capture('pt_game_started', {
+                        game_session_id: lobbyAnalyticsId ?? undefined,
+                        round_id: lobbyRoundId ?? undefined,
+                        board_id: lobbyBoardId ?? undefined,
+                        board_version: lobbyBoardRev ?? undefined,
+                        round_origin: 'initial',
+                        role: 'gm',
+                    });
+                }
             }));
         }
         if (refs.gmEnd) {

@@ -18,6 +18,7 @@ import { loadBoardForGame } from './createGame.js';
 import { generateId } from './analyticsIds.js';
 import { createDisposer, leaveGame } from './controllerKit.js';
 import { mountBoardPicker } from '../ui/boardPicker.js';
+import { capture } from '../analytics.js';
 
 export async function renderRoundSetup(gameId, { dispose = null } = {}) {
     if (typeof dispose === 'function') dispose();
@@ -175,10 +176,14 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
 
     async function startRound(boardId) {
         const now = serverTimestamp();
-        const { board, boardMeta } = await loadBoardForGame(boardId, now);
+        const [{ board, boardMeta }, partsSnap, analyticsSnap] = await Promise.all([
+            loadBoardForGame(boardId, now),
+            get(ref(rtdb, P.participants(gameId))),
+            get(ref(rtdb, `${P.game(gameId)}/analyticsId`)),
+        ]);
+        const roundAnalyticsId = analyticsSnap.val() ?? null;
 
         // Fetch participants to reset per-player round stats
-        const partsSnap = await get(ref(rtdb, P.participants(gameId)));
         const parts = partsSnap.val() || {};
 
         // Fresh roundId for each Play Again round; analyticsId is left unchanged
@@ -216,5 +221,14 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
         }
 
         await update(ref(rtdb), writes);
+
+        capture('pt_game_started', {
+            game_session_id: roundAnalyticsId ?? undefined,
+            round_id: roundId,
+            board_id: boardMeta.boardId,
+            board_version: boardMeta.boardRev,
+            round_origin: 'play_again',
+            role: 'gm',
+        });
     }
 }

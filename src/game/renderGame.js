@@ -32,6 +32,8 @@ import { playBuzz, playCorrect, playReveal, unlockAudio } from '../ui/sound.js';
 import { openHowToPlay } from '../ui/howToPlay.js';
 import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer, DOUBLE_TAKE } from '../config.js';
 import { initGMGameTour } from './gmGameTour.js';
+import { capture } from '../analytics.js';
+import { computeEndReason } from './endReason.js';
 
 export async function renderGameUI(gameId) {
     const app = document.getElementById('app');
@@ -78,6 +80,22 @@ export async function renderGameUI(gameId) {
     let prevDoubleTakeId = null;  // last Double Take question id that played its ding — prevents replay on rerenders
     let gameTour = null;          // GM Running-the-Game coaching (Phase 2); null for players
 
+    // Analytics context — fetched once at game load; never changes during the game.
+    let gameAnalyticsId = null;
+    let gameRoundId = null;
+    let gameBoardId = null;
+    let gameBoardRev = null;
+    Promise.all([
+        get(ref(rtdb, `${P.game(gameId)}/analyticsId`)),
+        get(ref(rtdb, P.settings(gameId))),
+    ]).then(([aSnap, sSnap]) => {
+        gameAnalyticsId = aSnap.val() ?? null;
+        const v = sSnap.val() || {};
+        gameRoundId = v.roundId ?? null;
+        gameBoardId = v.boardId ?? null;
+        gameBoardRev = v.boardRev ?? null;
+    }).catch(() => {});
+
     // Cancel any onDisconnect().remove() registered by the lobby so that
     // a player disconnecting during a live game does NOT lose their participant node
     // (connection loss ≠ leaving during a live game).
@@ -123,13 +141,26 @@ export async function renderGameUI(gameId) {
         const res = await confirmEndGame();
         if (res !== 'confirm') return;
         if (btnEl) btnEl.dataset.busy = '1';
+        let ended = false;
         try {
             await endGame(gameId);
+            ended = true;
         } catch (err) {
             console.error('End failed', err);
             alert('Could not end the game.');
         } finally {
             if (btnEl) btnEl.dataset.busy = '0';
+        }
+        if (ended) {
+            const tiles = Object.values(boardCache);
+            capture('pt_game_ended', {
+                game_session_id: gameAnalyticsId ?? undefined,
+                round_id: gameRoundId ?? undefined,
+                board_id: gameBoardId ?? undefined,
+                board_version: gameBoardRev ?? undefined,
+                end_reason: computeEndReason(tiles, currentQuestion?.id ?? null),
+                role: 'gm',
+            });
         }
     }
 

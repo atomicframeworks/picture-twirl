@@ -19,6 +19,7 @@ import { attachDiceButton } from '../ui/diceButton.js';
 import { LIMITS } from '../config.js';
 import { randomPlayerName } from '../names.js';
 import { resolvePlayerName, savePlayerName } from '../prefs.js';
+import { capture } from '../analytics.js';
 
 /**
  * @typedef JoinServices
@@ -57,6 +58,8 @@ export function initJoinFlow({ services, els }) {
         renderLateJoin,
         setSession,
         showView,
+        capture: doCapture = capture,
+        getGameAnalyticsContext = null,
     } = services;
 
     const {
@@ -219,6 +222,20 @@ export function initJoinFlow({ services, els }) {
 
             // Seed session (non-GM)
             setSession({ gameId: id, isGM: false, displayName: playerName });
+
+            // Analytics: fire before navigation; failure must never block gameplay.
+            // Context fetch and capture are separated so a failed fetch still fires the event.
+            let _analyticsCtx = {};
+            try { if (getGameAnalyticsContext) _analyticsCtx = await getGameAnalyticsContext(id); }
+            catch (_) { /* context fetch failure — still fire with empty context */ }
+            try {
+                doCapture('pt_game_joined', {
+                    game_session_id: _analyticsCtx.analyticsId ?? undefined,
+                    round_id: _analyticsCtx.roundId ?? undefined,
+                    role: 'player',
+                    phase,
+                });
+            } catch (_) { /* capture failure must not block gameplay */ }
 
             if (phase === 'live') {
                 // Game in progress — enter as pending, wait for GM approval

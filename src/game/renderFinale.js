@@ -14,6 +14,8 @@ import { burstCelebration } from '../ui/confetti.js';
 import { playVictory } from '../ui/sound.js';
 import { renderRoundSetup } from './renderRoundSetup.js';
 import { TEAM } from '../config.js';
+import { capture } from '../analytics.js';
+import { buildSessionEndedProps } from './sessionEndedEvent.js';
 
 // Phase timings (ms from endedAt server timestamp)
 const PHASE_WINNER = 350;
@@ -40,7 +42,7 @@ export async function renderFinale(gameId, { teamAIcon = 'üêï', teamBIcon = 'ü
         // virtual path that only works with onValue(). Omit it here; the game was
         // just ended so the elapsed time since endedAt is negligible, and defaulting
         // serverOffset to 0 is safe for the phase-timing calculation.
-        const [stateSnap, teamsSnap, scoresSnap, participantsSnap, titleSnap, settingsSnap] =
+        const [stateSnap, teamsSnap, scoresSnap, participantsSnap, titleSnap, settingsSnap, analyticsSnap] =
             await Promise.all([
                 get(ref(rtdb, P.state(gameId))),
                 get(ref(rtdb, P.teams(gameId))),
@@ -48,14 +50,16 @@ export async function renderFinale(gameId, { teamAIcon = 'üêï', teamBIcon = 'ü
                 get(ref(rtdb, P.participants(gameId))),
                 get(ref(rtdb, P.title(gameId))),
                 get(ref(rtdb, P.settings(gameId))),
+                get(ref(rtdb, `${P.game(gameId)}/analyticsId`)),
             ]);
 
-        const stateVal      = stateSnap.val() || {};
-        const teams         = teamsSnap.val() || { A: { name: 'Team A' }, B: { name: 'Team B' } };
-        const rawScores     = scoresSnap.val() || {};
-        const participants  = participantsSnap.val() || {};
-        const gameTitle     = (titleSnap.val() || 'Picture Twirl').toString().trim();
-        const settings      = settingsSnap.val() || {};
+        const stateVal          = stateSnap.val() || {};
+        const teams             = teamsSnap.val() || { A: { name: 'Team A' }, B: { name: 'Team B' } };
+        const rawScores         = scoresSnap.val() || {};
+        const participants      = participantsSnap.val() || {};
+        const gameTitle         = (titleSnap.val() || 'Picture Twirl').toString().trim();
+        const settings          = settingsSnap.val() || {};
+        const finaleAnalyticsId = analyticsSnap.val() ?? null;
 
         const scores = { A: Number(rawScores.A || 0), B: Number(rawScores.B || 0) };
 
@@ -347,6 +351,7 @@ export async function renderFinale(gameId, { teamAIcon = 'üêï', teamBIcon = 'ü
                 if (refs.playAgainBtn) refs.playAgainBtn.disabled = true;
                 try {
                     await update(ref(rtdb, P.state(gameId)), { phase: 'sessionEnded' });
+                    capture('pt_game_session_ended', buildSessionEndedProps(finaleAnalyticsId));
                     returnHome();
                 } catch (err) {
                     console.error('[renderFinale] End Session write failed:', err);

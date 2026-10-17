@@ -49,7 +49,7 @@ import { openHowToPlay } from '../ui/howToPlay.js';
 
 import { initCreateFlow } from '../flows/createFlow.js';
 import { initJoinFlow } from '../flows/joinFlow.js';
-import { initAnalytics, capturePageview } from '../analytics.js';
+import { initAnalytics, capturePageview, capture } from '../analytics.js';
 
 export async function boot() {
     console.log('Main.js Loaded');
@@ -232,6 +232,25 @@ export async function boot() {
         });
 
         // -------------------------------------------------------------------------
+        // Analytics context helper for the join flow:
+        // fetches analyticsId + roundId for a game code (one call, fire-and-forget safe).
+        // -------------------------------------------------------------------------
+        const getGameAnalyticsContext = async (gameId) => {
+            try {
+                const [aSnap, sSnap] = await Promise.all([
+                    get(ref(rtdb, `games/${gameId}/analyticsId`)),
+                    get(ref(rtdb, `games/${gameId}/settings`)),
+                ]);
+                return {
+                    analyticsId: aSnap.val() ?? null,
+                    roundId: sSnap.val()?.roundId ?? null,
+                };
+            } catch {
+                return { analyticsId: null, roundId: null };
+            }
+        };
+
+        // -------------------------------------------------------------------------
         // Initialize Join flow (validation + confirm/cancel)
         // -------------------------------------------------------------------------
         const { startJoinFlow } = initJoinFlow({
@@ -244,6 +263,8 @@ export async function boot() {
                 renderLateJoin,
                 setSession,
                 showView,
+                capture,
+                getGameAnalyticsContext,
             },
             els: {
                 joinForm,

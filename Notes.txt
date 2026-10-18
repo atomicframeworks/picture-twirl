@@ -1,38 +1,35 @@
-When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it NOTE: added a subtle glow to the category board to give them a nudge. FIXED 09.11 Tweak glow radius. Too large. OK. 
+When its time to pick a tile - it says 'kevins turn to pick a tile', but really the GM has to do it NOTE: added a subtle glow to the category board to give them a nudge. FIXED 09.11 Tweak glow radius. Too large. REDO 09.18 
 
-
-Game Flow:
-   
 --- In untwiriling 
-    when 'buzzing in' and its paused, the progress bar still says 'revealing' it should say paused or maybe whomever buzzed in?
+    when 'buzzing in' and its paused, the progress bar still says 'revealing' it should say paused or maybe whomever buzzed in? 09.18 Discovered a larger layout issue. The team cards are not fixed. The progress bar is hidden. Scrolling to the top hides the progress bar. Need a layout that never hides essential information. 09.18 Fixed. NOTE: landscape needs work on iOS.
 
     - As the GM it doesn't show the answer. The GM needs answer to be able to verify that players are correct
     - On the GM screen it shows 'Award A' and 'Award B', the teams have names - we should show their name instead of 'a' and 'b' FIXED 09.11
     - It shows two spots with the category and amount (game-status div and question-meta div)
-        - Keep one the category and point value displays still good to know
+        - Keep one the category and point value displays still good to know FIXED 
 
     - Related to buzzing in on a question:
         - Need to show the list of people who buzzed in, in order of who buzzed in, Need to show the team they are on.
-            Flow Concept - Team A buzzes, they attempt to answer and get it wrong, GM can see if team B wants to respond/guess (maybe team B has buzzed in / maybe not who knows we can see the list). If team B has no guess, GM can 'continue' the untwirling and proceed to next buzz in like normal
+            Flow Concept - Team A buzzes, they attempt to answer and get it wrong, GM can see if team B wants to respond/guess (maybe team B has buzzed in / maybe not who knows we can see the list). If team B has no guess, GM can 'continue' the untwirling and proceed to next buzz in like normal TABLE PLEASE
 
     - GM actions are showing 'pause' even when a user has buzzed in and it is already paused. Its pause / play action status should match the status of the untwirling
         Q: Should it be pause / play or pause / continue - Currently is pause & resume - I like resume?
-        Note: This action is broken, fix it when we sync with buzzing in
+        Note: This action is broken, fix it when we sync with buzzing in FIXED 09.21
 
     - When a user answers correctly the GM has multiple options (Reveal, award a, award b)
-        Seems like we should first reveal, then allow the GM to pick which team got it right (and possible no team option which we dont have currently)
+        Seems like we should first reveal, then allow the GM to pick which team got it right (and possible no team option which we dont have currently) FIXED 09.21
         
     - Misc note: there is small grey line at bottom under GM actions (not needed)
 
-    - After GM hits award a team - it shows image (good), shows name of answer (good), shows who answered it (good), Should show the team that got the poinnts too.
-        - Also the GM actions need to be updated, still shows award a and B - those actions should be gone
+    - After GM hits award a team - it shows image (good), shows name of answer (good), shows who answered it (good), Should show the team that got the poinnts too. FIXED 09.21
+        - Also the GM actions need to be updated, still shows award a and B - those actions should be gone FIXED 09.21
 
     Questions:
         - Do we need to show the game name & game code at the top?
-            A: No, keep it simple and focus on the untwirled image        
+            A: No, keep it simple and focus on the untwirled image NOTE: perhaps jump the view to the image. Let the headers collapse. risk - take control away from player. NOTE: solution attempted, too complex. Simplified the UI.      
             A: Currently showing who buzzed in and which team when a user buzzes in the team score area at the top. We do want to keep this info (who buzzed in and their team)
         - Do we need to show the team names and scores at the top?
-            A: No, keep it simple and focus on the untwirled image        
+            A: No, keep it simple and focus on the untwirled image FIxED 09.22        
 
         - Is there a list of people that have buzzed in?
             TBD on how we go back and forth between teams
@@ -49,31 +46,31 @@ K: there is a "game-status" div and also a "question-meta" div - these have dupl
 
 Questions
 
-Should the GM be able to join a team?
+Should the GM be able to join a team? YES. BUT NOT REQUIRED.
 
-Should there be a single player option?
+Should there be a single player option? TBD
 
 Gameplay notes
 
-I have no idea what my player name is or which team i'm on. I need a persistent message or label. Same for GM. They need a persistent label. The team badge is fixed at the top of the screen. Not sticky. 
+I have no idea what my player name is or which team i'm on. I need a persistent message or label. Same for GM. They need a persistent label. The team badge is fixed at the top of the screen. Not sticky. 09.20 FIXED
 
-Action buttons. These are in a bottom sheet with no transparency. obscure the playing field.
+Action buttons. These are in a bottom sheet with no transparency. obscure the playing field. NOTE: new layout, may be fixed. 09.24 No transparency. Added color tint to separate footer from body.
 
-When a player buzzes in, display a short banner in the GM window. Display their name and team.
+When a player buzzes in, display a short banner in the GM window. Display their name and team. 09.20 FIXED
 
-Clicking the copy button in the header should update the state and button shape to confirm the code is copied to the clipboard and ready for use. "Code copied" should be displayed, then after a second or two go back to the default state.
+Clicking the copy button in the header should update the state and button shape to confirm the code is copied to the clipboard and ready for use. "Code copied" should be displayed, then after a second or two go back to the default state. OK AS IS - WILL NOT FIX
 
-When the GM awards a player, display a brief banner message showing the award, the playr, and the team. 
+When the GM awards a player, display a brief banner message showing the award, the player, and the team. 09.22 FIXED.
 
 Bugs
 
-Scrolling the GM window is unpredictable. Sometimes it scrolls. Other times not. Ideally - remove all scrolling.
+Scrolling the GM window is unpredictable. Sometimes it scrolls. Other times not. Ideally - remove all scrolling. 09.20 FIXED
 
-End game (GM) and leave game (player) buttons don't Work
+End game (GM) and leave game (player) buttons don't Work 09.22 Player Leave Game button fixed. Open - GM End Game. 09.24 FIXED
 
 Reloading the browser window during a game exits the game without warning and presents the Join Game screen.
 
-The GM view during twirling is not responsive at certain browser screen sizes. This obscures the status bar and the current player. 
+The GM view during twirling is not responsive at certain browser screen sizes. This obscures the status bar and the current player. 09.20 FIXED
 
 Process
 
@@ -81,9 +78,201 @@ Should we move this file over to git issues?
 
 09.13 Review
 
-Coin flip does not appear on joined player screen.
+Coin flip does not consistently appear on joined player screen 09.24 FIXED
 
-IF GM loses session, and attempts to rejoin, the GM is now longer the GM. Just a player
+IF GM loses session, and attempts to rejoin, the GM is no longer the GM. Just a player
 
 
+Give GM option to buzz in? NOTE: thinking we should keep role separate. Could complicate host role transer.
+
+Randomly assign a player the GM role if the GM exits. NOTE: DB change required. 
+
+09.18
+
+Unable to test more than two concurrent players. Testing localhost (npm run dev). GM creates game, shares code. P1: join game (incognito window). Enter lobby. Join team A. P2: join game (incognito window). P1 is kicked out of game. Assumes P2 identity. Exit game exits both windows. Question: possible to add a local network address for testing? yes "% npm run dev -- --host" NOTE: try using another browser Brave. Waterfox. FIXED 09.21 - used Brave and Waterfox, tested OK.
+
+Blocking interaction. I tested the build and I was unable to validate the sticky headers work. I also struggled with scrolling. I had to click multiple times in the browser window before I could access the scroll bar. Natural two finger scrolling wasn't available. 09.18 FIXED Headers are jittering 09.21 FIXED
+
+
+Twirl state was untwirled for K. Only for player. 09.20 FIXED
+
+SHow the player name on the screen always. 09.21 FIXED
+
+GM - Pause / Reveal button not working 09.21 FIXED
+
+GM - start game button active when no teams are assigned. Should be disabled. Selecting does nothing. 09.21 FIXED
+
+Clear the active team card for each category selection round. 09.21 FIXED
+
+GM should never be assigned to a random team of one if there are more than two players available.  Ensure the priority is opposing team players in random team assignments. NOTE: Review game rules.
+
+late joining player
+-when a new player joins the team, use the flow as designed
+-a new player joining a game in progress sees the untwirled image while others do not
+-A late joining player is able to buzz in. Their team is "no team" FIXED 09.22
+ 
+
+The label in the progress bar of the image is difficult to read. FIXED 09.22
+
+
+Add posthog tags for beta testing telemetry?
+
+Add copyright to game. FIXED 09.24
+
+set up a watchdog timer to end game after inactivity. Warn before quitting.
+
+add a countdown timer for picking a category.
+
+Add collapse header to category picker for team player WILL NOT FIX. SIMPLIFIED UI.
+
+The category picker headings look like buttons. Change the design so a player doesn't try Selecting. FIXED 09.22
+
+Test field validation. NOTE: app did find error on code field. Permitted characters. Max # characters. And vulgar / offensive language filter.
+
+Known issue — same-device identity reuse: A previously approved player can be silently restored when the same browser later joins with a different screen name, because Firebase anonymous auth reuses the existing UID.
+
+Bug: iPad player is knocked out of the game when rotating screen to landscape
+
+Bug: play again button on ipad not triggering.? NOT VERIFIED.
+
+Bug: image is squashed on GM view in reveal. FIXED 09.23
+
+
+Tech Debt
+
+GM leaves - may require database changes. See chatgpt branch. https://chatgpt.com/share/6ab26be2-05bc-83e8-81ea-63c039f5169a
+
+telemetry and analytics 
+
+see chatgpt branch
+
+Add translucency to header and footer? footer only? 09.23 WORKAROUND - add lavender tint to footer. transparency too risky. 10.02 changed to near white for better contrast with body
+
+Ending the game should take player back to home page. 09.24 FIXED
+
+End game copy needs editing. match the game context - Close Game!
+
+Replace the generic end of game confetti celebration with brand colors and shapes FIXED 09.24
+
+A late joining player sees the revealed image during an untwirl. This can lead to cheating. FIXED 09.24
+
+Display the team count in the late joiner accept / decline dialog
+FIXED 09.25
+
+It the host chooses not to play another game alert the players. They are stuck on Waiting for the host .... FIXED 09.25
+
+Let the GM pick the team badge. Maybe use emoticons. 
+
+Future: Host session-close broadcast
+When the GM explicitly ends the session, connected players receive a shared terminal state such as “Game closed” with Return home, rather than continuing to wait for the host.
+
+
+Categories. Use claude to create game categories. claude can crawl, scrape sites. come with categories. make sure you find three source images. subtask. cms. Admin page. manage categories, sub categories, boards. KEVIN
+
+Share link. Copy paste straight to clipboard. URL to join. LOU FIXED 10.2
+
+Start new game. First time. Prefill to cute random name. Adjective + noun, 3 digit number. Editable. Save time. KEVIN
+
+Team names. Generate cute game show names. Family feud. Dictionary of names. KEVIN
+
+Quick how to play. Tutorial, walk-through. GM - start round, end session. LOU
+
+We should have a 'how to play' quick FAQ / tutorial for user. It should be super straightforward, dead simple, and short snappy and fun to read. This is especially useful for GMs since they have a few 'actions' they must take different / more complex actions then the users to keep the game moving. Lets have a 'tutorial' which walks users quickly through how to play in a short workflow. FIXED 10.11
+
+Beta to do list
+
+firebase - more capacity
+telemetry / analytics
+site URL - 
+
+Go to market / beta to do list:
+1) Will our DB / hosting hold/work for firebase (free?)
+1a) Would cloudflare free workers and their free offering be better?
+2) Name / url for the site, where to host (cloudflare)
+
+Warn when kicking a player (GM):
+
+Kick Wild Streamer 525?
+They'll be removed from this game.
+Cancel · Kick Player
+
+Security. Can a rogue visitor steal the GM role? Access the game via the code, and enter the GM player name?
+
+Lobby. The join button uses the same styling as a player pill. Use the action styling. FIXED 10.2
+
+Action tray. Background color too close to body bg color. Add saturation for better contrast. FIXED 10.2
+
+
+Futures:
+
+Tile Audio
+
+music, voices, movie dialogue, engines, animal sounds, sound effects, instruments, historical audio—you could build entire boards around sound.
+
+And when we revisit it, Sound First → then Picture Reveal is the experiment I’d want to test first. That feels very Picture Twirl. 😄
+
+09.30
+
+Generated team names not wrapping in the GM view action bar. FIXED 09.30 
+
+10.2
+
+tour
+
+Known beta issue: iPhone Safari may allow some background lobby scrolling while the tour is open.
+
+Watch item: one environment showed the Unassigned section behaving differently after teardown, but you couldn’t reproduce it on Windows Chrome. Don’t change code unless it becomes reproducible.
+
+If a player switches team during the tour, the focus will move. If the player pill is not visible, it will land on the wrong spot. FIX - don't attempt to move the card if pill is not visible. Just skip ahead.
+
+10.10
+
+Unassigned card is not needed in player view. On iphone, it can push the team cards below the scrim. This can cause confusion - which team do I join? Use a design that ensures both team cards are always visible. Use expand collapse controls if necessary. FIXED 10.12. see *Note
+
+When there are only two players and there is a tie, do not show the MVP card at game end. It is misleading. 
+
+Do not use the action button styling after the user clicks the play again vote button at game end. This is misleading. Instead, use the simple purple border and violet fill.    
+
+10.11
+
+The GM dialog to allow late players is squeezing longer team names together. FIXED 10.14 Redesigned screens for usability.
+
+10.12
+
+Show a team roster. Player joins or leaves - no way to tell who is on the team. 
+
+*Note
+
+my player lobby changes did not show up on the public site - pushed to branch
+
+Commit: 1229f2b
+Branch: origin/lu/wip
+
+10.13
+
+The post game actions on player screen may not be visible (below the fold). ensure these are always visible. Use a scroll button, after the content is loaded?
+
+Toasts are showing up in the GM header area near the game cards. Check the styling - white background, should be dark?
+
+Tech debt: address phantom pending requests as a separate, carefully tested change. 
+
+Tech debt: Figma integration for pixel perfect
+
+10.16
+
+Add copyright statement for board content.
+
+PostHog dashboard. Add Telemetry. Kevin - Review claude plan. Requires Cloudflare configuration. Proceeding with non-Cloudlare changes.
+
+https://claude.ai/code/artifact/f62174b9-7a8e-4c77-8e67-34e6d5ec6b22
+
+Need to add terms of use. We capture a lot of anonymized user data for analytics.
+
+Bug: Long category names are expanding the tiles in the column. Tiles widths should be fixed. 
+
+10.18
+
+GM: once the board is cleared, message so they know the game is over.
+
+If multiple people on a team who gets to pick the tile first?
 

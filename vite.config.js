@@ -1,4 +1,5 @@
 import { cloudflare } from '@cloudflare/vite-plugin';
+import { loadEnv } from 'vite';
 
 // Share mode (`npm run share`) tunnels the dev server through Cloudflare, so the
 // browser loads the app from a *.trycloudflare.com origin instead of localhost.
@@ -9,7 +10,33 @@ const share = process.env.SHARE_MODE === '1';
 const e2e = process.env.PT_E2E === '1';
 export const E2E_STATE_DIR = '.wrangler/e2e-state';
 
-export default {
+// PostHog (src/analytics.js). The project token is a public ingestion id — it
+// ships in every visitor's browser anyway — so it lives here rather than in a
+// dashboard build variable. Project 669448, US Cloud.
+const POSTHOG_KEY = 'phc_zrdK83oWTJEKEp56C5gQHatAyBi2cz5RaQth79QHKGgr';
+
+// Workers Builds (WORKERS_CI) builds `main` for production and every other
+// branch as a staging preview; anything else (npm run dev / share / build on a
+// machine) is development. Dashboards filter on the `environment` property.
+function appEnv() {
+    if (!process.env.WORKERS_CI) return 'development';
+    return process.env.WORKERS_CI_BRANCH === 'main' ? 'production' : 'staging';
+}
+
+// Defaults for the VITE_ analytics settings. A value from the shell or a
+// machine's .env.local wins (VITE_POSTHOG_KEY= blank turns analytics off);
+// browser tests never send analytics.
+function setAnalyticsEnv(mode) {
+    const env = loadEnv(mode, process.cwd(), 'VITE_');
+    if (e2e) {
+        process.env.VITE_POSTHOG_KEY = '';
+    } else if (env.VITE_POSTHOG_KEY === undefined) {
+        process.env.VITE_POSTHOG_KEY = POSTHOG_KEY;
+    }
+    if (env.VITE_APP_ENV === undefined) process.env.VITE_APP_ENV = appEnv();
+}
+
+const config = {
     root: '.',
     // Runs worker/index.js (the API) inside the real Workers runtime alongside
     // the Vite dev server, with local D1/R2 under .wrangler/ — no Cloudflare
@@ -29,10 +56,10 @@ export default {
             hmr: { protocol: 'wss', clientPort: 443 },
         }),
     },
-    // Inject the Cloudflare Pages commit SHA at build time so every analytics
-    // event carries the deployed build version. Falls back to 'dev' locally.
+    // The commit Workers Builds is building, so every analytics event carries
+    // the deployed build version. Falls back to 'dev' locally.
     define: {
-        __BUILD_VERSION__: JSON.stringify(process.env.CF_PAGES_COMMIT_SHA ?? 'dev'),
+        __BUILD_VERSION__: JSON.stringify(process.env.WORKERS_CI_COMMIT_SHA ?? 'dev'),
     },
     build: {
         // The Cloudflare plugin writes the site to dist/client and the Worker
@@ -52,4 +79,9 @@ export default {
             },
         },
     },
+};
+
+export default ({ mode }) => {
+    setAnalyticsEnv(mode);
+    return config;
 };

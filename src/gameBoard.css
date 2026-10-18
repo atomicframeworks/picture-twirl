@@ -329,7 +329,9 @@
     width: 100%;
     display: grid;
     /* --cols is set by createBoard.js from the materialized board width */
-    grid-template-columns: repeat(var(--cols, 5), 1fr);
+    /* minmax(0, 1fr) instead of plain 1fr: forces minimum track size to 0 so
+       long category names cannot inflate one column at the expense of others. */
+    grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr));
     gap: 6px;
     align-content: start;
 }
@@ -342,6 +344,7 @@
     font-size: clamp(10px, 2.4vw, 13px);
     line-height: 1.2;
     text-align: center;
+    overflow-wrap: break-word; /* guard against single words longer than column width */
     display: flex;
     align-items: flex-end; /* anchor to tiles below when headers wrap at different heights */
     justify-content: center;

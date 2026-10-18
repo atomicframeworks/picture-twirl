@@ -132,6 +132,8 @@ export async function boot() {
         const shareCodeBtn = byId('shareCodeBtn');
         const goToLobbyBtn = byId('goToLobbyBtn');
         const endGameFromReadyBtn = byId('endGameFromReadyBtn');
+        const callReminderEl = byId('callReminderEl');
+        const callReminderDismiss = byId('callReminderDismiss');
 
         // -------------------------
         // Join flow bits
@@ -228,6 +230,8 @@ export async function boot() {
                 shareCodeBtn,
                 goToLobbyBtn,
                 endGameFromReadyBtn,
+                callReminderEl,
+                callReminderDismiss,
             },
         });
 

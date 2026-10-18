@@ -55,6 +55,80 @@
 }
 
 /* ────────────────────────────────────────────────────────────────── */
+/* Communication reminder (below code card; dismissible)              */
+/* ────────────────────────────────────────────────────────────────── */
+.gm-call-reminder {
+  position: relative;
+  margin-top: var(--space-6);
+  padding: var(--space-3) var(--space-4);
+  padding-right: 36px; /* room for close button */
+  background: var(--pill);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  border-radius: var(--radius-md);
+  max-width: 400px;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.gm-call-reminder p {
+  margin: 0 0 var(--space-2);
+}
+
+.gm-call-reminder p:last-child {
+  margin-bottom: 0;
+}
+
+.gm-call-reminder-heading {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--brand-1-ink);
+  margin: 0 0 var(--space-2);
+}
+
+.gm-call-reminder-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.gm-call-reminder-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  min-width: 44px; /* wider touch target extends beyond visible button */
+  min-height: 44px;
+  margin-top: -8px;
+  margin-right: -8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gm-call-reminder-close:hover {
+  color: var(--ink);
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.gm-call-reminder-close:focus-visible {
+  outline: 2px solid var(--brand-1);
+  outline-offset: 2px;
+}
+
+/* ────────────────────────────────────────────────────────────────── */
 /* Mobile adjustments                                                 */
 /* ────────────────────────────────────────────────────────────────── */
 @media (max-width: 420px) {

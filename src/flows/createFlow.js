@@ -91,6 +91,8 @@ export function initCreateFlow({ services, els }) {
         shareCodeBtn,
         goToLobbyBtn,
         endGameFromReadyBtn,
+        callReminderEl,
+        callReminderDismiss,
     } = els;
 
     // Internal state
@@ -100,6 +102,7 @@ export function initCreateFlow({ services, els }) {
     let attemptBoardMeta = null; // { boardId, boardRev } set at step-2 commit
     let attemptGameMeta = null;  // { analyticsId, roundId } set after successful creation
     let isBusy = false;          // prevents double-creates from rapid clicks
+    let reminderDismissed = false; // reset for each new game
     const teamsOn = true; // Teams are always enabled in this version
 
     // Step 2 board list (loads from the API each time step 2 opens)
@@ -358,6 +361,8 @@ export function initCreateFlow({ services, els }) {
             // Show Game Ready screen
             if (readyGameTitle) readyGameTitle.textContent = gameDisplayName;
             if (readyGameCode) readyGameCode.textContent = currentGameId.toUpperCase();
+            reminderDismissed = false;
+            if (callReminderEl) callReminderEl.hidden = false;
             showView('gameReady');
             // Focus the "Go to Lobby" button so Enter works naturally
             goToLobbyBtn?.focus?.();
@@ -367,6 +372,12 @@ export function initCreateFlow({ services, els }) {
         } finally {
             isBusy = false;
         }
+    });
+
+    // Game Ready: dismiss communication reminder
+    on(callReminderDismiss, 'click', () => {
+        reminderDismissed = true;
+        if (callReminderEl) callReminderEl.hidden = true;
     });
 
     // Game Ready: Go to Lobby

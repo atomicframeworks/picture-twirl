@@ -24,12 +24,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { claudeCommand } from '../tools/content/lib/ai.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { values: o } = parseArgs({ options: { run: { type: 'boolean', default: false }, dir: { type: 'string' } } });
 
 const sh = (cmd, args, cwd, extra = {}) => {
-    const res = spawnSync(cmd, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32', ...extra });
+    // Only npm needs cmd.exe on Windows (npm.cmd); it joins args unquoted, so git/claude never go through it.
+    const res = spawnSync(cmd, args, { cwd, encoding: 'utf8', shell: process.platform === 'win32' && cmd === 'npm', ...extra });
     if (res.status !== 0) throw new Error(`${cmd} ${args.join(' ')} failed: ${res.error?.message || ''}\n${res.stdout || ''}\n${res.stderr || ''}`);
     return res.stdout.trim();
 };
@@ -45,7 +47,7 @@ console.log(`Sandbox: ${dir}\nCutover = pre-cloudflare + ${branch} (${git(['rev-
 
 // 1. A stand-in for GitHub, and cutover day on it.
 git(['clone', '-q', '--bare', ROOT, path.join(dir, 'origin.git')], dir);
-git(['clone', '-q', path.join(dir, 'origin.git'), 'cutover'], dir);
+git(['clone', '-q', '-c', 'core.autocrlf=false', path.join(dir, 'origin.git'), 'cutover'], dir);
 const cut = path.join(dir, 'cutover');
 git(['checkout', '-q', '-B', 'main', 'pre-cloudflare'], cut);
 git([...as('Owner (rehearsal)', 'owner@example.invalid'), 'merge', '-q', '--no-ff', `origin/${branch}`, '-m', 'Cloudflare switch-over (cutover rehearsal)'], cut);
@@ -53,7 +55,9 @@ git(['tag', '-f', 'cloudflare-cutover'], cut);
 git(['push', '-q', '-f', 'origin', 'main', '--tags'], cut);
 
 // 2. Lu's clone, still in the Firebase days, with work on a branch.
-git(['clone', '-q', path.join(dir, 'origin.git'), 'lu'], dir);
+// LF checkouts: pre-cloudflare has no .gitattributes, and a Windows core.autocrlf=true
+// would turn its files into CRLF, so the patches below wouldn't match.
+git(['clone', '-q', '-c', 'core.autocrlf=false', path.join(dir, 'origin.git'), 'lu'], dir);
 const lu = path.join(dir, 'lu');
 git(['checkout', '-q', '-b', 'lu/emoji-reactions', 'pre-cloudflare'], lu);
 git(['branch', '-q', '-f', 'main', 'pre-cloudflare'], lu);                     // Lu hasn't pulled yet
@@ -123,7 +127,7 @@ if (!o.run) {
     console.log(`\nNow let a fresh Claude Code session do Lu's merge:\n  cd ${lu}\n  claude ${claudeArgs.map(a => (/[\s()*|]/.test(a) ? JSON.stringify(a) : a)).join(' ')} > ${transcript}\n\n${checks}`);
 } else {
     console.log('\nRunning a fresh headless Claude Code session (a few minutes)…');
-    const res = spawnSync('claude', claudeArgs, { cwd: lu, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, shell: process.platform === 'win32' });
+    const res = spawnSync(claudeCommand(), claudeArgs, { cwd: lu, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     writeFileSync(transcript, res.stdout || '');
     const result = (res.stdout || '').split('\n').filter(l => l.includes('"type":"result"')).map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean).pop();
     console.log(result ? `\nSession ${result.subtype} in ${result.num_turns} turns. Its report:\n\n${result.result}\n` : `\nNo result (exit ${res.status}). ${res.stderr?.slice(0, 500)}`);

@@ -58,7 +58,8 @@ export async function startTestEnv() {
         fetch: (pathname, init) => worker.fetch(new Request(`http://localhost${pathname}`, init), env, ctx),
         async dispose() {
             await dispose();
-            await rm(stateDir, { recursive: true, force: true });
+            // Windows: the runtime lets go of its files a moment after dispose (EBUSY) — retry.
+            await rm(stateDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
         },
     };
 }

@@ -486,7 +486,12 @@ Snapshot shape (what `/api/boards/:id` returns):
   example values are public.
 - No Firebase config anymore — `VITE_FIREBASE_*` lines in an old `.env.local`
   can be deleted. `.env.local` now only holds optional content-tool settings
-  (`.env.local.example`).
+  and analytics overrides (`.env.local.example`).
+- Analytics: PostHog via `src/analytics.js` (no-op without a key). The public
+  project token and the `environment` property (`development` | `staging` on
+  branch previews | `production` on `main`, from `WORKERS_CI_BRANCH`) are set
+  in `vite.config.js` at build time — no dashboard build variables (WORKFLOW.md
+  → Where the secrets live). E2E runs build without the key.
 
 ## File Organization
 
@@ -505,6 +510,7 @@ src/
 ├── session.js                 # Client-side session state (sessionStorage)
 ├── prefs.js                   # Durable device prefs (localStorage): remembered names
 ├── names.js                   # Random player/game/team name generators (puns)
+├── analytics.js               # PostHog wrapper (the only importer of posthog-js; URL sanitizing)
 ├── gallery.js                 # Component gallery page logic
 ├── realtime/                  # Live games (replaced Firebase in M4) — see "Realtime" above
 │   ├── client.js              # Player identity, room sockets + mirror, reconnect, clock sync, room HTTP helpers

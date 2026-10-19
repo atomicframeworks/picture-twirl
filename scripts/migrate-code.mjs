@@ -46,7 +46,7 @@ const importedNames = (list) => list.split(',').map(s => s.trim()).filter(Boolea
 export function rewriteImports(text, file, srcRoot = SRC) {
     const dbModule = path.join(srcRoot, 'realtime', 'db.js');
     const clientModule = path.join(srcRoot, 'realtime', 'client.js');
-    const oldFirebase = path.join(srcRoot, 'firebase.js');
+    const oldFirebase = path.resolve(srcRoot, 'firebase.js'); // resolve, like the check below (Windows adds the drive)
     const problems = [];
 
     /** New specifier for a module specifier, or null if it isn't a Firebase one. */

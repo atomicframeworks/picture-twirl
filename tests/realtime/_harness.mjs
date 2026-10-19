@@ -14,7 +14,8 @@
 // no static assets (the tests don't need them), throwaway secrets, and short
 // room timers (ROOM_GRACE_MS) so disconnect tests don't wait 30 s.
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTestHarness } from 'wrangler';
@@ -72,7 +73,8 @@ export async function startRealtime({ vars = {} } = {}) {
         async close() {
             for (const s of sockets) s.terminate();
             await server.close();
-            rmSync(dir, { recursive: true, force: true });
+            // Windows: workerd lets go of its files a moment after close (EBUSY/EPERM) — retry.
+            await rm(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
         },
     };
     return rt;

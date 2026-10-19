@@ -129,6 +129,13 @@ its own random local `SESSION_SECRET` / `IMPORT_TOKEN`, because the example
 file's values are public. **Changing the team password:** edit `ADMIN_PASSWORD`
 in `.dev.vars`, then `npm run cf:secrets` and `npm run cf:secrets -- --previews`.
 
+**PostHog analytics** needs no secret and no dashboard setting: the project
+token is public (it ships to every browser) and sits in `vite.config.js`, which
+also stamps each event's `environment` — `development` from `npm run dev` /
+`share`, `staging` from branch previews, `production` from `main` — and its
+`build_version` (the commit Workers Builds built). Filter dashboards on
+`environment`. Browser tests send nothing.
+
 ## Who can do what
 
 | | Owner | Lu |

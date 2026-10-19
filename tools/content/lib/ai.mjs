@@ -16,15 +16,23 @@
 //   const out = await ai.ask({ kind: 'check', system, prompt, schema, images: [{ data, mediaType }] });
 
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 /** Find the Claude Code executable (claude.exe on Windows avoids cmd.exe quoting). */
-function claudeCommand() {
+export function claudeCommand() {
     if (process.platform !== 'win32') return 'claude';
     const found = spawnSync('where', ['claude'], { encoding: 'utf8' }).stdout?.split(/\r?\n/).map(s => s.trim()).filter(Boolean) || [];
-    return found.find(p => p.toLowerCase().endsWith('.exe')) || found[0] || 'claude';
+    const exe = found.find(p => p.toLowerCase().endsWith('.exe'));
+    if (exe) return exe;
+    // npm's global install: `where` lists an extensionless POSIX shim first (not
+    // runnable here) and claude.cmd, which just calls the real claude.exe.
+    for (const p of found) {
+        const shimExe = path.join(path.dirname(p), 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe');
+        if (existsSync(shimExe)) return shimExe;
+    }
+    return found.find(p => p.toLowerCase().endsWith('.cmd')) || 'claude';
 }
 
 export function createAI(settings) {

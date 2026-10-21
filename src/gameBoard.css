@@ -724,6 +724,54 @@
 [data-paused="true"] .icon-pause { display: none; }
 [data-paused="true"] .icon-play { display: flex; }
 
+/* Pause / Resume — amber throughout: always the timing control */
+.gm-icon-btn.is-timing .gm-icon-btn__icon {
+    background: rgba(245, 158, 11, .15);
+    color: var(--accent-amber);
+}
+.gm-icon-btn.is-timing:hover {
+    border-color: var(--accent-amber);
+    background: #FFFBEB;
+}
+.gm-icon-btn[data-paused="true"] .gm-icon-btn__label {
+    white-space: normal;
+    min-height: 2.4em;
+}
+
+/* Show Answer (is-utility) — calm blue: distinct from violet award and amber pause */
+.gm-icon-btn.is-utility .gm-icon-btn__icon {
+    background: rgba(37, 99, 235, .07);
+    color: #2563EB;
+}
+.gm-icon-btn.is-utility:hover {
+    background: #EFF6FF;
+    border-color: #93C5FD;
+}
+.gm-icon-btn.is-utility .gm-icon-btn__label {
+    white-space: normal;
+    min-height: 2.4em;
+}
+
+/* Board (is-secondary) — neutral grey: lowest visual priority */
+.gm-icon-btn.is-secondary .gm-icon-btn__icon {
+    background: rgba(107, 114, 128, .08);
+    color: var(--muted);
+}
+.gm-icon-btn.is-secondary:hover {
+    background: #F8F8F9;
+    border-color: #9CA3AF;
+}
+
+/* Active-buzz team award button — green emphasis: this team just buzzed */
+.gm-icon-btn.is-buzzer-team .gm-icon-btn__icon {
+    background: rgba(16, 185, 129, .14);
+    color: #059669;
+}
+.gm-icon-btn.is-buzzer-team:hover {
+    border-color: #10B981;
+    background: #ECFDF5;
+}
+
 /* ═══════════════════════════════════════ */
 /* Starting-team reveal board lock         */
 /* Tiles are non-interactive while the     */

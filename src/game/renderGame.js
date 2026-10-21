@@ -421,7 +421,7 @@ export async function renderGameUI(gameId) {
         if (!refs.pauseSwirlBtn) return;
         refs.pauseSwirlBtn.dataset.paused = swirlPausedByGM ? 'true' : 'false';
         const label = refs.pauseSwirlBtn.querySelector('.gm-icon-btn__label');
-        if (label) label.textContent = swirlPausedByGM ? 'Resume' : 'Pause';
+        if (label) label.textContent = swirlPausedByGM ? 'Resume Play' : 'Pause';
     }
 
     // ─── Late-join waiting panel (player only) ───────────────────────────────────
@@ -848,6 +848,7 @@ export async function renderGameUI(gameId) {
     // Reveal-progress bar driven by the swirl's onProgress callback.
     function setSwirlProgress(progress) {
         if (refs.swirlFill) refs.swirlFill.style.width = `${Math.round(progress * 100)}%`;
+        if (refs.pauseSwirlBtn) refs.pauseSwirlBtn.disabled = progress >= 1;
         if (refs.swirlLabel) {
             if (progress >= 1) {
                 refs.swirlLabel.textContent = 'Revealed!';
@@ -920,6 +921,9 @@ export async function renderGameUI(gameId) {
 
         refs.teamACard?.classList.toggle('is-active', activeActionTeam === TEAM.A);
         refs.teamBCard?.classList.toggle('is-active', activeActionTeam === TEAM.B);
+        // Emphasize the buzzing team's award button in green; clear when no active buzz.
+        refs.awardABtn?.classList.toggle('is-buzzer-team', activeActionTeam === TEAM.A);
+        refs.awardBBtn?.classList.toggle('is-buzzer-team', activeActionTeam === TEAM.B);
         if (refs.teamAPlayer) refs.teamAPlayer.textContent = '';
         if (refs.teamBPlayer) refs.teamBPlayer.textContent = '';
     }

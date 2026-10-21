@@ -46,6 +46,20 @@
     <!-- CREATE New Game Screen -->
     <!-- Create view root -->
     <section id="startNewGame" class="view-root" hidden>
+      <!-- INTRO: First-time visitor message (shown before create steps for new visitors) -->
+      <div id="createIntro" class="create-intro" hidden>
+        <div class="create-intro-body">
+          <h2 class="heading-lg">Picture Twirl is better together!</h2>
+          <p>For the best experience, bring a host and at least two players&mdash;one on each team.</p>
+          <p class="create-intro-note">Just exploring? A host and one player works too!</p>
+        </div>
+        <div class="actions-tray">
+          <button id="introNextBtn" class="btn primary">Continue</button>
+          <hr />
+          <a href="#" id="introBackBtn" class="exit-link">Back to Home</a>
+        </div>
+      </div>
+
       <!-- STEP 1: Details -->
       <div id="createStep1" class="create-step1">
         <header class="create2-header">

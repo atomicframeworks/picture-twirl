@@ -38,9 +38,9 @@
     background: var(--bg, #F6F4FF);
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-4);
-    box-shadow: 0 4px 12px rgba(30, 27, 46, .07);
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    box-shadow: none;
 }
 
 /* ─── Question-view focused mode (is-in-question on .game-root) ──────── */
@@ -66,78 +66,63 @@
     gap: var(--space-2);
 }
 
-/* ─── Board compact header (scroll-driven, board view only) ────────────
-   .is-board-compact is toggled by JS on .game-main scroll.
-   :not(.is-in-question) ensures the picture view is never affected.    */
+/* ═══════════════════════════════════════════════════════════════════════
+   Compact live-game application header (~52 px single row)
+   Scoped to .game-root so lobby, game-ready, and create-wizard headers
+   (which share .game-header globally) are unaffected.
+   ═══════════════════════════════════════════════════════════════════════ */
 
-/* Smooth collapse of the title/code block */
-.game-root:not(.is-in-question) .game-top > .game-header {
+/* Application-identity gradient — left: deep brand purple, right: standard brand purple.
+   Intentionally darker than the purple-to-pink gradient used on action elements. */
+.game-root .game-app-header {
+    background: linear-gradient(90deg, #3B0764 0%, #7C3AED 100%);
+}
+
+/* Single-row flex layout, fixed height */
+.game-root .game-header {
+    height: 52px;
+    padding: 0 var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    text-align: left;
+}
+
+/* Title: left side, truncated to one line */
+.game-root .game-header .game-header-title {
+    font-size: 17px;
+    line-height: 1;
+    white-space: nowrap;
     overflow: hidden;
-    max-height: 240px;
-    transition: max-height 0.25s ease, padding-top 0.25s ease, padding-bottom 0.25s ease, opacity 0.2s ease;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0; /* required for flex-child text-overflow to work */
 }
 
-.game-root.is-board-compact:not(.is-in-question) .game-top > .game-header {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    opacity: 0;
+/* Code row: right side, no top margin, tighter gap */
+.game-root .game-header .game-code-row {
+    flex-shrink: 0;
+    margin-top: 0;
+    gap: var(--space-1);
+    font-size: 14px;
 }
 
-/* Compact info band */
-.game-root.is-board-compact:not(.is-in-question) .game-info-band {
-    padding: var(--space-2) var(--space-4);
-    gap: var(--space-2);
-    box-shadow: none;
+/* Compact code pill */
+.game-root .game-header .game-code-value {
+    font-size: 13px;
+    padding: 4px 10px;
 }
 
-/* Drop emoji icon; tighten scorecards */
-.game-root.is-board-compact:not(.is-in-question) .scoreboard-icon {
+/* "Game Code:" label is redundant in a compact app bar */
+.game-root .game-header .game-code-label {
     display: none;
 }
 
-.game-root.is-board-compact:not(.is-in-question) .scoreboard-card {
-    padding: var(--space-2) var(--space-3);
-}
-
-.game-root.is-board-compact:not(.is-in-question) .scoreboard-name {
-    font-size: 12px;
-}
-
-.game-root.is-board-compact:not(.is-in-question) .scoreboard-score {
-    font-size: 20px;
-    line-height: 1;
-}
-
-.game-root.is-board-compact:not(.is-in-question) .scoreboard-player:not(:empty) {
-    font-size: 10px;
-    padding: 2px 7px;
-    top: 6px;
-    right: 8px;
-}
-
-/* Compact status and identity */
-.game-root.is-board-compact:not(.is-in-question) .game-status {
-    padding: var(--space-2) var(--space-3);
-    font-size: 13px;
-}
-
-.game-root.is-board-compact:not(.is-in-question) .identity-chip {
-    font-size: 11px;
-    padding: 3px 10px;
-}
-
-.game-root.is-board-compact:not(.is-in-question) .you-badge {
-    font-size: 8px;
-    padding: 1px 5px;
-    top: 6px;
-    right: 8px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .game-root:not(.is-in-question) .game-top > .game-header {
-        transition: none;
-    }
+/* Comfortable touch targets for copy/help buttons */
+.game-root .game-header .icon-btn {
+    min-width: 36px;
+    min-height: 36px;
 }
 
 /* Sentinel: zero-height, invisible — just a scroll position marker */
@@ -159,12 +144,11 @@
     flex: 1;
     min-width: 0;
     border-radius: var(--radius-lg);
-    padding: var(--space-4);
+    padding: var(--space-2) var(--space-3);
     position: relative;
     overflow: hidden;
     color: #fff;
     box-shadow: var(--shadow-md);
-    transition: padding 0.25s ease;
 }
 
 .scoreboard-card.is-a {
@@ -187,15 +171,15 @@
 }
 
 .scoreboard-icon {
-    font-size: 28px;
+    font-size: 18px;
     line-height: 1;
-    width: 52px;
-    height: 52px;
+    width: 30px;
+    height: 30px;
     flex: 0 0 auto;
     display: grid;
     place-items: center;
     background: rgba(255, 255, 255, .18);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
 }
 
 .scoreboard-info {
@@ -204,7 +188,7 @@
 }
 
 .scoreboard-name {
-    font-size: 15px;
+    font-size: 12px;
     font-weight: 600;
     opacity: .95;
     white-space: nowrap;
@@ -214,20 +198,20 @@
 
 .scoreboard-score {
     font-family: var(--font-display);
-    font-size: 34px;
+    font-size: 20px;
     font-weight: 700;
-    line-height: 1.05;
+    line-height: 1;
 }
 
 /* Active player badge (only shown when non-empty) */
 .scoreboard-player:not(:empty) {
     position: absolute;
-    top: 10px;
-    right: 12px;
+    top: 6px;
+    right: 8px;
     background: rgba(255, 255, 255, .22);
-    padding: 3px 10px;
+    padding: 2px 7px;
     border-radius: var(--radius-pill);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     letter-spacing: .04em;
 }
@@ -238,10 +222,10 @@
 .game-status {
     background: #fff;
     color: var(--ink);
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
     text-align: center;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 600;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--line);
@@ -724,6 +708,54 @@
 [data-paused="true"] .icon-pause { display: none; }
 [data-paused="true"] .icon-play { display: flex; }
 
+/* Pause / Resume — amber throughout: always the timing control */
+.gm-icon-btn.is-timing .gm-icon-btn__icon {
+    background: rgba(245, 158, 11, .15);
+    color: var(--accent-amber);
+}
+.gm-icon-btn.is-timing:hover {
+    border-color: var(--accent-amber);
+    background: #FFFBEB;
+}
+.gm-icon-btn[data-paused="true"] .gm-icon-btn__label {
+    white-space: normal;
+    min-height: 2.4em;
+}
+
+/* Show Answer (is-utility) — calm blue: distinct from violet award and amber pause */
+.gm-icon-btn.is-utility .gm-icon-btn__icon {
+    background: rgba(37, 99, 235, .07);
+    color: #2563EB;
+}
+.gm-icon-btn.is-utility:hover {
+    background: #EFF6FF;
+    border-color: #93C5FD;
+}
+.gm-icon-btn.is-utility .gm-icon-btn__label {
+    white-space: normal;
+    min-height: 2.4em;
+}
+
+/* Board (is-secondary) — neutral grey: lowest visual priority */
+.gm-icon-btn.is-secondary .gm-icon-btn__icon {
+    background: rgba(107, 114, 128, .08);
+    color: var(--muted);
+}
+.gm-icon-btn.is-secondary:hover {
+    background: #F8F8F9;
+    border-color: #9CA3AF;
+}
+
+/* Active-buzz team award button — green emphasis: this team just buzzed */
+.gm-icon-btn.is-buzzer-team .gm-icon-btn__icon {
+    background: rgba(16, 185, 129, .14);
+    color: #059669;
+}
+.gm-icon-btn.is-buzzer-team:hover {
+    border-color: #10B981;
+    background: #ECFDF5;
+}
+
 /* ═══════════════════════════════════════ */
 /* Starting-team reveal board lock         */
 /* Tiles are non-interactive while the     */
@@ -877,9 +909,9 @@
     gap: 5px;
     background: rgba(124, 58, 237, .08);
     color: var(--brand-1-ink);
-    padding: 4px 14px;
+    padding: 3px 10px;
     border-radius: var(--radius-pill);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: .02em;
     border: 1px solid rgba(124, 58, 237, .14);
@@ -897,14 +929,14 @@
 /* ═══════════════════════════════════════ */
 .you-badge {
     position: absolute;
-    top: 10px;
-    right: 12px;
+    top: 6px;
+    right: 8px;
     background: rgba(255, 255, 255, .28);
     color: #fff;
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
     letter-spacing: .08em;
-    padding: 2px 7px;
+    padding: 1px 5px;
     border-radius: var(--radius-pill);
     line-height: 1.4;
 }
@@ -923,7 +955,7 @@
     }
 
     .scoreboard-score {
-        font-size: 40px;
+        font-size: 24px;
     }
 }
 

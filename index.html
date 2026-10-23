@@ -46,6 +46,20 @@
     <!-- CREATE New Game Screen -->
     <!-- Create view root -->
     <section id="startNewGame" class="view-root" hidden>
+      <!-- INTRO: First-time visitor message (shown before create steps for new visitors) -->
+      <div id="createIntro" class="create-intro" hidden>
+        <div class="create-intro-body">
+          <h2 class="heading-lg">Picture Twirl is better together!</h2>
+          <p>For the best experience, bring a host and at least two players&mdash;one on each team.</p>
+          <p class="create-intro-note">Just exploring? A host and one player works too!</p>
+        </div>
+        <div class="actions-tray">
+          <button id="introNextBtn" class="btn primary">Continue</button>
+          <hr />
+          <a href="#" id="introBackBtn" class="exit-link">Back to Home</a>
+        </div>
+      </div>
+
       <!-- STEP 1: Details -->
       <div id="createStep1" class="create-step1">
         <header class="create2-header">
@@ -318,7 +332,7 @@
     <div class="game-root">
       <!-- Fixed top region: header + scorecards + status — always above the scroll area -->
       <div class="game-top" data-ref="gameTop">
-        <header class="game-header">
+        <header class="game-header game-app-header">
           <h1 class="game-header-title" data-ref="gameTitleEl">Friday Funnies</h1>
           <div class="game-code-row">
             <span class="game-code-label">Game Code:</span>
@@ -427,18 +441,18 @@
         <!-- Question mode (GM): adjudicate — compact icon toolbar -->
         <div class="gm-controls" data-ref="gmControls" hidden>
           <div class="gm-icon-bar">
-            <button class="gm-icon-btn" data-ref="pauseSwirlBtn" title="Pause swirl">
+            <button class="gm-icon-btn is-timing" data-ref="pauseSwirlBtn" title="Pause swirl">
               <span class="gm-icon-btn__icon">
                 <svg class="icon-pause" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1.5"/><rect x="14" y="4" width="4" height="16" rx="1.5"/></svg>
                 <svg class="icon-play" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5,3 19,12 5,21"/></svg>
               </span>
               <span class="gm-icon-btn__label">Pause</span>
             </button>
-            <button class="gm-icon-btn" data-ref="showAnswerBtn" title="Reveal answer">
+            <button class="gm-icon-btn is-utility" data-ref="showAnswerBtn" title="Reveal answer">
               <span class="gm-icon-btn__icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </span>
-              <span class="gm-icon-btn__label">Reveal</span>
+              <span class="gm-icon-btn__label">Show Answer</span>
             </button>
             <button class="gm-icon-btn is-team-a" data-ref="awardABtn" title="Award Team A">
               <span class="gm-icon-btn__icon">
@@ -452,7 +466,7 @@
               </span>
               <span class="gm-icon-btn__label">Award B</span>
             </button>
-            <button class="gm-icon-btn" data-ref="backToBoardBtn" title="Back to board">
+            <button class="gm-icon-btn is-secondary" data-ref="backToBoardBtn" title="Back to board">
               <span class="gm-icon-btn__icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
               </span>

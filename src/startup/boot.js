@@ -125,6 +125,15 @@ export async function boot() {
         const headerTitleEl = byId('create2Title'); // fixed header title (game name)
 
         // -------------------------
+        // Create intro (first-time-only step before the create flow)
+        // -------------------------
+        const createIntroRoot = byId('createIntro');
+        const createStep1Root = byId('createStep1');
+        const createStep2Root = byId('createStep2');
+        const introNextBtn = byId('introNextBtn');
+        const introBackBtn = byId('introBackBtn');
+
+        // -------------------------
         // Game Ready screen
         // -------------------------
         const readyGameTitle = byId('readyGameTitle');
@@ -283,9 +292,48 @@ export async function boot() {
         });
 
         // -------------------------------------------------------------------------
+        // Create intro: first-time-only message before the real create flow.
+        // localStorage key pt.create.intro.v1 marks it as seen.
+        // If localStorage is unavailable the intro still shows but won't persist.
+        // -------------------------------------------------------------------------
+        let introSeen = (() => {
+            try { return localStorage.getItem('pt.create.intro.v1') === '1'; } catch { return false; }
+        })();
+
+        function showCreateIntro() {
+            if (createStep1Root) createStep1Root.hidden = true;
+            if (createStep2Root) createStep2Root.hidden = true;
+            if (createIntroRoot) createIntroRoot.hidden = false;
+            showView('create');
+        }
+
+        function hideCreateIntro() {
+            if (createIntroRoot) createIntroRoot.hidden = true;
+        }
+
+        on(introNextBtn, 'click', () => {
+            introSeen = true;
+            try { localStorage.setItem('pt.create.intro.v1', '1'); } catch {}
+            hideCreateIntro();
+            startCreateFlow('new');
+        });
+
+        on(introBackBtn, 'click', (e) => {
+            e.preventDefault();
+            hideCreateIntro();
+            showView('home');
+        });
+
+        // -------------------------------------------------------------------------
         // Top-level nav buttons
         // -------------------------------------------------------------------------
-        on(newGameBtn, 'click', () => startCreateFlow('new'));
+        on(newGameBtn, 'click', () => {
+            if (introSeen) {
+                startCreateFlow('new');
+            } else {
+                showCreateIntro();
+            }
+        });
         on(joinGameBtn, 'click', () => startJoinFlow());
         on(howToPlayBtn, 'click', () => openHowToPlay({
             context: 'home',

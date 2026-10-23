@@ -3,6 +3,43 @@
    Uses shared components from main.css
 */
 
+/* Intro — First-time visitor message */
+.create-intro {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+}
+
+.create-intro-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+    gap: var(--space-3);
+}
+
+.create-intro-body .heading-lg {
+    margin-bottom: var(--space-1);
+}
+
+.create-intro-body p {
+    margin: 0;
+    font-size: 16px;
+    color: var(--ink);
+}
+
+.create-intro-note {
+    font-size: 15px;
+    color: var(--muted);
+}
+
 /* Step 1 — Details form */
 .create-step1 {
     display: grid;

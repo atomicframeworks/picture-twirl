@@ -73,7 +73,6 @@ export async function renderGameUI(gameId) {
     let prevBuzzCount = 0;        // detect new buzzes → buzz sound
     let prevShowAnswer = false;   // detect reveal → chime
     let latestBuzzQueue = [];     // mirrors RTDB buzzQueue; re-used when activeBuzzerUid changes
-    let boardCompactObserver = null; // cleanup fn for board compact-header scroll listener
     let lateJoinWaitEl = null;    // waiting card shown to a player deferred to next question
     let boardCache = {};          // mirror of board tiles for Double Take eligibility checks
     let doubleTakeBannerEl = null; // injected banner element for Double Take visual
@@ -117,7 +116,6 @@ export async function renderGameUI(gameId) {
     // Clean up all RTDB listeners + swirl (defined early so handlers can reference it)
     function disposeAll() {
         disposeListeners();
-        teardownBoardCompact();
         if (swirlCtrl?.cancel) swirlCtrl.cancel();
         swirlCtrl = null;
         gameTour?.dispose();
@@ -1073,46 +1071,6 @@ export async function renderGameUI(gameId) {
         refs.statusMessage.hidden = !!currentQuestion && !isGM;
     }
 
-    // ─── Board compact header (scroll-driven, board view only) ──────────────────
-    // Collapse threshold / hysteresis.
-    // On iPhone the board overflows game-main by only ~30-55 px, so the threshold
-    // must be well below that ceiling to be reachable during normal scrolling.
-    const BOARD_COLLAPSE_AT = 16; // px — collapse after first intentional swipe
-    const BOARD_EXPAND_AT   =  6; // px — expand only when nearly back at the top
-
-    function setupBoardCompact() {
-        if (boardCompactObserver) return; // already active
-        if (!refs.gameMain) return;
-        root.classList.remove('is-board-compact'); // always start expanded
-
-        function onBoardScroll() {
-            const st = refs.gameMain.scrollTop;
-            const compact = root.classList.contains('is-board-compact');
-            if (!compact && st > BOARD_COLLAPSE_AT) {
-                root.classList.add('is-board-compact');
-            } else if (compact && st < BOARD_EXPAND_AT) {
-                // Guard: only expand if the board still meaningfully overflows.
-                // When collapsing the header makes the board fit within game-main,
-                // the browser snaps scrollTop to 0 — that snap must not trigger a
-                // re-expand, or the header will oscillate (flash).
-                const maxScroll = refs.gameMain.scrollHeight - refs.gameMain.clientHeight;
-                if (maxScroll > BOARD_COLLAPSE_AT) root.classList.remove('is-board-compact');
-            }
-        }
-
-        refs.gameMain.addEventListener('scroll', onBoardScroll, { passive: true });
-        boardCompactObserver = () => {
-            refs.gameMain.removeEventListener('scroll', onBoardScroll);
-            root.classList.remove('is-board-compact');
-        };
-    }
-
-    function teardownBoardCompact() {
-        if (!boardCompactObserver) return;
-        boardCompactObserver();
-        boardCompactObserver = null;
-    }
-
     function renderQuestionViewer() {
         const active = !!currentQuestion;
 
@@ -1206,13 +1164,9 @@ export async function renderGameUI(gameId) {
         root.classList.toggle('is-in-question', active);
 
         if (active && !wasInQuestion) {
-            // Board → Question: remove board compact, reset scroll so viewer starts at top.
-            teardownBoardCompact();
             if (refs.gameMain) refs.gameMain.scrollTop = 0;
         } else if (!active && wasInQuestion) {
-            // Question → Board: reset scroll so header starts fully expanded.
             if (refs.gameMain) refs.gameMain.scrollTop = 0;
-            setupBoardCompact();
         }
 
         if (!active) {
@@ -1575,9 +1529,6 @@ export async function renderGameUI(gameId) {
             }
         });
     }));
-
-    // Board compact header is active from game load (the board is the starting view).
-    setupBoardCompact();
 
     // ─── Dev-only finale shortcut ───────────────────────────────────────────────
     // Exercises the real RTDB end-game transition so all clients see the full

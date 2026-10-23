@@ -375,6 +375,18 @@ button:disabled,
   border-top: 1px solid var(--line);
 }
 
+/* Hide the tray separator when no action controls are visible above it.
+   In player board view, okBtn/buzzBtn/gm-controls are all hidden, so the hr
+   would float in empty space with nothing to separate — wasting ~29px of tray
+   height that clips the bottom tile row on small phones.
+   NOTE: target specific controls by data-ref/class, not "button:not([hidden])" —
+   the six <button> elements inside .gm-controls do not have individual [hidden]
+   attributes (only their container does), so a generic button selector always
+   matches them and the :has() condition is always true. */
+.actions-tray:not(:has([data-ref="okBtn"]:not([hidden]), [data-ref="buzzBtn"]:not([hidden]), .gm-controls:not([hidden]))) hr {
+  display: none;
+}
+
 .actions-tray .exit-link {
   display: block;
   text-align: center;

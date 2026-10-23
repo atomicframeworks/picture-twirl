@@ -141,6 +141,74 @@
     }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Phase 2: Compact live-game application header (~52 px single row)
+   Scoped to .game-root so lobby, game-ready, and create-wizard headers
+   (which share .game-header globally) are unaffected.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Application-identity gradient — left: deep brand purple, right: standard brand purple.
+   Intentionally darker than the purple-to-pink gradient used on action elements. */
+.game-root .game-app-header {
+    background: linear-gradient(90deg, #3B0764 0%, #7C3AED 100%);
+}
+
+/* Single-row flex layout, fixed height */
+.game-root .game-header {
+    height: 52px;
+    padding: 0 var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    text-align: left;
+}
+
+/* Title: left side, truncated to one line */
+.game-root .game-header .game-header-title {
+    font-size: 17px;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0; /* required for flex-child text-overflow to work */
+}
+
+/* Code row: right side, no top margin, tighter gap */
+.game-root .game-header .game-code-row {
+    flex-shrink: 0;
+    margin-top: 0;
+    gap: var(--space-1);
+    font-size: 14px;
+}
+
+/* Compact code pill */
+.game-root .game-header .game-code-value {
+    font-size: 13px;
+    padding: 4px 10px;
+}
+
+/* "Game Code:" label is redundant in a compact app bar */
+.game-root .game-header .game-code-label {
+    display: none;
+}
+
+/* Comfortable touch targets for copy/help buttons */
+.game-root .game-header .icon-btn {
+    min-width: 36px;
+    min-height: 36px;
+}
+
+/* Keep the compact header visible when the scroll-driven compact class fires.
+   The is-board-compact rule above collapses max-height to 0; override it here
+   so the header stays at 52 px. Phase 3 will remove the JS scroll listener
+   and the collapse rules together. */
+.game-root.is-board-compact:not(.is-in-question) .game-top > .game-header {
+    max-height: 52px;
+    opacity: 1;
+}
+
 /* Sentinel: zero-height, invisible — just a scroll position marker */
 .question-sentinel {
     height: 0;

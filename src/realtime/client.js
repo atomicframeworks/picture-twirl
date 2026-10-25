@@ -20,6 +20,7 @@ import { applyOps, getAt, overlaps, splitPath } from '../shared/tree.js';
 
 const IDENTITY_KEY = 'pt.player.v1';
 const RECONNECT_DELAYS_MS = [250, 500, 1000, 2000, 4000, 5000];
+const MAX_RECONNECT_ATTEMPTS = 10;
 const PING_EVERY_MS = 10_000;
 const GET_TIMEOUT_MS = 15_000;
 
@@ -214,10 +215,24 @@ class RoomConnection {
     }
 
     scheduleReconnect() {
-        if (this.reconnectTimer) return;
+        if (this.shutDown || this.reconnectTimer) return;
+        if (this.retry >= MAX_RECONNECT_ATTEMPTS) { this.giveUp(); return; }
         const base = RECONNECT_DELAYS_MS[Math.min(this.retry, RECONNECT_DELAYS_MS.length - 1)];
         this.retry++;
         this.reconnectTimer = setTimeout(() => this.open(), base + Math.random() * 250);
+    }
+
+    giveUp() {
+        this.shutDown = true;
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+        this.stopPings();
+        const err = Object.assign(new Error('CONNECTION_TIMEOUT: Lost connection to the game.'), { code: 'connection_timeout' });
+        for (const { reject } of this.inflight.values()) reject(err);
+        this.inflight.clear();
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('pt:connection-timeout', { detail: { code: this.code } }));
+        }
     }
 
     /** Reconnect right away (network back, tab visible again). */
@@ -229,6 +244,9 @@ class RoomConnection {
 
     /** Leaving the page on purpose: tell the room, so it cleans up now (not after the grace period). */
     leave() {
+        this.shutDown = true;   // intentional exit: no reconnect
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
         if (!this.ws) return;
         try {
             this.ws.send(JSON.stringify({ t: 'bye' }));

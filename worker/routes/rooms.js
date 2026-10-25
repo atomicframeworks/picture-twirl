@@ -67,7 +67,7 @@ export function registerRoomRoutes(router) {
         requireGame(env);
         const uid = await playerFrom(request, env);
         if (!uid) throw new HttpError(401, 'signed_out', 'Missing or invalid player token.');
-        for (let attempt = 0; attempt < 8; attempt++) {
+        for (let attempt = 0; attempt < 3; attempt++) {
             const code = newGameCode();
             const res = await roomStub(env, code).fetch('https://room/reserve', { method: 'POST', headers: { 'x-pt-uid': uid } });
             if (res.ok) return json({ code }, { status: 201 });

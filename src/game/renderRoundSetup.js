@@ -14,7 +14,7 @@ import { rtdb, getCurrentUser } from '../realtime/client.js';
 import { ref, onValue, update, get, serverTimestamp } from '../realtime/db.js';
 import * as P from '../data/paths.js';
 import { getSession } from '../session.js';
-import { loadBoardForGame } from './createGame.js';
+import { loadBoardForGame, generateDoubleTakeSchedule } from './createGame.js';
 import { generateId } from './analyticsIds.js';
 import { createDisposer, leaveGame } from './controllerKit.js';
 import { mountBoardPicker } from '../ui/boardPicker.js';
@@ -207,6 +207,8 @@ export async function renderRoundSetup(gameId, { dispose = null } = {}) {
             [P.boardId(gameId)]: boardMeta.boardId,
             [`${P.settings(gameId)}/boardRev`]: boardMeta.boardRev,
             [`${P.settings(gameId)}/roundId`]: roundId,
+            // Fresh Double Take schedule for this round
+            [`${P.game(gameId)}/doubleTakeSchedule`]: generateDoubleTakeSchedule(),
             // Advance phase — triggers navigation on all clients
             [`${P.state(gameId)}/phase`]: 'live',
             [`${P.state(gameId)}/endedAt`]: null,

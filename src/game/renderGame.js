@@ -30,7 +30,7 @@ import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
 import { playBuzz, playCorrect, playReveal, playRoundComplete, playTileSelected, unlockAudio } from '../ui/sound.js';
 import { openHowToPlay } from '../ui/howToPlay.js';
-import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer, DOUBLE_TAKE } from '../config.js';
+import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer } from '../config.js';
 import { initGMGameTour } from './gmGameTour.js';
 import { capture } from '../analytics.js';
 import { computeEndReason } from './endReason.js';
@@ -84,6 +84,10 @@ export async function renderGameUI(gameId) {
     let boardListenerHasFired = false;  // skip completion check on initial board load (reconnect guard)
     let boardJustCompleted = false;     // 24→25 transition seen; waiting for currentQuestion to clear
     let boardCompleteCelebrated = false; // prevents retrigger within this mount
+
+    // Double Take schedule — [pos1, pos2] loaded from RTDB; generated once per game/round.
+    // pos1 ∈ [5..9], pos2 ∈ [13..18] (1-indexed question numbers, counting opened tiles).
+    let doubleTakeSchedule = null;
 
     // Tile-selection audio cue — GM only, one notification per accepted selection.
     let selectedTileListenerHasFired = false; // initial-hydration guard (no cue on reconnect)
@@ -370,6 +374,10 @@ export async function renderGameUI(gameId) {
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/swirlStartTime`), (s) => {
         swirlStartTime = typeof s.val() === 'number' ? s.val() : null;
+    }));
+
+    track(onValue(ref(rtdb, `${P.game(gameId)}/doubleTakeSchedule`), (s) => {
+        doubleTakeSchedule = s.val();  // [pos1, pos2] or null
     }));
 
     // Clock skew between this device and Firebase. swirlStartTime is a server
@@ -1370,54 +1378,6 @@ export async function renderGameUI(gameId) {
         refs.boardEl.textContent = 'Error rendering board.';
     }
 
-    // ─── Double Take — eligibility and roll (GM-only, fires once per OK press) ──
-    // All eligibility is derived from boardCache, which mirrors the live board listener.
-    // Math.random() is called exactly once, synchronously, before any Firebase write.
-    // Players never roll; listener callbacks never roll; reconnect reads the persisted flag.
-
-    function computeGapPercent() {
-        const leader = Math.max(scores.A, scores.B);
-        if (leader === 0) return 0; // 0-0 → no gap → lowest probability tier
-        return (leader - Math.min(scores.A, scores.B)) / leader;
-    }
-
-    function selectDoubleTakeProbability(gapPercent) {
-        for (const tier of DOUBLE_TAKE.PROBABILITY) {
-            if (gapPercent >= tier.minGap) return tier.p;
-        }
-        return DOUBLE_TAKE.PROBABILITY[DOUBLE_TAKE.PROBABILITY.length - 1].p;
-    }
-
-    function isDoubleTakeEligible() {
-        // Only answered tiles with a resolved numeric lastActionAt are included.
-        const answeredTiles = Object.values(boardCache).filter(
-            t => t.answered === true && typeof t.lastActionAt === 'number'
-        );
-
-        if (answeredTiles.length < DOUBLE_TAKE.ELIGIBILITY.MIN_COMPLETED) return false;
-
-        const dtTiles = answeredTiles.filter(t => t.doubleTake === true);
-        if (dtTiles.length >= DOUBLE_TAKE.ELIGIBILITY.MAX_PER_GAME) return false;
-
-        if (dtTiles.length > 0) {
-            const sorted = answeredTiles.slice().sort((a, b) => a.lastActionAt - b.lastActionAt);
-            const lastDTIdx = sorted.findLastIndex(t => t.doubleTake === true);
-            const questionsSinceLast = sorted.length - 1 - lastDTIdx;
-            if (questionsSinceLast < DOUBLE_TAKE.ELIGIBILITY.COOLDOWN_QUESTIONS) return false;
-        }
-
-        // Both scores must be available (local scores object is set by the listener).
-        if (typeof scores.A !== 'number' || typeof scores.B !== 'number') return false;
-
-        return true;
-    }
-
-    function rollDoubleTake() {
-        if (!isDoubleTakeEligible()) return false;
-        const p = selectDoubleTakeProbability(computeGapPercent());
-        return Math.random() < p;
-    }
-
     // ─── OK button (GM confirms a selected tile → posts question) ──────────────
     track(listen(refs.okBtn, 'click', async () => {
         if (!isGM) return;
@@ -1436,9 +1396,12 @@ export async function renderGameUI(gameId) {
                 return;
             }
 
-            // Perform ONE authoritative Double Take roll before writing anything.
-            // boardCache is current (same snapshot the board listener last delivered).
-            const isDoubleTake = rollDoubleTake();
+            // Determine Double Take from the persisted schedule (doubleTakeSchedule).
+            // Question number = opened-tile count + 1 (a tile becomes opened when its
+            // question is posted, regardless of whether points are awarded).
+            const questionNumber = Object.values(boardCache).filter(t => t?.opened === true).length + 1;
+            const sched = doubleTakeSchedule;
+            const isDoubleTake = Array.isArray(sched) && sched.includes(questionNumber);
 
             const questionPayload = {
                 id: tile.id,

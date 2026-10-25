@@ -50,6 +50,7 @@ import { openHowToPlay } from '../ui/howToPlay.js';
 import { initCreateFlow } from '../flows/createFlow.js';
 import { initJoinFlow } from '../flows/joinFlow.js';
 import { initAnalytics, capturePageview, capture } from '../analytics.js';
+import modal from '../ui/modal.js';
 
 export async function boot() {
     console.log('Main.js Loaded');
@@ -365,6 +366,25 @@ export async function boot() {
             // Start join flow with pre-filled code (keep hash in URL for sharing)
             startJoinFlow(gameCodeFromUrl);
         }
+
+        // -------------------------------------------------------------------------
+        // Connection timeout — show a modal and offer to rejoin
+        // Fires when the realtime client gives up after MAX_RECONNECT_ATTEMPTS
+        // consecutive failures (persistent server error or network outage).
+        // -------------------------------------------------------------------------
+        window.addEventListener('pt:connection-timeout', (e) => {
+            const code = String(e.detail?.code || '').toUpperCase();
+            modal.alert({
+                title: 'Connection lost',
+                body: code
+                    ? `We couldn't reconnect to the game. Tap Rejoin and enter your name to get back in, or go home to start fresh.`
+                    : 'We lost connection to the game. Please check your network and try joining again.',
+                buttonText: code ? 'Rejoin' : 'Go Home',
+            }).then(() => {
+                if (code) startJoinFlow(code.toLowerCase());
+                else showView('home');
+            });
+        });
 
         // -------------------------------------------------------------------------
         // Listen for hash changes (e.g., user changes URL manually)

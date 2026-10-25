@@ -35,7 +35,7 @@
 import { rtdb, getCurrentUser } from '../realtime/client.js';
 import { ref, set, serverTimestamp } from '../realtime/db.js';
 import { getBoard, toBoardSet } from '../data/boardsApi.js';
-import { LIMITS, TEAM } from '../config.js';
+import { LIMITS, TEAM, DOUBLE_TAKE } from '../config.js';
 import * as P from '../data/paths.js';
 import { generateId } from './analyticsIds.js';
 
@@ -209,6 +209,7 @@ export async function createGameShell(
         title: safeTitle,
         gmName: safeGM,
         analyticsId,
+        doubleTakeSchedule: generateDoubleTakeSchedule(),
         settings: { boardId: boardMeta.boardId, boardRev: boardMeta.boardRev, teamsEnabled: teamsOn, roundId },
         state: { phase: 'lobby' },
         teams: { A: { name: safeTeamA }, B: { name: safeTeamB } },
@@ -227,3 +228,17 @@ export async function createGameShell(
 
 
 export { buildBoardFromSet };
+
+/**
+ * Generate a Double Take schedule for one game/round.
+ * Returns a two-element array [pos1, pos2] where:
+ *   pos1 ∈ [WINDOW_1.min .. WINDOW_1.max]  (first event window)
+ *   pos2 ∈ [WINDOW_2.min .. WINDOW_2.max]  (second event window)
+ * Positions are 1-indexed question numbers (count of opened tiles + 1 at OK time).
+ */
+export function generateDoubleTakeSchedule() {
+    const { WINDOW_1, WINDOW_2 } = DOUBLE_TAKE.SCHEDULE;
+    const pos1 = WINDOW_1.min + Math.floor(Math.random() * (WINDOW_1.max - WINDOW_1.min + 1));
+    const pos2 = WINDOW_2.min + Math.floor(Math.random() * (WINDOW_2.max - WINDOW_2.min + 1));
+    return [pos1, pos2];
+}

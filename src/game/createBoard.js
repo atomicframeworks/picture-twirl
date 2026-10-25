@@ -117,7 +117,6 @@ export async function createBoard(gameId, options = {}) {
             // ----- Tile click handler ---------------------------
             const onTileActivate = async () => {
                 if (div.classList.contains('answered')) return;
-                if (div.classList.contains('opened')) return;  // tile already played
                 if (div.dataset.busy === '1') return;     // prevent double-click races
                 div.dataset.busy = '1';
 

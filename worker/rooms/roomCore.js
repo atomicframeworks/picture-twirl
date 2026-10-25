@@ -86,20 +86,7 @@ function checkCreate(after, uid, claimedBy) {
 
 function checkHost(before, after, uid) {
     if (after === null) return { ok: true };          // the host may delete the whole game
-    if (after.hostUid !== uid) return deny('permission_denied', "The host can’t give the game away.");
-
-    // If a new currentQuestion is being posted, the tile must be unplayed.
-    // This is a new question when: nowQ exists AND (there was no previous question OR the id changed).
-    // Updating fields on the current question (showAnswer, awardedTeam) keeps the same id → no check.
-    const wasQ = before?.currentQuestion;
-    const nowQ = after?.currentQuestion;
-    if (nowQ && nowQ.id && (!wasQ || wasQ.id !== nowQ.id)) {
-        const tile = before?.board?.[nowQ.id];
-        if (tile?.opened || tile?.answered) {
-            return deny('tile_ineligible', `Tile "${nowQ.id}" has already been played.`);
-        }
-    }
-
+    if (after.hostUid !== uid) return deny('permission_denied', 'The host can’t give the game away.');
     return { ok: true };
 }
 

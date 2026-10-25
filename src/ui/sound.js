@@ -45,13 +45,6 @@ export function playBuzz() {
     tone(120, 0.04, 0.28, 'square', 0.12);
 }
 
-/** Tile-selection cue: warm two-note "do-ding" (GM only, quieter than all other cues). */
-export function playTileSelected() {
-    unlockAudio();
-    tone(440, 0,    0.13, 'triangle', 0.08);  // A4 — "do"
-    tone(660, 0.09, 0.16, 'triangle', 0.09);  // E5 — "ding"
-}
-
 /** Reveal chime: two rising sine notes. */
 export function playReveal() {
     unlockAudio();
@@ -63,12 +56,6 @@ export function playReveal() {
 export function playCorrect() {
     unlockAudio();
     [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.24, 'triangle', 0.15));
-}
-
-/** Round-complete chime: wider sweep than correct, lighter than victory. */
-export function playRoundComplete() {
-    unlockAudio();
-    [523, 659, 784, 880, 1047].forEach((f, i) => tone(f, i * 0.09, 0.28, 'triangle', 0.13));
 }
 
 /** Victory fanfare: ascending arpeggio + sustained chord (≈1.8s). */

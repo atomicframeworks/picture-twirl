@@ -28,12 +28,13 @@ import { renderRoundSetup } from './renderRoundSetup.js';
 import { initializeStartingTurn, advanceTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
-import { playBuzz, playCorrect, playReveal, unlockAudio } from '../ui/sound.js';
+import { playBuzz, playCorrect, playReveal, playRoundComplete, unlockAudio } from '../ui/sound.js';
 import { openHowToPlay } from '../ui/howToPlay.js';
 import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer, DOUBLE_TAKE } from '../config.js';
 import { initGMGameTour } from './gmGameTour.js';
 import { capture } from '../analytics.js';
 import { computeEndReason } from './endReason.js';
+import { isBoardJustCompleted } from './roundComplete.js';
 
 export async function renderGameUI(gameId) {
     const app = document.getElementById('app');
@@ -78,6 +79,11 @@ export async function renderGameUI(gameId) {
     let doubleTakeBannerEl = null; // injected banner element for Double Take visual
     let prevDoubleTakeId = null;  // last Double Take question id that played its ding — prevents replay on rerenders
     let gameTour = null;          // GM Running-the-Game coaching (Phase 2); null for players
+
+    // Round Complete celebration — one-shot per board mount.
+    let boardListenerHasFired = false;  // skip completion check on initial board load (reconnect guard)
+    let boardJustCompleted = false;     // 24→25 transition seen; waiting for currentQuestion to clear
+    let boardCompleteCelebrated = false; // prevents retrigger within this mount
 
     // Analytics context — fetched once at game load; never changes during the game.
     let gameAnalyticsId = null;
@@ -259,6 +265,13 @@ export async function renderGameUI(gameId) {
                 for (const [uid, p] of Object.entries(participants)) {
                     if (p.tileRequest && p.team === currentTurn?.team) {
                         const req = p.tileRequest;
+                        const reqTile = boardCache[req.id];
+                        if (reqTile?.opened || reqTile?.answered) {
+                            // Tile already played — clear the stale request without promoting
+                            update(ref(rtdb, P.participant(gameId, uid)), { tileRequest: null })
+                                .catch(err => console.error('Stale tile request clear failed:', err));
+                            continue;
+                        }
                         update(ref(rtdb), {
                             [`${P.game(gameId)}/selectedTile`]: { id: req.id, category: req.category, value: req.value },
                             [`${P.participant(gameId, uid)}/tileRequest`]: null
@@ -305,7 +318,31 @@ export async function renderGameUI(gameId) {
 
     // ─── Current question (drives the viewer) ──────────────────────────────────
     track(onValue(ref(rtdb, `${P.game(gameId)}/currentQuestion`), (s) => {
-        currentQuestion = s.val();
+        const incoming = s.val();
+
+        // When Back-to-Board clears the final question and all 25 tiles have been
+        // opened, show the Round Complete celebration once on every connected client.
+        // At this point `currentQuestion` still holds the previous value, so
+        // `currentQuestion !== null` means "a question was just active" (Back-to-Board
+        // transition, not an initial-load null). Two paths trigger the celebration:
+        //   1. Normal play: board listener detected the 24→25 opened transition
+        //      (boardJustCompleted=true).
+        //   2. Reconnect mid-final-question: isFirstFire suppressed the transition in
+        //      the board listener, but boardCache and currentQuestion are now current,
+        //      so the direct count check here covers that case.
+        if (!incoming && !boardCompleteCelebrated) {
+            const shouldCelebrate = boardJustCompleted
+                || (currentQuestion !== null
+                    && boardListenerHasFired
+                    && Object.values(boardCache).filter(t => t?.opened === true).length >= 25);
+            if (shouldCelebrate) {
+                boardCompleteCelebrated = true;
+                boardJustCompleted = false;
+                showRoundComplete();
+            }
+        }
+
+        currentQuestion = incoming;
         renderQuestionViewer();
         updateStatusMessage();
         updateActiveTurnDisplay(); // question start clears border; question end restores turn border
@@ -1288,8 +1325,10 @@ export async function renderGameUI(gameId) {
                 const isMyTeamsTurn = currentTurn?.team && participants[myUid]?.team === currentTurn.team;
                 if (!isGM && !isMyTeamsTurn) return; // only GM or the active team may pick
                 if (currentQuestion) return;         // question already active
-                if (tileData.answered) return;
                 if (boardLocked) return;             // starting-team reveal in progress
+                // Guard against stale closures: check live boardCache for opened/answered state.
+                const liveTile = boardCache[tileData.id];
+                if (liveTile?.opened || liveTile?.answered) return; // tile already played
 
                 if (isGM) {
                     // GM can write selectedTile directly.
@@ -1372,6 +1411,11 @@ export async function renderGameUI(gameId) {
             const tileSnap = await get(ref(rtdb, P.boardTile(gameId, selectedTile.id)));
             const tile = tileSnap.val();
             if (!tile) throw new Error('Tile not found');
+            if (tile.opened || tile.answered) {
+                // Race condition: tile was already played before GM clicked OK — clear the selection
+                await update(ref(rtdb, P.game(gameId)), { selectedTile: null }).catch(() => {});
+                return;
+            }
 
             // Perform ONE authoritative Double Take roll before writing anything.
             // boardCache is current (same snapshot the board listener last delivered).
@@ -1427,6 +1471,7 @@ export async function renderGameUI(gameId) {
         if (!isGM || !currentQuestion?.id) return;
         if (currentQuestion.awardedTeam) return; // already awarded — double-click guard
         if (awardBusy) return;                   // a second tap before the first one lands (AUDIT H6)
+        if (boardCache[currentQuestion.id]?.answered) return; // tile already scored (replay guard)
         awardBusy = true;
 
         // Double Take doubles the awarded points; base tile value is never mutated.
@@ -1511,9 +1556,41 @@ export async function renderGameUI(gameId) {
         }));
     }
 
+    // ─── Round Complete celebration ────────────────────────────────────────────
+    // Shown once to every client the moment the last question's answer card is
+    // dismissed (Back to Board). Auto-dismissed after ~2.5 s; pointer-events:none
+    // so End Game and all controls remain clickable during the overlay.
+    function showRoundComplete() {
+        const overlay = document.createElement('div');
+        overlay.className = 'round-complete-overlay';
+        overlay.setAttribute('role', 'status');
+        overlay.setAttribute('aria-label', 'Round complete!');
+        overlay.innerHTML =
+            '<div class="round-complete-card">' +
+            '<span class="round-complete-label">Round complete!</span>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        burstConfetti({ count: 28, originX: 0.5, originY: 0.4 });
+        playRoundComplete();
+        setTimeout(() => {
+            overlay.classList.add('is-hiding');
+            setTimeout(() => overlay.remove(), 350);
+        }, 2500);
+    }
+
     // ─── Reflect answered/opened state on board tiles ──────────────────────────
     track(onValue(ref(rtdb, P.board(gameId)), (snap) => {
-        boardCache = snap.val() || {};   // keep mirror in sync for Double Take eligibility
+        const incoming = snap.val() || {};
+
+        // Detect the 24→25 opened-tile transition for the Round Complete event.
+        // isBoardJustCompleted returns false on the first call (isFirstFire) so that
+        // reconnecting to an already-complete board never retriggles the celebration.
+        if (!boardCompleteCelebrated && isBoardJustCompleted(boardCache, incoming, !boardListenerHasFired)) {
+            boardJustCompleted = true;
+        }
+        boardListenerHasFired = true;
+        boardCache = incoming;   // keep mirror in sync for Double Take eligibility
+
         snap.forEach((child) => {
             const tile = child.val();
             if (!tile?.id) return;

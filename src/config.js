@@ -47,18 +47,10 @@ export function teamToAnswer(teamKey) {
     return teamKey === TEAM.A ? TEAM_ANSWER.A : TEAM_ANSWER.B;
 }
 
-// Double Take — random bonus mechanic
+// Double Take — guaranteed 2× scoring events, one per window
 export const DOUBLE_TAKE = {
-    ELIGIBILITY: {
-        MIN_COMPLETED: 4,       // questions completed before Double Take is eligible
-        MAX_PER_GAME:  2,       // maximum Double Takes per board
-        COOLDOWN_QUESTIONS: 3,  // minimum questions between Double Takes
+    SCHEDULE: {
+        WINDOW_1: { min: 5, max: 9 },   // first event: one of questions 5–9
+        WINDOW_2: { min: 13, max: 18 },  // second event: one of questions 13–18
     },
-    // Probability tiers — ordered highest-gap-first; first match wins.
-    PROBABILITY: [
-    { minGap: 0.50, p: 0.15 },
-    { minGap: 0.30, p: 0.10 },
-    { minGap: 0.15, p: 0.06 },
-    { minGap: 0,    p: 0.03 },
-    ],
 };

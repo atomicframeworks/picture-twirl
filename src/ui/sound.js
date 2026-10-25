@@ -45,6 +45,13 @@ export function playBuzz() {
     tone(120, 0.04, 0.28, 'square', 0.12);
 }
 
+/** Tile-selection cue: warm two-note "do-ding" (GM only, quieter than all other cues). */
+export function playTileSelected() {
+    unlockAudio();
+    tone(440, 0,    0.13, 'triangle', 0.08);  // A4 — "do"
+    tone(660, 0.09, 0.16, 'triangle', 0.09);  // E5 — "ding"
+}
+
 /** Reveal chime: two rising sine notes. */
 export function playReveal() {
     unlockAudio();

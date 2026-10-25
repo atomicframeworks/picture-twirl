@@ -28,7 +28,7 @@ import { renderRoundSetup } from './renderRoundSetup.js';
 import { initializeStartingTurn, advanceTurn } from './turn.js';
 import { escapeHtml } from '../ui/format.js';
 import { burstConfetti } from '../ui/confetti.js';
-import { playBuzz, playCorrect, playReveal, playRoundComplete, unlockAudio } from '../ui/sound.js';
+import { playBuzz, playCorrect, playReveal, playRoundComplete, playTileSelected, unlockAudio } from '../ui/sound.js';
 import { openHowToPlay } from '../ui/howToPlay.js';
 import { TEAM, SWIRL, STARTING_REVEAL, teamToAnswer, DOUBLE_TAKE } from '../config.js';
 import { initGMGameTour } from './gmGameTour.js';
@@ -84,6 +84,10 @@ export async function renderGameUI(gameId) {
     let boardListenerHasFired = false;  // skip completion check on initial board load (reconnect guard)
     let boardJustCompleted = false;     // 24→25 transition seen; waiting for currentQuestion to clear
     let boardCompleteCelebrated = false; // prevents retrigger within this mount
+
+    // Tile-selection audio cue — GM only, one notification per accepted selection.
+    let selectedTileListenerHasFired = false; // initial-hydration guard (no cue on reconnect)
+    let selectedTileCued = false;             // prevents repeat for the same selection
 
     // Analytics context — fetched once at game load; never changes during the game.
     let gameAnalyticsId = null;
@@ -308,7 +312,22 @@ export async function renderGameUI(gameId) {
     }));
 
     track(onValue(ref(rtdb, `${P.game(gameId)}/selectedTile`), (s) => {
-        selectedTile = s.val();
+        const incoming = s.val();
+
+        // GM-only audio cue: one notification per new accepted tile selection.
+        // Guards: (1) selectedTileListenerHasFired skips the initial hydration call
+        //         so reconnecting to an in-flight selection is silent;
+        //         (2) !selectedTile confirms a null→non-null transition (new selection,
+        //         not a field update on an existing one);
+        //         (3) selectedTileCued prevents any repeat for the same selection.
+        if (isGM && selectedTileListenerHasFired && incoming && !selectedTile && !selectedTileCued) {
+            selectedTileCued = true;
+            playTileSelected();
+        }
+        if (!incoming) selectedTileCued = false;  // reset on clear → next selection may cue
+        selectedTileListenerHasFired = true;
+
+        selectedTile = incoming;
         updateBoardSelection();
         updateStatusMessage();
         updateOkButton();

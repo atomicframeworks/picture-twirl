@@ -42,6 +42,7 @@ import { renderLobby } from '../game/lobby.js';
 import { renderLateJoin } from '../game/renderLateJoin.js';
 import { getSession, setSession } from '../session.js';
 import { get, ref } from '../realtime/db.js';
+import * as P from '../data/paths.js';
 
 import { byId, enable, disable, on } from '../ui/dom.js';
 import { createViewController } from '../ui/views.js';
@@ -185,6 +186,37 @@ export async function boot() {
         // Check URL hash for game code BEFORE showing home (which clears hash)
         const urlHash = window.location.hash.replace('#', '').trim();
         const gameCodeFromUrl = urlHash ? urlHash : null;
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Auto-restore: returning player from a brief phone lock.
+        // If the session is still active in a live game and the disconnect is
+        // within the room's 30-second grace window, skip the Enter Lobby form
+        // and go straight back — renderLateJoin immediately enters the game when
+        // the participant row is active.
+        // ─────────────────────────────────────────────────────────────────────
+        const restoreSession = getSession();
+        const restoreUid = getCurrentUser()?.uid;
+        if (!restoreSession.isGM && restoreSession.gameId && restoreSession.displayName && restoreUid) {
+            let canRestore = false;
+            try {
+                const [restoreInfo, pSnap] = await Promise.all([
+                    getRoomInfo(restoreSession.gameId),
+                    get(ref(rtdb, P.participant(restoreSession.gameId, restoreUid))),
+                ]);
+                const pData = pSnap.val();
+                canRestore = restoreInfo.exists
+                    && restoreInfo.phase === 'live'
+                    && pData?.status === 'active'
+                    && typeof pData?.lastSeen === 'number'
+                    && Date.now() - pData.lastSeen <= 30_000;
+            } catch {
+                // eligibility check failed — fall through to normal flow
+            }
+            if (canRestore) {
+                await renderLateJoin(restoreSession.gameId);
+                return;
+            }
+        }
 
         // Initial route: Home (only show if no game code in URL)
         if (!gameCodeFromUrl) {

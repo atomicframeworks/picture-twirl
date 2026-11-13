@@ -198,11 +198,17 @@ export function openHowToPlay({ context = 'game', onStartNewGame, onJoinGame } =
     let step = 0;
     const prevFocus = document.activeElement;
 
-    // iOS-safe scroll lock: position:fixed trick prevents momentum scroll on body
-    const scrollY = window.scrollY;
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = '100%';
+    // iOS-safe scroll lock: position:fixed trick prevents momentum scroll on body.
+    // Skip in the game context — .game-root is height:100dvh;overflow:hidden so the
+    // body never scrolls there, and setting position:fixed on the body causes iPhone
+    // Safari to fail to repaint composited SVG layers after the lock is removed.
+    const needsScrollLock = context !== 'game';
+    const scrollY = needsScrollLock ? window.scrollY : 0;
+    if (needsScrollLock) {
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${scrollY}px`;
+        document.body.style.width = '100%';
+    }
 
     // ─── Build shell ──────────────────────────────────────────────────────────
 
@@ -315,11 +321,12 @@ export function openHowToPlay({ context = 'game', onStartNewGame, onJoinGame } =
     function close() {
         overlay.remove();
         document.removeEventListener('keydown', onKeyDown);
-        // Restore scroll (matches iOS-safe lock applied on open)
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        window.scrollTo(0, scrollY);
+        if (needsScrollLock) {
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.width = '';
+            window.scrollTo(0, scrollY);
+        }
         try { if (prevFocus?.focus) prevFocus.focus(); } catch (_) {}
     }
 

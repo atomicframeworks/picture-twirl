@@ -13,6 +13,7 @@ export const board = (id) => `games/${id}/board`;
 export const boardTile = (id, tileId) => `games/${id}/board/${tileId}`;
 export const currentQuestion = (id) => `games/${id}/currentQuestion`;
 export const swirlPaused = (id) => `games/${id}/swirlPaused`;
+export const swirlPausedAt = (id) => `games/${id}/swirlPausedAt`;
 export const buzzQueue = (id) => `games/${id}/buzzQueue`;
 export const settings = (id) => `games/${id}/settings`;
 export const boardId = (id) => `games/${id}/settings/boardId`;

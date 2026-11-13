@@ -1,0 +1,25 @@
+10.20
+
+Tested with Karen O. and Ethan O. 
+Played Snacks board
+
+P1. Navigation broken. iPhone / Safari - sticky header works on scroll/swipe down, but not scroll/swipe up. Similar issue for Macbook /Chrome. Karen unable to see bottom half of grid. Simplify - collapse elements into containers like the GM lobby fix?
+
+K:
+
+"the first one happened after we played 1-2 rounds. The grid actually got bigger than the initial display."
+
+P3. How to Play - no next button. Karen got confused - too many CTAs. Omit Start and Join game buttons, replace with OK or Close. Add a Back button for pagination, or pagination controls.
+
+P3. Karen commented she expected to see categories at the game start. Consider adding a category view for players? Allow them to vote?
+
+P3. Ethan expected integrated voice/text chat. He is an experienced online gamer.
+
+P2. Layout. GM adjudication info text 11px,. It is hard to read on iphone. Consider increasing size or weight.
+
+P2. UI. The GM adjudication action tray buttons re-use the same violet color. Consider semantic colors - yellow pause button,
+
+P1. Game tear down. I was able to join the game lobby the next day from a completely different device (ipad). The code was leftover in the browser (could be a safari sync feature). As the GM, I had ended the game completely. 
+
+Overall. They had fun, and played the game through. it was a close game. I expected a double take to trigger, but it did not show up. May need tweaking. They would play again. I noticed both player pills showing up when they buzzed at almost the same exact moment. Game took about 35 minutes.
+

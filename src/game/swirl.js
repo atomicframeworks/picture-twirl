@@ -226,10 +226,25 @@ export function startSwirlAnimation(imgEl, canvasEl, duration = 7000, maxSwirl =
                 cancelAnimationFrame(animationFrame);
                 animationFrame = null;
             }
-            ctx.putImageData(imageData, 0, 0); // Fully unswirled
+            // No reveal here — caller is responsible for drawing the answer via drawUnswirled().
+        },
+        cancelQuiet() {
+            cancelled = true;
+            if (animationFrame !== null) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
         },
         isPaused() {
             return pausedAt !== null;
-        }
+        },
+        isDone() {
+            return done;
+        },
+        getElapsed() {
+            if (done) return duration;
+            if (pausedAt !== null) return pausedAt - startTime;
+            return performance.now() - startTime;
+        },
     };
 }

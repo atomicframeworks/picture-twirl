@@ -62,7 +62,8 @@ export async function renderGameUI(gameId) {
     let boardLocked = false;      // true during the starting-team reveal window
     let selectedTile = null;      // { id, category, value } — GM has picked, not yet posted
     let currentQuestion = null;   // { id, category, imageUrl, value, showAnswer }
-    let swirlStartTime = null;    // server timestamp (ms) when the current swirl began
+    let swirlStartTime = null;    // server timestamp (ms) — adjusted forward each time swirl resumes after a pause
+    let swirlPausedAt = null;     // server timestamp (ms) when the current pause began; null while running
     let serverTimeOffset = 0;     // ms to add to Date.now() to get server time (.info/serverTimeOffset)
     let swirlCtrl = null;
     let lastImageUrl = null;
@@ -120,6 +121,36 @@ export async function renderGameUI(gameId) {
     const unlockOnce = () => unlockAudio();
     window.addEventListener('pointerdown', unlockOnce, { once: true });
     track(() => window.removeEventListener('pointerdown', unlockOnce));
+
+    // On device wake (iOS Safari lock screen, tab background), performance.now() may have
+    // advanced through the sleep, causing a queued rAF to fire with t≥1 and draw the fully
+    // revealed image even when the GM has the swirl paused.  We reschedule in an rAF so
+    // our correction always runs AFTER any such stale rAF; then we restart the animation
+    // from the server-authoritative reveal position.
+    const onVisibilityChange = () => {
+        if (document.visibilityState !== 'visible') return;
+        if (!currentQuestion || currentQuestion.showAnswer) return;
+        if (!refs.twirlImage?.naturalWidth) return;
+        requestAnimationFrame(() => {
+            // Re-check: state may have changed between the event and this frame.
+            if (!currentQuestion || currentQuestion.showAnswer) return;
+            const serverNow = Date.now() + serverTimeOffset;
+            const authorized = (swirlPausedByGM && swirlPausedAt)
+                ? Math.max(0, swirlPausedAt - swirlStartTime)
+                : (swirlStartTime ? Math.max(0, serverNow - swirlStartTime) : 0);
+            const elapsedMs = Math.min(SWIRL.DURATION_MS, authorized);
+            if (swirlCtrl?.cancelQuiet) swirlCtrl.cancelQuiet();
+            swirlCtrl = startSwirlAnimation(
+                refs.twirlImage, refs.twirlCanvas,
+                SWIRL.DURATION_MS, SWIRL.STRENGTH,
+                elapsedMs,
+                setSwirlProgress, SWIRL.EASE,
+            );
+            applySwirlPause();
+        });
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    track(() => document.removeEventListener('visibilitychange', onVisibilityChange));
 
     // ─── Copy code ─────────────────────────────────────────────────────────────
     track(attachCopyButton(refs.copyCodeBtn, () => gameId.toUpperCase()));
@@ -376,6 +407,10 @@ export async function renderGameUI(gameId) {
         swirlStartTime = typeof s.val() === 'number' ? s.val() : null;
     }));
 
+    track(onValue(ref(rtdb, P.swirlPausedAt(gameId)), (s) => {
+        swirlPausedAt = typeof s.val() === 'number' ? s.val() : null;
+    }));
+
     track(onValue(ref(rtdb, `${P.game(gameId)}/doubleTakeSchedule`), (s) => {
         doubleTakeSchedule = s.val();  // [pos1, pos2] or null
     }));
@@ -425,8 +460,12 @@ export async function renderGameUI(gameId) {
                 }
             }
             // GM writes swirlPaused:true so every client pauses via the shared RTDB listener.
+            // swirlPausedAt records when the pause began so the reveal position stays authoritative.
             if (isGM && currentQuestion && !currentQuestion.showAnswer && !swirlPausedByGM) {
-                update(ref(rtdb, P.game(gameId)), { swirlPaused: true }).catch(console.error);
+                update(ref(rtdb, P.game(gameId)), {
+                    swirlPaused: true,
+                    swirlPausedAt: serverTimestamp(),
+                }).catch(console.error);
             }
         }
         prevBuzzCount = ordered.length;
@@ -468,8 +507,27 @@ export async function renderGameUI(gameId) {
     // Never act once the answer is revealed (the swirl is gone by then).
     function applySwirlPause() {
         if (!swirlCtrl || currentQuestion?.showAnswer) return;
-        if (swirlPausedByGM) swirlCtrl.pause?.();
-        else swirlCtrl.resume?.();
+        if (swirlPausedByGM) {
+            // Defensive: if the animation ran to completion (e.g., device woke and a
+            // rAF fired before visibilitychange could correct it) while the GM had it
+            // paused, the done guard makes pause() a no-op. Recreate from the
+            // server-authoritative pause position so the canvas shows the right frame.
+            if (swirlCtrl.isDone?.() && refs.twirlImage?.naturalWidth) {
+                const authorizedElapsed = swirlPausedAt
+                    ? Math.max(0, swirlPausedAt - swirlStartTime)
+                    : 0;
+                swirlCtrl.cancelQuiet?.();
+                swirlCtrl = startSwirlAnimation(
+                    refs.twirlImage, refs.twirlCanvas,
+                    SWIRL.DURATION_MS, SWIRL.STRENGTH,
+                    Math.min(SWIRL.DURATION_MS, authorizedElapsed),
+                    setSwirlProgress, SWIRL.EASE,
+                );
+            }
+            swirlCtrl.pause?.();
+        } else {
+            swirlCtrl.resume?.();
+        }
     }
 
     // Draw the fully-clear image onto the swirl canvas (used on answer reveal).
@@ -1281,16 +1339,20 @@ export async function renderGameUI(gameId) {
         if (refs.twirlImage && currentQuestion.imageUrl && currentQuestion.imageUrl !== lastImageUrl) {
             setSwirlProgress(0);
             refs.twirlImage.onload = () => {
-                if (swirlCtrl?.cancel) swirlCtrl.cancel();
-                // Server-aligned: how far into the reveal everyone else already is.
+                if (swirlCtrl?.cancelQuiet) swirlCtrl.cancelQuiet();
+                // Use the server pause-start time when paused so a late-loading image
+                // never starts further into the reveal than the GM authorized.
                 const serverNow = Date.now() + serverTimeOffset;
-                const elapsed = swirlStartTime ? Math.max(0, serverNow - swirlStartTime) : 0;
+                const rawElapsed = swirlStartTime ? Math.max(0, serverNow - swirlStartTime) : 0;
+                const elapsed = (swirlPausedByGM && swirlPausedAt)
+                    ? Math.max(0, swirlPausedAt - swirlStartTime)
+                    : rawElapsed;
                 swirlCtrl = startSwirlAnimation(
                     refs.twirlImage,
                     refs.twirlCanvas,
                     SWIRL.DURATION_MS,
                     SWIRL.STRENGTH,
-                    elapsed,
+                    Math.min(SWIRL.DURATION_MS, elapsed),
                     setSwirlProgress,
                     SWIRL.EASE,
                 );
@@ -1417,6 +1479,7 @@ export async function renderGameUI(gameId) {
                 currentQuestion: questionPayload,
                 swirlStartTime: serverTimestamp(),
                 swirlPaused: false,
+                swirlPausedAt: null,
                 selectedTile: null
             });
 
@@ -1436,8 +1499,26 @@ export async function renderGameUI(gameId) {
     if (refs.pauseSwirlBtn) {
         track(listen(refs.pauseSwirlBtn, 'click', async () => {
             if (!isGM || !currentQuestion) return;
-            // Toggle the shared pause flag; all clients react via the listener.
-            await update(ref(rtdb, P.game(gameId)), { swirlPaused: !swirlPausedByGM });
+            if (swirlPausedByGM) {
+                // Resume: advance swirlStartTime forward by the pause duration so
+                // serverNow - swirlStartTime never counts time the GM held.
+                const serverNow = Date.now() + serverTimeOffset;
+                const pauseDuration = swirlPausedAt
+                    ? Math.max(0, Math.round(serverNow - swirlPausedAt))
+                    : 0;
+                await update(ref(rtdb, P.game(gameId)), {
+                    swirlPaused: false,
+                    swirlPausedAt: null,
+                    swirlStartTime: increment(pauseDuration),
+                });
+            } else {
+                // Pause: record the server timestamp so every client knows the exact
+                // pause position regardless of when their image loaded.
+                await update(ref(rtdb, P.game(gameId)), {
+                    swirlPaused: true,
+                    swirlPausedAt: serverTimestamp(),
+                });
+            }
         }));
     }
 
@@ -1476,6 +1557,7 @@ export async function renderGameUI(gameId) {
             [`${P.currentQuestion(gameId)}/showAnswer`]: true,
             [`${P.currentQuestion(gameId)}/awardedTeam`]: teamKey,
             [`${P.game(gameId)}/swirlPaused`]: false,
+            [`${P.game(gameId)}/swirlPausedAt`]: null,
         };
 
         // Persist the Double Take marker on the answered tile so eligibility
@@ -1512,7 +1594,8 @@ export async function renderGameUI(gameId) {
                 await update(ref(rtdb, P.game(gameId)), {
                     currentQuestion: null,
                     swirlStartTime: null,
-                    swirlPaused: false
+                    swirlPaused: false,
+                    swirlPausedAt: null,
                 });
                 await clearBuzzQueue(gameId);
                 await advanceTurn(gameId, awardedTeam);
